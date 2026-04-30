@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import FactoryShell from "@/components/factory/factory-shell";
@@ -44,7 +44,26 @@ type ActiveMessage =
 
 const ACCENT = "#1d4ed8";
 
+// Next requiere que el árbol que use useSearchParams esté envuelto en
+// <Suspense>; si no, prerendering del build estático falla con
+// "useSearchParams() should be wrapped in a suspense boundary".
+// Patrón: el componente real va dentro, el wrapper exportado como default
+// monta el Suspense.
 export default function FactoryChatPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ padding: "2rem", color: "#64748b" }}>
+          Cargando chat de Factory…
+        </div>
+      }
+    >
+      <FactoryChatPageInner />
+    </Suspense>
+  );
+}
+
+function FactoryChatPageInner() {
   const searchParams = useSearchParams();
   const [conversations, setConversations] = useState<ConversationMeta[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
