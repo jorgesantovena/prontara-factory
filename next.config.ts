@@ -97,11 +97,25 @@ const nextConfig: NextConfigWithEslint = {
   ],
 
   // Limita qué archivos se incluyen en el tracing del bundle de cada
-  // función. Excluye carpetas grandes que NUNCA deben ir al runtime
-  // serverless: data/ (modo filesystem dev), docs/, scripts/, _audit/,
-  // backups/, todo Tauri (desktop wrapper que NO va al SaaS web).
+  // función. CRÍTICO: usar globs recursivos `**/` para que aplique a
+  // CUALQUIER profundidad (Next sigue symlinks de pnpm hasta el cache
+  // del store, lo que infla cada función a >250MB sin esto).
+  //
+  // Diagnóstico real (build con VERCEL_ANALYZE_BUILD_OUTPUT=1):
+  //   Function : /api/factory/chat/send
+  //   Size     : 674.62 MB
+  //   Large dependencies:
+  //     • .pnpm-store/v10/files: 653.66 MB  ← el bug
+  //     • .git/objects/pack: 1.94 MB
+  //     • .vc-config.json: 7.15 MB
   outputFileTracingExcludes: {
     "*": [
+      // Bug Next+pnpm: el store completo se traza vía symlinks.
+      "**/.pnpm-store/**",
+      "**/.git/**",
+      "**/.vc-config.json",
+
+      // Carpetas del repo que NO deben ir a runtime serverless.
       "./data/**/*",
       "./docs/**/*",
       "./scripts/**/*",
@@ -111,10 +125,19 @@ const nextConfig: NextConfigWithEslint = {
       "./src-tauri/**/*",
       "./desktop-wrapper/**/*",
       "./prisma/migrations/**/*",
-      "./node_modules/.cache/**/*",
-      "./node_modules/@swc/core-*/**/*",
-      "./node_modules/@esbuild/**/*",
-      "./node_modules/typescript/**/*",
+
+      // Caches de build / dev tooling.
+      "./.next/cache/**/*",
+      "**/node_modules/.cache/**",
+      "**/node_modules/@swc/**",
+      "**/node_modules/@esbuild/**",
+      "**/node_modules/typescript/**",
+      "**/node_modules/eslint/**",
+      "**/node_modules/eslint-*/**",
+      "**/node_modules/@eslint/**",
+      "**/node_modules/vitest/**",
+      "**/node_modules/@vitest/**",
+      "**/node_modules/prisma/**",
     ],
   },
 
