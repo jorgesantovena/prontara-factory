@@ -1,0 +1,352 @@
+// Schema de Prontara Factory.
+//
+// Modelo dual de persistencia: en local todo vive en JSON (rápido para dev,
+// fácil de inspeccionar). En producción (Vercel + Neon) vive en Postgres.
+// El switch lo controla la variable PRONTARA_PERSISTENCE = "postgres" | "filesystem".
+// Default filesystem para no romper nada hasta que se ejecute el seed.
+//
+// Convenciones:
+//   - Identidad pública del tenant: campo `clientId` (lo usa el runtime en URLs).
+//   - Todos los modelos operativos tienen `clientId` + índice compuesto para
+//     aislar consultas por tenant.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===========================================================================
+// Tenant + Cuentas (lo que hoy vive en .prontara/clients/*.json y data/saas/accounts/*.json)
+// ===========================================================================
+
+model Tenant {
+  id              String   @id @default(cuid())
+  /// id público que el runtime usa en URLs (ej: estandar-20260419194129).
+  clientId        String   @unique
+  slug            String   @unique
+  /// identificador legacy en código antiguo. Mantener por compatibilidad.
+  legacyTenantId  String?  @unique
+  displayName     String
+  shortName       String?
+  sector          String?
+  businessType    String?
+  companySize     String?
+  blueprintVersion String?
+  /// JSON arbitrario con la definición completa del tenant (branding,
+  /// modules, sampleData, etc.). Mientras no se modelen sub-entidades,
+  /// volcamos aquí lo que vive en .prontara/clients/<id>.json.
+  definition      Json     @default("{}")
+  /// Branding sobreentendido (extraído de definition para queries rápidas).
+  brandingJson    Json     @default("{}")
+  status          String   @default("provisioning")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  accounts            TenantAccount[]
+  subscriptions       BillingSubscription[]
+  trial               TrialState?
+  onboardings         OnboardingState[]
+  lifecycle           LifecycleState?
+  moduleData          TenantModuleRecord[]
+  evolutionEvents     EvolutionEvent[]
+  auditEvents         AuditEvent[]
+
+  @@index([status])
+  @@index([businessType])
+}
+
+model TenantAccount {
+  id                  String   @id
+  tenantId            String
+  clientId            String
+  slug                String
+  email               String
+  fullName            String
+  role                String   /// owner | admin | manager | staff
+  status              String   /// pending | active | disabled
+  passwordHash        String   /// scrypt$N$r$p$salt$hash
+  temporaryPassword   String   @default("")
+  mustChangePassword  Boolean  @default(false)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  lastProvisionedAt   DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, email])
+  @@index([clientId, status])
+}
+
+// ===========================================================================
+// Billing: subscriptions + invoices (data/saas/billing/*.json)
+// ===========================================================================
+
+model BillingSubscription {
+  id                       String   @id @default(cuid())
+  tenantId                 String
+  clientId                 String   @unique
+  slug                     String
+  displayName              String
+  billingEmail             String
+  currentPlanKey           String   /// trial | basico | estandar | premium
+  status                   String
+  autoRenew                Boolean  @default(true)
+  seats                    Int      @default(2)
+  setupFeePaidCents        Int      @default(0)
+  concurrentUsersBilled    Int      @default(1)
+  supportActive            Boolean  @default(false)
+  renewsAt                 DateTime
+  cancelAt                 DateTime?
+  stripeCustomerId         String?
+  stripeSubscriptionId     String?
+  lastCheckoutIntent       Json?
+  createdAt                DateTime @default(now())
+  updatedAt                DateTime @updatedAt
+
+  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices BillingInvoice[]
+
+  @@index([status])
+  @@index([currentPlanKey])
+}
+
+model BillingInvoice {
+  id                       String   @id
+  subscriptionId           String
+  tenantId                 String
+  clientId                 String
+  slug                     String
+  planKey                  String
+  concept                  String
+  amountCents              Int
+  currency                 String   @default("EUR")
+  status                   String   /// issued | paid | void
+  stripeCheckoutSessionId  String?
+  stripeSubscriptionId     String?
+  createdAt                DateTime @default(now())
+
+  subscription BillingSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, createdAt])
+  @@index([status])
+}
+
+// ===========================================================================
+// Trial / Onboarding / Lifecycle
+// ===========================================================================
+
+model TrialState {
+  id            String   @id @default(cuid())
+  tenantId      String   @unique
+  clientId      String   @unique
+  slug          String
+  status        String   /// active | expired
+  trialDays     Int      @default(14)
+  daysRemaining Int      @default(14)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  expiresAt     DateTime
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+model OnboardingState {
+  id          String   @id @default(cuid())
+  tenantId    String
+  clientId    String
+  slug        String
+  accountId   String
+  stepsJson   Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, accountId])
+}
+
+model LifecycleState {
+  id          String   @id @default(cuid())
+  tenantId    String   @unique
+  clientId    String   @unique
+  sentJson    Json     @default("[]")
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// ===========================================================================
+// Vertical overrides
+// ===========================================================================
+
+model VerticalOverride {
+  id           String   @id @default(cuid())
+  packKey      String   @unique
+  payloadJson  Json
+  updatedAt    DateTime @updatedAt
+  updatedBy    String?
+
+  @@index([updatedAt])
+}
+
+// ===========================================================================
+// Leads del formulario público
+// ===========================================================================
+
+model Lead {
+  id              String   @id
+  name            String
+  email           String
+  company         String   @default("")
+  phone           String   @default("")
+  message         String   @default("")
+  sourceVertical  String?
+  status          String   @default("new")
+  userAgent       String   @default("")
+  ip              String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status, createdAt])
+  @@index([email])
+}
+
+// ===========================================================================
+// Datos operativos del ERP (registros de cada módulo)
+// ===========================================================================
+
+model TenantModuleRecord {
+  id          String   @id
+  tenantId    String
+  clientId    String
+  moduleKey   String
+  payloadJson Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, moduleKey, updatedAt])
+  @@index([clientId, moduleKey, id])
+}
+
+// ===========================================================================
+// Trazas
+// ===========================================================================
+
+model EvolutionEvent {
+  id          String   @id @default(cuid())
+  tenantId    String
+  kind        String
+  payloadJson Json
+  createdAt   DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+}
+
+model AuditEvent {
+  id              String   @id @default(cuid())
+  tenantId        String?
+  conversationId  String?
+  actorEmail      String?
+  tool            String
+  outcome         String
+  durationMs      Int      @default(0)
+  inputJson       Json?
+  resultJson      Json?
+  touchedPaths    String[]
+  backupRef       String?
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+
+  @@index([tool, createdAt])
+  @@index([actorEmail, createdAt])
+  @@index([conversationId])
+}
+
+// =====================================================================
+// StripeProcessedEvent — dedupe de eventos del webhook Stripe.
+//
+// Stripe reintenta el webhook si no responde 200 antes de 30s, hasta 3
+// días. Para garantizar exactly-once procesamiento (no duplicar
+// activaciones de plan, dobles facturas, etc.) guardamos el event.id de
+// cada evento procesado y lo rechazamos si llega de nuevo.
+// =====================================================================
+model StripeProcessedEvent {
+  eventId     String   @id // El id del evento Stripe (ej: evt_1ABC123...)
+  type        String   // checkout.session.completed, invoice.paid, etc.
+  processedAt DateTime @default(now())
+  outcome     String   // ok | error | duplicate
+  errorMsg    String?  // Si outcome=error, mensaje breve
+
+  @@index([type, processedAt])
+}
+
+// =====================================================================
+// DomainEvent — saga / cola de eventos de dominio para reintentos y
+// compensación (ARQ-7).
+//
+// Patrón: cuando un paso del pipeline falla más allá de lo que el
+// retry síncrono puede absorber (o cuando queremos disparar una
+// compensación como un refund Stripe), emitimos un DomainEvent en
+// estado pending. Un cron en Vercel (`/api/cron/process-domain-events`)
+// los procesa con backoff exponencial y los marca completed o
+// dead_letter. Los handlers viven en domain-event-handlers.ts.
+//
+// El uso inicial es la compensación post-pago: si activatePaidPlanAsync
+// falla tras N reintentos del webhook Stripe, emitimos
+// "tenant.activation.failed" cuyo handler ejecuta el refund.
+// =====================================================================
+model DomainEvent {
+  id            String    @id @default(cuid())
+  type          String    // ej: "tenant.activation.failed"
+  aggregateType String    // ej: "tenant", "subscription"
+  aggregateId   String    // id del agregado afectado
+  payload       Json      // datos arbitrarios para el handler
+  status        String    // pending | processing | completed | dead_letter
+  retryCount    Int       @default(0)
+  maxRetries    Int       @default(5)
+  occurredAt    DateTime  @default(now())
+  nextAttemptAt DateTime  @default(now())
+  processedAt   DateTime?
+  errorMsg      String?
+
+  @@index([status, nextAttemptAt])
+  @@index([aggregateType, aggregateId])
+  @@index([type, occurredAt])
+}
+
+// =====================================================================
+// FactoryNotification — eventos visibles para el operador en /factory.
+//
+// Se persisten cuando ocurre algo relevante en el negocio (alta,
+// pago, trial expira, fallo de pago, error de webhook, etc.) para
+// que el operador (Jorge) pueda verlos sin entrar a logs.
+//
+// `severity` determina el color del badge: info / success / warning /
+// error. `readAt` permite distinguir leídos de pendientes para la
+// campanita.
+// =====================================================================
+model FactoryNotification {
+  id        String    @id
+  type      String    // alta_created | payment_received | trial_expiring | trial_expired | payment_failed | tenant_cancelled | webhook_error | manual
+  severity  String    // info | success | warning | error
+  title     String
+  message   String
+  // Datos contextuales (slug del tenant, importe, plan, etc.)
+  metadata  Json?
+  // Cuándo se marcó como leído (null = pendiente)
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([readAt, createdAt])
+  @@index([type, createdAt])
+}

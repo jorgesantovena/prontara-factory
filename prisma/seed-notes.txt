@@ -1,0 +1,8 @@
+Seed inicial sugerido para: Binary Forge
+ClientId: estandar-20260418182940
+BusinessType: software-factory
+Modulos: clientes, ventas, facturacion, ajustes, documentos, proyectos, tareas, tesoreria, cobros, pagos
+
+Siguiente paso recomendado desde PowerShell:
+  pnpm prisma generate
+  pnpm prisma db push --schema prisma/schema.prisma

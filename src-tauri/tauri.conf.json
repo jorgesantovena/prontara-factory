@@ -1,0 +1,36 @@
+{
+    "$schema":  "https://schema.tauri.app/config/2",
+    "productName":  "Prontara Desktop",
+    "version":  "0.1.0",
+    "identifier":  "com.prontara.desktop",
+    "build":  {
+                  "beforeDevCommand":  "pnpm dev",
+                  "beforeBuildCommand":  "",
+                  "devUrl":  "http://localhost:3000",
+                  "frontendDist":  "../desktop-wrapper"
+              },
+    "app":  {
+                "windows":  [
+                                {
+                                    "label":  "main",
+                                    "title":  "Prontara Desktop",
+                                    "width":  1400,
+                                    "height":  900,
+                                    "resizable":  true
+                                }
+                            ],
+                "security":  {
+                                 "csp":  null
+                             }
+            },
+    "bundle":  {
+                   "active":  true,
+                   "targets":  "all",
+                   "windows":  {
+                                   "digestAlgorithm":  "sha256"
+                               },
+                   "icon":  [
+                                "icons/icon.ico"
+                            ]
+               }
+}

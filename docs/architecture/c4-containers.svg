@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" font-family="Inter, system-ui, sans-serif" font-size="13">
+  <title>C4 Containers — Prontara</title>
+  <desc>C4 Model nivel 2 (Containers): qué hay dentro de Prontara — capas Next.js, persistencia y observabilidad — y cómo se comunican entre sí y con los servicios externos.</desc>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1200" height="820" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="600" y="36" text-anchor="middle" font-size="20" font-weight="700" fill="#0b1320">Prontara · Diagrama de containers (C4 nivel 2)</text>
+  <text x="600" y="58" text-anchor="middle" font-size="12" fill="#64748b">Qué piezas componen Prontara y cómo hablan entre ellas</text>
+
+  <!-- =============== ACTORS (top) =============== -->
+  <g transform="translate(120,90)">
+    <circle cx="40" cy="14" r="12" fill="#e2e8f0" stroke="#475569" stroke-width="1.3"/>
+    <path d="M22 60 q18 -28 36 0 v16 h-36 z" fill="#e2e8f0" stroke="#475569" stroke-width="1.3"/>
+    <text x="40" y="98" text-anchor="middle" font-weight="600" fill="#0b1320" font-size="12">Visitante</text>
+  </g>
+  <g transform="translate(380,90)">
+    <circle cx="40" cy="14" r="12" fill="#dbeafe" stroke="#1e3a8a" stroke-width="1.3"/>
+    <path d="M22 60 q18 -28 36 0 v16 h-36 z" fill="#dbeafe" stroke="#1e3a8a" stroke-width="1.3"/>
+    <text x="40" y="98" text-anchor="middle" font-weight="600" fill="#0b1320" font-size="12">Cliente PYME</text>
+  </g>
+  <g transform="translate(640,90)">
+    <circle cx="40" cy="14" r="12" fill="#fef3c7" stroke="#854d0e" stroke-width="1.3"/>
+    <path d="M22 60 q18 -28 36 0 v16 h-36 z" fill="#fef3c7" stroke="#854d0e" stroke-width="1.3"/>
+    <text x="40" y="98" text-anchor="middle" font-weight="600" fill="#0b1320" font-size="12">Operador Factory</text>
+  </g>
+
+  <!-- =============== BOUNDARY: Prontara (Vercel) =============== -->
+  <g>
+    <rect x="40" y="220" width="900" height="430" rx="14" fill="none" stroke="#1e3a8a" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="56" y="244" font-size="13" font-weight="700" fill="#1e3a8a">Prontara · desplegado en Vercel</text>
+    <text x="56" y="260" font-size="11" fill="#64748b">Frontera del sistema multi-tenant</text>
+  </g>
+
+  <!-- Container: Public marketing pages -->
+  <g transform="translate(70,290)">
+    <rect width="220" height="100" rx="10" fill="#dbeafe" stroke="#1e3a8a" stroke-width="1.5"/>
+    <text x="110" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">Marketing público</text>
+    <text x="110" y="48" text-anchor="middle" font-size="11" fill="#475569">Next.js App Router (RSC)</text>
+    <text x="110" y="66" text-anchor="middle" font-size="11" fill="#475569">/, /precios, /alta, /verticales</text>
+    <text x="110" y="84" text-anchor="middle" font-size="11" fill="#94a3b8">[Container]</text>
+  </g>
+
+  <!-- Container: Runtime tenant -->
+  <g transform="translate(330,290)">
+    <rect width="220" height="100" rx="10" fill="#dbeafe" stroke="#1e3a8a" stroke-width="1.5"/>
+    <text x="110" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">Runtime tenant</text>
+    <text x="110" y="48" text-anchor="middle" font-size="11" fill="#475569">Next.js + sesión cookie HMAC</text>
+    <text x="110" y="66" text-anchor="middle" font-size="11" fill="#475569">/dashboard, /clientes, /produccion…</text>
+    <text x="110" y="84" text-anchor="middle" font-size="11" fill="#94a3b8">[Container]</text>
+  </g>
+
+  <!-- Container: Factory UI -->
+  <g transform="translate(590,290)">
+    <rect width="220" height="100" rx="10" fill="#dbeafe" stroke="#1e3a8a" stroke-width="1.5"/>
+    <text x="110" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">Factory UI</text>
+    <text x="110" y="48" text-anchor="middle" font-size="11" fill="#475569">Panel operador + chat con LLM</text>
+    <text x="110" y="66" text-anchor="middle" font-size="11" fill="#475569">/factory/* (sólo operador)</text>
+    <text x="110" y="84" text-anchor="middle" font-size="11" fill="#94a3b8">[Container]</text>
+  </g>
+
+  <!-- Container: API Routes -->
+  <g transform="translate(70,420)">
+    <rect width="220" height="100" rx="10" fill="#bfdbfe" stroke="#1e3a8a" stroke-width="1.5"/>
+    <text x="110" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">API Routes</text>
+    <text x="110" y="48" text-anchor="middle" font-size="11" fill="#475569">/api/runtime, /api/factory,</text>
+    <text x="110" y="66" text-anchor="middle" font-size="11" fill="#475569">/api/stripe/webhook, /api/auth</text>
+    <text x="110" y="84" text-anchor="middle" font-size="11" fill="#94a3b8">[Container]</text>
+  </g>
+
+  <!-- Container: Edge Middleware -->
+  <g transform="translate(330,420)">
+    <rect width="220" height="100" rx="10" fill="#bbf7d0" stroke="#166534" stroke-width="1.5"/>
+    <text x="110" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">Edge Middleware</text>
+    <text x="110" y="48" text-anchor="middle" font-size="11" fill="#475569">Verifica sesión HMAC,</text>
+    <text x="110" y="66" text-anchor="middle" font-size="11" fill="#475569">protege /api/factory/*</text>
+    <text x="110" y="84" text-anchor="middle" font-size="11" fill="#94a3b8">[Container · edge runtime]</text>
+  </g>
+
+  <!-- Container: Sector Packs Registry -->
+  <g transform="translate(590,420)">
+    <rect width="220" height="100" rx="10" fill="#fde68a" stroke="#854d0e" stroke-width="1.5"/>
+    <text x="110" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">Sector Packs</text>
+    <text x="110" y="48" text-anchor="middle" font-size="11" fill="#475569">Registry TypeScript declarativo</text>
+    <text x="110" y="66" text-anchor="middle" font-size="11" fill="#475569">+ overrides por cliente (DB)</text>
+    <text x="110" y="84" text-anchor="middle" font-size="11" fill="#94a3b8">[Container · in-process]</text>
+  </g>
+
+  <!-- Container: Logger -->
+  <g transform="translate(70,560)">
+    <rect width="220" height="70" rx="10" fill="#f3e8ff" stroke="#6b21a8" stroke-width="1.5"/>
+    <text x="110" y="26" text-anchor="middle" font-weight="700" fill="#0b1320">Structured Logger</text>
+    <text x="110" y="44" text-anchor="middle" font-size="11" fill="#475569">JSON · request_id, tenant_id, scope</text>
+    <text x="110" y="60" text-anchor="middle" font-size="11" fill="#94a3b8">[Container · in-process]</text>
+  </g>
+
+  <!-- Container: Cron / Scheduled -->
+  <g transform="translate(330,560)">
+    <rect width="220" height="70" rx="10" fill="#fce7f3" stroke="#9d174d" stroke-width="1.5"/>
+    <text x="110" y="26" text-anchor="middle" font-weight="700" fill="#0b1320">Vercel Cron · jobs</text>
+    <text x="110" y="44" text-anchor="middle" font-size="11" fill="#475569">/api/cron/* (lifecycle, retención)</text>
+    <text x="110" y="60" text-anchor="middle" font-size="11" fill="#94a3b8">[Container · scheduled]</text>
+  </g>
+
+  <!-- Container: Filesystem dev -->
+  <g transform="translate(590,560)">
+    <rect width="220" height="70" rx="10" fill="#e2e8f0" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="110" y="26" text-anchor="middle" font-weight="700" fill="#0b1320">Filesystem store</text>
+    <text x="110" y="44" text-anchor="middle" font-size="11" fill="#475569">data/ — fallback dev / demos</text>
+    <text x="110" y="60" text-anchor="middle" font-size="11" fill="#94a3b8">[Container · solo dev]</text>
+  </g>
+
+  <!-- =============== EXTERNAL =============== -->
+
+  <!-- Neon Postgres -->
+  <g transform="translate(990,290)">
+    <rect width="180" height="100" rx="10" fill="#e5e7eb" stroke="#475569" stroke-width="1.5"/>
+    <text x="90" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">Neon Postgres</text>
+    <text x="90" y="48" text-anchor="middle" font-size="11" fill="#475569">DB compartida</text>
+    <text x="90" y="66" text-anchor="middle" font-size="11" fill="#475569">multi-tenant + Prisma</text>
+    <text x="90" y="84" text-anchor="middle" font-size="11" fill="#94a3b8">[Sistema externo]</text>
+  </g>
+
+  <!-- Stripe -->
+  <g transform="translate(990,420)">
+    <rect width="180" height="70" rx="10" fill="#e5e7eb" stroke="#475569" stroke-width="1.5"/>
+    <text x="90" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">Stripe</text>
+    <text x="90" y="46" text-anchor="middle" font-size="11" fill="#475569">REST + webhook firmado</text>
+    <text x="90" y="62" text-anchor="middle" font-size="11" fill="#94a3b8">[Sistema externo]</text>
+  </g>
+
+  <!-- Resend -->
+  <g transform="translate(990,510)">
+    <rect width="180" height="70" rx="10" fill="#e5e7eb" stroke="#475569" stroke-width="1.5"/>
+    <text x="90" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">Resend</text>
+    <text x="90" y="46" text-anchor="middle" font-size="11" fill="#475569">REST · email transaccional</text>
+    <text x="90" y="62" text-anchor="middle" font-size="11" fill="#94a3b8">[Sistema externo]</text>
+  </g>
+
+  <!-- Anthropic -->
+  <g transform="translate(990,600)">
+    <rect width="180" height="70" rx="10" fill="#e5e7eb" stroke="#475569" stroke-width="1.5"/>
+    <text x="90" y="28" text-anchor="middle" font-weight="700" fill="#0b1320">Anthropic</text>
+    <text x="90" y="46" text-anchor="middle" font-size="11" fill="#475569">SSE streaming · Claude</text>
+    <text x="90" y="62" text-anchor="middle" font-size="11" fill="#94a3b8">[Sistema externo]</text>
+  </g>
+
+  <!-- =============== ARROWS =============== -->
+  <defs>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+  </defs>
+
+  <!-- Visitante → Marketing -->
+  <line x1="160" y1="200" x2="180" y2="290" stroke="#475569" stroke-width="1.3" marker-end="url(#arrow2)"/>
+  <!-- Cliente → Runtime -->
+  <line x1="420" y1="200" x2="440" y2="290" stroke="#1e3a8a" stroke-width="1.3" marker-end="url(#arrow2)"/>
+  <!-- Operador → Factory -->
+  <line x1="680" y1="200" x2="700" y2="290" stroke="#854d0e" stroke-width="1.3" marker-end="url(#arrow2)"/>
+
+  <!-- Páginas internas → API Routes (todas) -->
+  <line x1="180" y1="390" x2="180" y2="420" stroke="#475569" stroke-width="1.3" marker-end="url(#arrow2)"/>
+  <line x1="440" y1="390" x2="220" y2="420" stroke="#475569" stroke-width="1.3" marker-end="url(#arrow2)"/>
+  <line x1="700" y1="390" x2="240" y2="420" stroke="#475569" stroke-width="1.3" marker-end="url(#arrow2)"/>
+
+  <!-- Middleware intercepta API Routes -->
+  <line x1="330" y1="470" x2="290" y2="470" stroke="#166534" stroke-width="1.3" marker-end="url(#arrow2)"/>
+  <text x="296" y="463" font-size="10" fill="#166534">verifica sesión</text>
+
+  <!-- Sector Packs ↔ páginas -->
+  <line x1="700" y1="420" x2="660" y2="390" stroke="#854d0e" stroke-width="1.3" stroke-dasharray="3 3" marker-end="url(#arrow2)"/>
+  <text x="640" y="408" font-size="10" fill="#854d0e">resolver runtime</text>
+
+  <!-- API Routes → Postgres -->
+  <line x1="290" y1="460" x2="990" y2="320" stroke="#475569" stroke-width="1.3" marker-end="url(#arrow2)"/>
+  <text x="800" y="380" font-size="11" fill="#475569">Prisma · stores async</text>
+
+  <!-- API Routes → Stripe -->
+  <line x1="290" y1="475" x2="990" y2="450" stroke="#475569" stroke-width="1.3" marker-end="url(#arrow2)"/>
+  <!-- API Routes → Resend -->
+  <line x1="290" y1="490" x2="990" y2="540" stroke="#475569" stroke-width="1.3" marker-end="url(#arrow2)"/>
+  <!-- Factory chat → Anthropic -->
+  <line x1="700" y1="520" x2="990" y2="630" stroke="#475569" stroke-width="1.3" marker-end="url(#arrow2)"/>
+
+  <!-- Stripe → API (webhook inbound) -->
+  <line x1="990" y1="465" x2="290" y2="500" stroke="#475569" stroke-width="1.3" stroke-dasharray="5 3" marker-end="url(#arrow2)"/>
+  <text x="700" y="510" font-size="10" fill="#475569">webhook inbound</text>
+
+  <!-- Cron → API/stores -->
+  <line x1="440" y1="560" x2="220" y2="520" stroke="#9d174d" stroke-width="1.3" marker-end="url(#arrow2)"/>
+
+  <!-- Logger usado por todo (decorativo, una flecha desde API) -->
+  <line x1="180" y1="520" x2="180" y2="560" stroke="#6b21a8" stroke-width="1.3" stroke-dasharray="2 3" marker-end="url(#arrow2)"/>
+
+  <!-- Filesystem fallback (todo lo que es store) -->
+  <line x1="290" y1="510" x2="590" y2="595" stroke="#475569" stroke-width="1.3" stroke-dasharray="3 3" marker-end="url(#arrow2)"/>
+  <text x="400" y="555" font-size="10" fill="#475569">fallback dev</text>
+
+  <!-- Legend -->
+  <g transform="translate(60,710)">
+    <rect width="14" height="14" fill="#dbeafe" stroke="#1e3a8a"/>
+    <text x="22" y="12" font-size="11" fill="#475569">UI / Pages container</text>
+    <rect x="200" width="14" height="14" fill="#bfdbfe" stroke="#1e3a8a"/>
+    <text x="222" y="12" font-size="11" fill="#475569">API container</text>
+    <rect x="350" width="14" height="14" fill="#bbf7d0" stroke="#166534"/>
+    <text x="372" y="12" font-size="11" fill="#475569">Edge runtime</text>
+    <rect x="500" width="14" height="14" fill="#fde68a" stroke="#854d0e"/>
+    <text x="522" y="12" font-size="11" fill="#475569">Configuración / dominio</text>
+    <rect x="700" width="14" height="14" fill="#f3e8ff" stroke="#6b21a8"/>
+    <text x="722" y="12" font-size="11" fill="#475569">Observabilidad</text>
+    <rect x="870" width="14" height="14" fill="#fce7f3" stroke="#9d174d"/>
+    <text x="892" y="12" font-size="11" fill="#475569">Scheduled</text>
+  </g>
+  <g transform="translate(60,740)">
+    <line x1="0" y1="7" x2="40" y2="7" stroke="#475569" stroke-width="1.3"/>
+    <text x="48" y="12" font-size="11" fill="#475569">Llamada activa</text>
+    <line x1="200" y1="7" x2="240" y2="7" stroke="#475569" stroke-width="1.3" stroke-dasharray="5 3"/>
+    <text x="248" y="12" font-size="11" fill="#475569">Inbound / opcional / fallback</text>
+  </g>
+</svg>

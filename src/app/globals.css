@@ -1,0 +1,80 @@
+/* CSS vars de Prontara. Tailwind retirado el 28/04/2026 — el proyecto usa
+   estilos inline en cada componente, las utility classes no se usaban más
+   que en layout.tsx (migrado a inline). */
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 0;
+  padding: 0;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ===========================================================================
+ * Mobile responsive overrides para páginas públicas y de acceso.
+ * Las páginas usan inline styles con maxWidth y grids fijos. Estos overrides
+ * los suavizan en pantallas estrechas sin reescribir cada archivo de página.
+ * =========================================================================== */
+
+@media (max-width: 720px) {
+  main h1 {
+    font-size: 28px !important;
+    line-height: 1.2 !important;
+  }
+  main h2 {
+    font-size: 20px !important;
+  }
+  main h3 {
+    font-size: 17px !important;
+  }
+
+  /* Reducir padding lateral en móviles para aprovechar pantalla. */
+  main > section,
+  main > article {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+
+  /* Tablas con muchas columnas: permitir scroll horizontal interno. */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* Auth/forms: padding interno reducido. */
+  .auth-card {
+    padding: 18px !important;
+  }
+}
+
+@media (max-width: 520px) {
+  main h1 {
+    font-size: 24px !important;
+  }
+
+  main > section:first-of-type {
+    padding-top: 32px !important;
+    padding-bottom: 24px !important;
+  }
+}
+
+/* Asegura que ningún elemento desborde lateralmente. */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "pnpm prisma generate && pnpm next build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "functions": {
+    "src/app/api/stripe/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/factory/tenants/create/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/factory/lifecycle/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/cron/process-domain-events/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/cron/process-domain-events",
+      "schedule": "*/2 * * * *"
+    }
+  ],
+  "regions": ["fra1"]
+}

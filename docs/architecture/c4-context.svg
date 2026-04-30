@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 720" font-family="Inter, system-ui, sans-serif" font-size="14">
+  <title>C4 Context — Prontara</title>
+  <desc>C4 Model nivel 1 (Context): Prontara como sistema, sus actores y los servicios externos con los que interactúa.</desc>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1100" height="720" fill="#fafafa"/>
+
+  <!-- Title -->
+  <text x="550" y="36" text-anchor="middle" font-size="20" font-weight="700" fill="#0b1320">Prontara · Diagrama de contexto (C4 nivel 1)</text>
+  <text x="550" y="58" text-anchor="middle" font-size="12" fill="#64748b">Quién usa el sistema y con qué hablamos por fuera</text>
+
+  <!-- =============== ACTORS (top) =============== -->
+
+  <!-- Visitante anónimo -->
+  <g transform="translate(150,110)">
+    <circle cx="50" cy="20" r="14" fill="#e2e8f0" stroke="#475569" stroke-width="1.5"/>
+    <path d="M30 70 q20 -30 40 0 v18 h-40 z" fill="#e2e8f0" stroke="#475569" stroke-width="1.5"/>
+    <text x="50" y="110" text-anchor="middle" font-weight="600" fill="#0b1320">Visitante anónimo</text>
+    <text x="50" y="126" text-anchor="middle" fill="#64748b" font-size="12">Lee marketing, da de alta trial</text>
+  </g>
+
+  <!-- Cliente PYME -->
+  <g transform="translate(450,110)">
+    <circle cx="50" cy="20" r="14" fill="#dbeafe" stroke="#1e3a8a" stroke-width="1.5"/>
+    <path d="M30 70 q20 -30 40 0 v18 h-40 z" fill="#dbeafe" stroke="#1e3a8a" stroke-width="1.5"/>
+    <text x="50" y="110" text-anchor="middle" font-weight="600" fill="#0b1320">Cliente PYME</text>
+    <text x="50" y="126" text-anchor="middle" fill="#64748b" font-size="12">Usa el ERP en su día a día</text>
+    <text x="50" y="140" text-anchor="middle" fill="#64748b" font-size="11">(4-20 empleados)</text>
+  </g>
+
+  <!-- Operador Factory -->
+  <g transform="translate(750,110)">
+    <circle cx="50" cy="20" r="14" fill="#fef3c7" stroke="#854d0e" stroke-width="1.5"/>
+    <path d="M30 70 q20 -30 40 0 v18 h-40 z" fill="#fef3c7" stroke="#854d0e" stroke-width="1.5"/>
+    <text x="50" y="110" text-anchor="middle" font-weight="600" fill="#0b1320">Operador Factory</text>
+    <text x="50" y="126" text-anchor="middle" fill="#64748b" font-size="12">Provisiona, monitoriza,</text>
+    <text x="50" y="140" text-anchor="middle" fill="#64748b" font-size="12">factura, configura packs</text>
+  </g>
+
+  <!-- =============== SISTEMA CENTRAL =============== -->
+  <g transform="translate(380,290)">
+    <rect width="340" height="120" rx="14" fill="#1e3a8a" stroke="#0b1320" stroke-width="2"/>
+    <text x="170" y="40" text-anchor="middle" font-weight="700" font-size="22" fill="#ffffff">Prontara</text>
+    <text x="170" y="64" text-anchor="middle" font-size="12" fill="#cbd5e1">SaaS multi-tenant ERP-template</text>
+    <text x="170" y="84" text-anchor="middle" font-size="12" fill="#cbd5e1">Marca comercial de SISPYME, S.L.</text>
+    <text x="170" y="104" text-anchor="middle" font-size="11" fill="#94a3b8">[Sistema en estudio]</text>
+  </g>
+
+  <!-- =============== EXTERNAL SYSTEMS (bottom) =============== -->
+
+  <!-- Stripe -->
+  <g transform="translate(80,520)">
+    <rect width="180" height="100" rx="10" fill="#e5e7eb" stroke="#475569" stroke-width="1.5"/>
+    <text x="90" y="34" text-anchor="middle" font-weight="700" fill="#0b1320">Stripe</text>
+    <text x="90" y="56" text-anchor="middle" fill="#475569" font-size="12">Pagos y suscripciones</text>
+    <text x="90" y="74" text-anchor="middle" fill="#475569" font-size="12">Webhook firmado</text>
+    <text x="90" y="92" text-anchor="middle" fill="#94a3b8" font-size="11">[Sistema externo]</text>
+  </g>
+
+  <!-- Resend -->
+  <g transform="translate(290,520)">
+    <rect width="180" height="100" rx="10" fill="#e5e7eb" stroke="#475569" stroke-width="1.5"/>
+    <text x="90" y="34" text-anchor="middle" font-weight="700" fill="#0b1320">Resend</text>
+    <text x="90" y="56" text-anchor="middle" fill="#475569" font-size="12">Email transaccional</text>
+    <text x="90" y="74" text-anchor="middle" fill="#475569" font-size="12">(alta, contrato, password)</text>
+    <text x="90" y="92" text-anchor="middle" fill="#94a3b8" font-size="11">[Sistema externo]</text>
+  </g>
+
+  <!-- Anthropic -->
+  <g transform="translate(500,520)">
+    <rect width="180" height="100" rx="10" fill="#e5e7eb" stroke="#475569" stroke-width="1.5"/>
+    <text x="90" y="34" text-anchor="middle" font-weight="700" fill="#0b1320">Anthropic</text>
+    <text x="90" y="56" text-anchor="middle" fill="#475569" font-size="12">Claude SSE streaming</text>
+    <text x="90" y="74" text-anchor="middle" fill="#475569" font-size="12">para Factory Chat</text>
+    <text x="90" y="92" text-anchor="middle" fill="#94a3b8" font-size="11">[Sistema externo]</text>
+  </g>
+
+  <!-- Neon Postgres -->
+  <g transform="translate(710,520)">
+    <rect width="180" height="100" rx="10" fill="#e5e7eb" stroke="#475569" stroke-width="1.5"/>
+    <text x="90" y="34" text-anchor="middle" font-weight="700" fill="#0b1320">Neon Postgres</text>
+    <text x="90" y="56" text-anchor="middle" fill="#475569" font-size="12">DB compartida multi-tenant</text>
+    <text x="90" y="74" text-anchor="middle" fill="#475569" font-size="12">(AWS Frankfurt)</text>
+    <text x="90" y="92" text-anchor="middle" fill="#94a3b8" font-size="11">[Sistema externo]</text>
+  </g>
+
+  <!-- WordPress.com -->
+  <g transform="translate(920,520)">
+    <rect width="120" height="100" rx="10" fill="#e5e7eb" stroke="#475569" stroke-width="1.5" stroke-dasharray="4 3"/>
+    <text x="60" y="34" text-anchor="middle" font-weight="700" fill="#0b1320">WordPress</text>
+    <text x="60" y="50" text-anchor="middle" fill="#475569" font-size="12">.com Atomic</text>
+    <text x="60" y="72" text-anchor="middle" fill="#475569" font-size="12">Blog SEO</text>
+    <text x="60" y="92" text-anchor="middle" fill="#94a3b8" font-size="11">[Opcional]</text>
+  </g>
+
+  <!-- =============== ARROWS (actors → Prontara) =============== -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowwhite" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1e3a8a"/>
+    </marker>
+  </defs>
+
+  <!-- Visitante → Prontara -->
+  <line x1="220" y1="240" x2="430" y2="290" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="270" y="265" font-size="11" fill="#475569">visita prontara.com,</text>
+  <text x="270" y="278" font-size="11" fill="#475569">crea trial</text>
+
+  <!-- Cliente PYME → Prontara -->
+  <line x1="500" y1="260" x2="510" y2="290" stroke="#1e3a8a" stroke-width="1.5" marker-end="url(#arrowwhite)"/>
+  <text x="510" y="282" font-size="11" fill="#1e3a8a">usa /dashboard,</text>
+  <text x="510" y="296" font-size="11" fill="#1e3a8a">/clientes, /facturacion</text>
+
+  <!-- Operador Factory → Prontara -->
+  <line x1="780" y1="240" x2="670" y2="290" stroke="#854d0e" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="700" y="265" font-size="11" fill="#854d0e">/factory/* (chat, packs,</text>
+  <text x="700" y="278" font-size="11" fill="#854d0e">clientes, facturas)</text>
+
+  <!-- =============== ARROWS (Prontara → external) =============== -->
+
+  <!-- Prontara → Stripe -->
+  <line x1="430" y1="410" x2="190" y2="520" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="220" y="465" font-size="11" fill="#475569">REST API + webhook</text>
+
+  <!-- Prontara → Resend -->
+  <line x1="495" y1="410" x2="380" y2="520" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="395" y="465" font-size="11" fill="#475569">REST API</text>
+
+  <!-- Prontara → Anthropic -->
+  <line x1="560" y1="410" x2="585" y2="520" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="565" y="475" font-size="11" fill="#475569">SSE</text>
+
+  <!-- Prontara → Postgres -->
+  <line x1="625" y1="410" x2="790" y2="520" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
+  <text x="720" y="465" font-size="11" fill="#475569">Prisma / SQL</text>
+
+  <!-- Prontara → Wordpress (dashed) -->
+  <line x1="690" y1="410" x2="970" y2="520" stroke="#475569" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arrow)"/>
+  <text x="850" y="455" font-size="11" fill="#475569">SEO inbound</text>
+
+  <!-- Legend -->
+  <g transform="translate(40,660)">
+    <rect width="14" height="14" fill="#1e3a8a"/>
+    <text x="22" y="12" font-size="11" fill="#475569">Sistema en estudio (Prontara)</text>
+    <rect x="220" width="14" height="14" fill="#dbeafe" stroke="#1e3a8a"/>
+    <text x="242" y="12" font-size="11" fill="#475569">Persona / actor</text>
+    <rect x="370" width="14" height="14" fill="#e5e7eb" stroke="#475569"/>
+    <text x="392" y="12" font-size="11" fill="#475569">Sistema externo</text>
+    <line x1="540" y1="7" x2="580" y2="7" stroke="#475569" stroke-width="1.5"/>
+    <text x="588" y="12" font-size="11" fill="#475569">Llamada activa</text>
+    <line x1="700" y1="7" x2="740" y2="7" stroke="#475569" stroke-width="1.5" stroke-dasharray="5 3"/>
+    <text x="748" y="12" font-size="11" fill="#475569">Relación opcional / pasiva</text>
+  </g>
+</svg>

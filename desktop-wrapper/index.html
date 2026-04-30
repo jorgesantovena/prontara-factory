@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Prontara Factory</title>
+  <link rel="icon" href="prontara-logo.png" />
+  <style>
+    :root { color-scheme: light; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+      color: #111827;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .card {
+      width: min(560px, 100%);
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 24px;
+      padding: 36px;
+      box-shadow: 0 20px 50px rgba(0,0,0,.08);
+      text-align: center;
+    }
+    .logo {
+      max-width: 240px;
+      width: 100%;
+      height: auto;
+      margin-bottom: 24px;
+    }
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 22px;
+      color: #111827;
+      font-weight: 700;
+    }
+    p { line-height: 1.55; color: #4b5563; margin: 8px 0; }
+    .muted { color: #6b7280; font-size: 13px; }
+    .target {
+      display: inline-block;
+      margin: 12px 0 18px 0;
+      padding: 6px 14px;
+      background: #f1f5f9;
+      border-radius: 8px;
+      font-family: Consolas, Monaco, monospace;
+      font-size: 13px;
+      color: #1d4ed8;
+    }
+    .row { display: flex; gap: 12px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      text-decoration: none;
+      border-radius: 12px;
+      padding: 12px 22px;
+      border: 1px solid #1d4ed8;
+      background: #1d4ed8;
+      color: white;
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+    }
+    .btn:hover { background: #1e40af; border-color: #1e40af; }
+    .btn.secondary {
+      background: white;
+      color: #1d4ed8;
+      border-color: #cbd5e1;
+    }
+    .btn.secondary:hover { background: #f8fafc; }
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #1d4ed8;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <img src="prontara-logo.png" alt="Prontara" class="logo" />
+    <h1 id="title">Prontara Factory</h1>
+    <p id="desc">
+      <span class="spinner"></span> Conectando con tu entorno de trabajo…
+    </p>
+    <div class="target" id="target">cargando…</div>
+    <div class="row">
+      <button id="openNow" class="btn">Entrar ahora</button>
+      <button id="retry" class="btn secondary">Reintentar</button>
+    </div>
+    <p class="muted" style="margin-top: 18px;">
+      Si el navegador no abre automáticamente, comprueba que <strong>pnpm dev</strong> está corriendo en tu PC.
+    </p>
+  </main>
+
+  <script>
+    async function loadConfig() {
+      const response = await fetch("./app-config.json", { cache: "no-store" });
+      return response.json();
+    }
+
+    function navigate(targetUrl) {
+      window.location.replace(targetUrl);
+    }
+
+    async function start() {
+      try {
+        const cfg = await loadConfig();
+        document.getElementById("title").textContent = cfg.windowTitle || "Prontara Factory";
+        document.getElementById("target").textContent = cfg.targetUrl || "(sin URL)";
+        document.getElementById("openNow").onclick = () => navigate(cfg.targetUrl);
+        document.getElementById("retry").onclick = () => navigate(cfg.targetUrl);
+
+        setTimeout(() => {
+          navigate(cfg.targetUrl);
+        }, 1200);
+      } catch (error) {
+        document.getElementById("desc").textContent =
+          "No se pudo leer la configuración del wrapper.";
+        console.error(error);
+      }
+    }
+
+    start();
+  </script>
+</body>
+</html>
