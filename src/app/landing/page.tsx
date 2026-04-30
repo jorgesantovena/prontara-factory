@@ -79,16 +79,34 @@ export default function LandingPage() {
             : "");
 
         const response = await fetch(url, { cache: "no-store" });
-        const data = await response.json();
 
-        if (!response.ok || !data.ok) {
-          throw new Error(data.error || "No se pudo cargar la landing comercial.");
+        // Si el endpoint falla (HTML de error en lugar de JSON, o status
+        // no-OK), no rompemos la landing entera — caemos a delivery=null
+        // y la página renderiza con su contenido estático (mensajes,
+        // sectores, FAQ...). Solo perdemos la personalización por tenant.
+        if (!response.ok) {
+          if (!cancelled) setDelivery(null);
+          return;
+        }
+
+        let data: { ok?: boolean; error?: string; delivery?: unknown };
+        try {
+          data = await response.json();
+        } catch {
+          if (!cancelled) setDelivery(null);
+          return;
+        }
+
+        if (!data.ok) {
+          if (!cancelled) setDelivery(null);
+          return;
         }
 
         if (!cancelled) {
-          setDelivery(data.delivery || null);
+          setDelivery((data.delivery as typeof delivery) || null);
         }
       } catch (err) {
+        // Solo errores de red genuinos llegan aquí (fetch falló).
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "No se pudo cargar la landing comercial.");
         }
