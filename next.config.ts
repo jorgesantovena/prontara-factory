@@ -66,7 +66,13 @@ const securityHeaders = [
   },
 ];
 
-const nextConfig: NextConfig = {
+// Next 16 reconoce `eslint.ignoreDuringBuilds` en runtime pero los tipos
+// de NextConfig todavía no lo declaran. Extendemos el tipo localmente.
+type NextConfigWithEslint = NextConfig & {
+  eslint?: { ignoreDuringBuilds?: boolean; dirs?: string[] };
+};
+
+const nextConfig: NextConfigWithEslint = {
   // Paquetes que NO deben ser bundled por Webpack/Turbopack y se cargan
   // como módulos Node nativos en runtime serverless. Necesario para libs
   // que usan APIs Node específicas, exports CJS poco estándar, o assets
