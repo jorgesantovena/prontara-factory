@@ -168,26 +168,48 @@ export default function HomePage() {
   useEffect(() => {
     let cancelled = false;
     async function load() {
+      let res: Response;
       try {
-        const res = await fetch("/api/runtime/dashboard", { cache: "no-store" });
-        if (res.status === 401) {
-          if (!cancelled) setState({ kind: "unauth" });
-          return;
-        }
-        const json = (await res.json()) as DashboardResponse;
-        if (!json.ok) {
-          if (!cancelled) setState({ kind: "error", message: json.error || "Error cargando dashboard." });
-          return;
-        }
-        if (!cancelled) setState({ kind: "ready", data: json });
+        res = await fetch("/api/runtime/dashboard", { cache: "no-store" });
       } catch (err) {
+        // Error de RED (fetch ni siquiera salió). Esto sí es un error
+        // genuino que el usuario debe ver para reintentar.
         if (!cancelled) {
           setState({
             kind: "error",
             message: err instanceof Error ? err.message : "Error de red.",
           });
         }
+        return;
       }
+
+      // 401 explícito o cualquier 4xx/5xx → asumir no autenticado
+      // y mostrar la landing pública. Es la situación normal cuando
+      // alguien entra a la home sin haber hecho login (ej. visitar
+      // app.prontara.com directamente desde un buscador).
+      if (!res.ok) {
+        if (!cancelled) setState({ kind: "unauth" });
+        return;
+      }
+
+      // Parseo defensivo: si la respuesta no es JSON válido (porque la
+      // ruta devolvió HTML por algún motivo), también caemos a unauth
+      // en lugar de mostrar un error rojo aterrador.
+      let json: DashboardResponse;
+      try {
+        json = (await res.json()) as DashboardResponse;
+      } catch {
+        if (!cancelled) setState({ kind: "unauth" });
+        return;
+      }
+
+      if (!json.ok) {
+        if (!cancelled) {
+          setState({ kind: "error", message: json.error || "Error cargando dashboard." });
+        }
+        return;
+      }
+      if (!cancelled) setState({ kind: "ready", data: json });
     }
     load();
     return () => {
