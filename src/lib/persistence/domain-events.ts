@@ -134,7 +134,11 @@ export async function emitDomainEventAsync(input: {
         type: record.type,
         aggregateType: record.aggregateType,
         aggregateId: record.aggregateId,
-        payload: record.payload,
+        // Prisma exige `InputJsonValue` para campos Json (excluye `unknown`).
+        // Nuestro payload es Record<string, unknown> por contrato del puerto;
+        // serializa bien a JSON, pero el tipo es más permisivo del que Prisma
+        // acepta. Casteamos para satisfacer el compilador.
+        payload: record.payload as unknown as object,
         status: record.status,
         retryCount: record.retryCount,
         maxRetries: record.maxRetries,
