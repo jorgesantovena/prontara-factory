@@ -67,6 +67,18 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Paquetes que NO deben ser bundled por Webpack/Turbopack y se cargan
+  // como módulos Node nativos en runtime serverless. Necesario para libs
+  // que usan APIs Node específicas, exports CJS poco estándar, o assets
+  // binarios (fonts, encodings) que el bundler no resuelve correctamente.
+  //
+  //   - pdfkit + fontkit: generación de PDFs (contrato post-pago,
+  //     justificantes). fontkit usa exports tipo `applyDecoratedDescriptor`
+  //     renombrados internamente que rompen el bundle.
+  //   - pdf-parse, mammoth: extracción de texto de uploads en Factory Chat.
+  //     Cargan diccionarios y workers en runtime que no se pueden bundlear.
+  serverExternalPackages: ["pdfkit", "fontkit", "pdf-parse", "mammoth"],
+
   async headers() {
     return [
       {
