@@ -46,7 +46,14 @@ function writeFileAtomicSync(filePath: string, data: string | Buffer) {
 
   const fd = fs.openSync(tmpPath, "w");
   try {
-    fs.writeSync(fd, data);
+    // fs.writeSync tiene 2 overloads incompatibles entre sí (Buffer vs string).
+    // TypeScript no puede elegir uno cuando recibe un union, así que
+    // discriminamos antes para que cada llamada matchee un overload concreto.
+    if (typeof data === "string") {
+      fs.writeSync(fd, data);
+    } else {
+      fs.writeSync(fd, data);
+    }
     fs.fsyncSync(fd);
   } finally {
     fs.closeSync(fd);
