@@ -83,7 +83,40 @@ const nextConfig: NextConfigWithEslint = {
   //     renombrados internamente que rompen el bundle.
   //   - pdf-parse, mammoth: extracción de texto de uploads en Factory Chat.
   //     Cargan diccionarios y workers en runtime que no se pueden bundlear.
-  serverExternalPackages: ["pdfkit", "fontkit", "pdf-parse", "mammoth"],
+  //   - @prisma/client + prisma: motor de DB pesado (~30MB). Sin externalizar
+  //     se bundlea en cada función serverless y supera el límite de 250MB.
+  //   - bcryptjs, scrypt-js: libs de hashing que dependen de native bindings
+  //     en algunos targets; mejor cargar como externals.
+  serverExternalPackages: [
+    "pdfkit",
+    "fontkit",
+    "pdf-parse",
+    "mammoth",
+    "@prisma/client",
+    "prisma",
+  ],
+
+  // Limita qué archivos se incluyen en el tracing del bundle de cada
+  // función. Excluye carpetas grandes que NUNCA deben ir al runtime
+  // serverless: data/ (modo filesystem dev), docs/, scripts/, _audit/,
+  // backups/, todo Tauri (desktop wrapper que NO va al SaaS web).
+  outputFileTracingExcludes: {
+    "*": [
+      "./data/**/*",
+      "./docs/**/*",
+      "./scripts/**/*",
+      "./_audit/**/*",
+      "./.prontara/**/*",
+      "./backups/**/*",
+      "./src-tauri/**/*",
+      "./desktop-wrapper/**/*",
+      "./prisma/migrations/**/*",
+      "./node_modules/.cache/**/*",
+      "./node_modules/@swc/core-*/**/*",
+      "./node_modules/@esbuild/**/*",
+      "./node_modules/typescript/**/*",
+    ],
+  },
 
   // ESLint: NO bloqueamos el deploy por errores de lint. Los avisos
   // tipo `no-unused-vars` o `unused eslint-disable directive` son
