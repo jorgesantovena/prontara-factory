@@ -385,10 +385,14 @@ async function extractText(
 
 async function extractPdf(_filePath: string, buffer: Buffer): Promise<string> {
   try {
-    // pdf-parse está en las dependencias del repo. No tiene types oficiales.
-    // @ts-expect-error — módulo sin declaración TS
-    const mod = await import("pdf-parse");
-    const fn = (mod as { default?: (b: Buffer) => Promise<{ text: string }> }).default;
+    // pdf-parse está en las dependencias del repo. Importación dinámica
+    // para aplazar la carga (es una lib pesada con diccionarios) y
+    // evitar que el bundler de Next la incluya en el chunk inicial.
+    // Tipamos manualmente porque los types declarados son inestables.
+    const mod = (await import("pdf-parse")) as unknown as {
+      default?: (b: Buffer) => Promise<{ text: string }>;
+    };
+    const fn = mod.default;
     if (!fn) return "[No se pudo cargar pdf-parse.]";
     const result = await fn(buffer);
     return String(result?.text || "").trim();
@@ -399,12 +403,12 @@ async function extractPdf(_filePath: string, buffer: Buffer): Promise<string> {
 
 async function extractDocx(_filePath: string, buffer: Buffer): Promise<string> {
   try {
-    // mammoth está en las dependencias del repo.
-    // @ts-expect-error — módulo sin declaración TS disponible
-    const mod = await import("mammoth");
-    const extractRawText = (mod as {
+    // mammoth está en las dependencias del repo. Importación dinámica
+    // por las mismas razones que pdf-parse arriba.
+    const mod = (await import("mammoth")) as unknown as {
       extractRawText?: (input: { buffer: Buffer }) => Promise<{ value: string }>;
-    }).extractRawText;
+    };
+    const extractRawText = mod.extractRawText;
     if (!extractRawText) return "[No se pudo cargar mammoth.]";
     const result = await extractRawText({ buffer });
     return String(result?.value || "").trim();
