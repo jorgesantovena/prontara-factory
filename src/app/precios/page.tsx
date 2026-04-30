@@ -15,7 +15,9 @@ export const metadata = {
   },
 };
 
-export const dynamic = "force-dynamic";
+// Página 100% estática: datos hardcoded en TIERS. Sin force-dynamic
+// para que Next la prerendere al build y la sirva como HTML desde CDN
+// (más rápido y elimina SSR per-request que estaba petando en serverless).
 
 type Tier = {
   key: "basico" | "estandar" | "premium";
