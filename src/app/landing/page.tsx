@@ -354,7 +354,70 @@ export default function LandingPage() {
             </section>
           ) : null}
         </>
-      ) : null}
+      ) : (
+        // Fallback cuando no hay delivery (no se especificó tenant en
+        // la URL o el endpoint /api/runtime/commercial-package falló).
+        // Mostramos una mini-landing genérica con CTAs en lugar de
+        // dejar la página en blanco.
+        <section
+          style={{
+            border: "1px solid #e5e7eb",
+            borderRadius: 22,
+            background: "#ffffff",
+            padding: 32,
+            display: "grid",
+            gap: 16,
+            maxWidth: 720,
+            margin: "40px auto",
+          }}
+        >
+          <h1 style={{ margin: 0, fontSize: 28, color: "#111827" }}>Prontara</h1>
+          <p style={{ margin: 0, color: "#4b5563", lineHeight: 1.6 }}>
+            ERP online por sectores para pymes. Empieza con un plan adaptado
+            a tu negocio o reserva una demostración.
+          </p>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 8 }}>
+            <a
+              href="/precios"
+              style={{
+                background: "#111827",
+                color: "#ffffff",
+                padding: "10px 18px",
+                borderRadius: 10,
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              Ver planes y precios
+            </a>
+            <a
+              href="/alta"
+              style={{
+                background: "#ffffff",
+                color: "#111827",
+                padding: "10px 18px",
+                borderRadius: 10,
+                border: "1px solid #d1d5db",
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              Empezar gratis
+            </a>
+            <a
+              href="/acceso"
+              style={{
+                color: "#1d4ed8",
+                padding: "10px 18px",
+                textDecoration: "none",
+                fontWeight: 600,
+              }}
+            >
+              Iniciar sesión
+            </a>
+          </div>
+        </section>
+      )}
 
       {error ? (
         <section
