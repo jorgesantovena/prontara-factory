@@ -25,8 +25,10 @@ const ANTHROPIC_VERSION = "2023-06-01";
 const MAX_TOOL_ITERATIONS = 10;
 
 // Tipos mínimos de la API de Anthropic (messages API).
-type AnthropicTextBlock = { type: "text"; text: string };
-type AnthropicImageBlock = {
+// Exportados para que adapters externos (ARQ-9: ports/llm-provider via
+// adapters/llm-anthropic) puedan reusarlos sin redefinirlos.
+export type AnthropicTextBlock = { type: "text"; text: string };
+export type AnthropicImageBlock = {
   type: "image";
   source: {
     type: "base64";
@@ -34,24 +36,24 @@ type AnthropicImageBlock = {
     data: string;
   };
 };
-type AnthropicToolUseBlock = {
+export type AnthropicToolUseBlock = {
   type: "tool_use";
   id: string;
   name: string;
   input: Record<string, unknown>;
 };
-type AnthropicToolResultBlock = {
+export type AnthropicToolResultBlock = {
   type: "tool_result";
   tool_use_id: string;
   content: string;
   is_error?: boolean;
 };
-type AnthropicContentBlock =
+export type AnthropicContentBlock =
   | AnthropicTextBlock
   | AnthropicImageBlock
   | AnthropicToolUseBlock
   | AnthropicToolResultBlock;
-type AnthropicMessage = {
+export type AnthropicMessage = {
   role: "user" | "assistant";
   content: string | AnthropicContentBlock[];
 };
