@@ -52,16 +52,23 @@ function pumpEvents(
   const queue: LLMStreamEvent[] = [];
   let resolveNext: (() => void) | null = null;
   let done = false;
-  let errored = false;
 
   const apiKey = String(process.env.ANTHROPIC_API_KEY || "").trim();
 
+  // Helper que reasigna a null ANTES de llamar para que TS no pierda
+  // el narrowing entre el if y la llamada (el closure del Promise lo
+  // confunde y hace `resolveNext` parecer `never` en strict mode).
+  const fireResolveNext = () => {
+    const fn = resolveNext;
+    if (fn) {
+      resolveNext = null;
+      fn();
+    }
+  };
+
   const pushEvent = (event: LLMStreamEvent) => {
     queue.push(event);
-    if (resolveNext) {
-      resolveNext();
-      resolveNext = null;
-    }
+    fireResolveNext();
   };
 
   const onAnthropicEvent = (e: AnthropicStreamEvent): void => {
@@ -97,17 +104,13 @@ function pumpEvents(
         onEvent: onAnthropicEvent,
       });
     } catch (err) {
-      errored = true;
       pushEvent({
         type: "error",
         error: err instanceof Error ? err.message : String(err),
       });
     } finally {
       done = true;
-      if (resolveNext) {
-        resolveNext();
-        resolveNext = null;
-      }
+      fireResolveNext();
     }
   })();
 
