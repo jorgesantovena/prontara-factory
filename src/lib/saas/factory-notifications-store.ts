@@ -24,6 +24,9 @@ export type FactoryNotificationType =
   | "payment_failed"
   | "tenant_cancelled"
   | "webhook_error"
+  // Tipos del saga de compensación post-pago (ARQ-7):
+  | "activation_failed_no_refund"
+  | "activation_failed_refunded"
   | "manual";
 
 export type FactoryNotificationSeverity = "info" | "success" | "warning" | "error";
