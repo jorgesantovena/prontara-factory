@@ -195,7 +195,9 @@ export async function claimNextEventsAsync(
   // Postgres: usamos updateMany con returning vía SELECT … FOR UPDATE SKIP LOCKED
   // simulado con dos queries (Prisma no expone FOR UPDATE directamente sin raw).
   // Para nuestro volumen actual (decenas de eventos / día) es suficiente.
-  return withPrisma(async (prisma) => {
+  // withPrisma puede devolver null (si no hay backend Postgres); retornamos
+  // array vacío en ese caso para que el caller no se rompa.
+  const result = await withPrisma(async (prisma) => {
     const candidates = await prisma.domainEvent.findMany({
       where: { status: "pending", nextAttemptAt: { lte: now } },
       orderBy: { nextAttemptAt: "asc" },
@@ -227,6 +229,7 @@ export async function claimNextEventsAsync(
     }
     return claimed;
   });
+  return result ?? [];
 }
 
 /**
@@ -349,13 +352,14 @@ export async function rescueStuckEventsAsync(
     return rescued;
   }
 
-  return withPrisma(async (prisma) => {
-    const result = await prisma.domainEvent.updateMany({
+  const result = await withPrisma(async (prisma) => {
+    const updateResult = await prisma.domainEvent.updateMany({
       where: { status: "processing", nextAttemptAt: { lte: cutoff } },
       data: { status: "pending" },
     });
-    return result.count;
+    return updateResult.count;
   });
+  return result ?? 0;
 }
 
 /**
@@ -387,7 +391,7 @@ export async function listDomainEventsAsync(input?: {
     return records.slice(0, limit);
   }
 
-  return withPrisma(async (prisma) => {
+  const result = await withPrisma(async (prisma) => {
     const rows = await prisma.domainEvent.findMany({
       where: input?.status ? { status: input.status } : undefined,
       orderBy: { occurredAt: "desc" },
@@ -408,4 +412,5 @@ export async function listDomainEventsAsync(input?: {
       errorMsg: c.errorMsg,
     }));
   });
+  return result ?? [];
 }
