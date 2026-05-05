@@ -36,6 +36,7 @@ import {
   invalidateFactoryCacheTool,
   seedDemoDataTool,
   hardReprovisionTenantTool,
+  commitToGitHubPrTool,
 } from "@/lib/factory-chat/write-tools";
 
 export type ToolSchema = {
@@ -335,6 +336,76 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
       required: ["clientId"],
     },
   },
+  {
+    name: "commit_to_github_pr",
+    description:
+      "Crea una rama nueva en el repo de GitHub, comitea uno o varios ficheros (whitelist: src/, docs/, scripts/, prisma/schema.prisma) en un único commit, y abre un Pull Request contra `main`. Pensada para flujo serverless (producción Vercel): el chat sí puede modificar el código vía esta tool aunque write_repo_file esté gateada porque el filesystem es read-only. Tras crear el PR Jorge lo revisa y mergea desde GitHub web/móvil; Vercel auto-despliega tras el merge. Siempre devuelve la URL del PR para que el operador lo abra. Cada fichero es un objeto { path, content }. Usa esta tool por defecto en producción para cambios de código; en local prefiere write_repo_file (más rápido, sin PR review). Tamaño máximo: 500 KB por fichero, 2 MB por commit.",
+    input_schema: {
+      type: "object",
+      properties: {
+        message: {
+          type: "string",
+          description:
+            "Mensaje del commit y título del PR. Debe ser descriptivo y conciso (ej: 'feat(software-factory): añadir módulo incidencias')",
+        },
+        files: {
+          type: "array",
+          description:
+            "Array de ficheros a crear/sobrescribir. Cada elemento es { path, content }. La operación es 'sobrescribir' (no patch incremental) — para edits parciales pasa el contenido entero del fichero modificado.",
+          items: {
+            type: "object",
+            properties: {
+              path: {
+                type: "string",
+                description:
+                  "Ruta relativa al repo. Whitelist: src/, docs/, scripts/, prisma/schema.prisma. Sin '..' ni rutas absolutas.",
+              },
+              content: {
+                type: "string",
+                description: "Contenido completo del fichero como UTF-8.",
+              },
+              mode: {
+                type: "string",
+                enum: ["100644", "100755"],
+                description:
+                  "Modo Git del fichero. 100644 (default) para regular, 100755 para shell scripts ejecutables.",
+              },
+            },
+            required: ["path", "content"],
+          },
+        },
+        branch: {
+          type: "string",
+          description:
+            "Opcional: nombre de la rama a crear. Default: 'chat/<timestamp>-<random>'. Si la rama existe, el commit se añade encima de su HEAD actual.",
+        },
+        baseBranch: {
+          type: "string",
+          description: "Opcional: rama base contra la que abrir el PR. Default: 'main'.",
+        },
+        prTitle: {
+          type: "string",
+          description: "Opcional: título del PR. Default: usa `message`.",
+        },
+        prBody: {
+          type: "string",
+          description:
+            "Opcional: cuerpo del PR. Default: se genera uno con metadata del chat (operador, conversation, ficheros tocados).",
+        },
+        skipPr: {
+          type: "boolean",
+          description:
+            "Opcional: si true, solo crea rama+commit sin abrir PR. Útil para acumular varios commits en una rama antes de abrir el PR final.",
+        },
+        draft: {
+          type: "boolean",
+          description:
+            "Opcional: si true, abre el PR como draft (no listo para merge).",
+        },
+      },
+      required: ["message", "files"],
+    },
+  },
 ];
 
 /** Conjunto de tools que mutan el repo o el entorno — requieren ToolContext. */
@@ -348,6 +419,7 @@ const WRITE_TOOL_NAMES = new Set<string>([
   "invalidate_factory_cache",
   "seed_demo_data",
   "hard_reprovision_tenant",
+  "commit_to_github_pr",
 ]);
 
 /** Dispatcher: ejecuta una tool por nombre y devuelve su resultado como string. */
@@ -591,6 +663,26 @@ export async function executeTool(
             adminEmail?: string;
             adminFullName?: string;
             reason?: string;
+          },
+          context!,
+        );
+        return JSON.stringify(result, null, 2);
+      }
+      case "commit_to_github_pr": {
+        const result = await commitToGitHubPrTool(
+          input as {
+            branch?: string;
+            baseBranch?: string;
+            files?: Array<{
+              path?: string;
+              content?: string;
+              mode?: "100644" | "100755";
+            }>;
+            message?: string;
+            prTitle?: string;
+            prBody?: string;
+            skipPr?: boolean;
+            draft?: boolean;
           },
           context!,
         );

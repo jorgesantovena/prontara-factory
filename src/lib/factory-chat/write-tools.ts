@@ -24,6 +24,12 @@ import {
 } from "@/lib/factory-chat/backups";
 import { assertCodeModeAvailable } from "@/lib/factory-chat/runtime-mode";
 import {
+  commitFilesToGitHubPr,
+  type CommitToGitHubInput,
+  type CommitToGitHubResult,
+  type GitHubFileSpec,
+} from "@/lib/factory-chat/github-pr";
+import {
   regenerateTenantByClientId,
   invalidateFactoryCaches,
 } from "@/lib/saas/tenant-regeneration";
@@ -710,6 +716,105 @@ export async function hardReprovisionTenantTool(
         trialStatus: result.trialState.status,
         seedSummary: result.seedSummary,
         touchedPaths: touched,
+      };
+    },
+  );
+}
+
+// ---------------------------------------------------------------------------
+// commit_to_github_pr — flujo de cambio en código vía PR (sirve en serverless)
+// ---------------------------------------------------------------------------
+
+export type CommitToGitHubPrInput = {
+  branch?: string;
+  baseBranch?: string;
+  files?: Array<{ path?: string; content?: string; mode?: "100644" | "100755" }>;
+  message?: string;
+  prTitle?: string;
+  prBody?: string;
+  skipPr?: boolean;
+  draft?: boolean;
+};
+
+export type CommitToGitHubPrResult = CommitToGitHubResult & {
+  touchedPaths: string[];
+};
+
+/**
+ * A diferencia de write_repo_file, esta tool NO requiere code-mode local.
+ * Usa la GitHub REST API (HTTP a api.github.com) que sí funciona en
+ * Vercel serverless. El cambio aterriza en una rama nueva + PR; Jorge
+ * revisa y mergea desde GitHub web/móvil. Vercel auto-despliega.
+ *
+ * Auditada vía withAuditAsync. Como no toca filesystem local, los
+ * touchedPaths se reportan al audit pero no como ficheros físicos
+ * tocados en disco (en serverless no aplica).
+ */
+export async function commitToGitHubPrTool(
+  input: CommitToGitHubPrInput,
+  ctx: ToolContext,
+): Promise<CommitToGitHubPrResult> {
+  return withAuditAsync(
+    "commit_to_github_pr",
+    // No metemos `files.content` en el audit por tamaño; sí los paths.
+    {
+      branch: input.branch,
+      baseBranch: input.baseBranch,
+      message: input.message,
+      prTitle: input.prTitle,
+      filePaths: (input.files || []).map((f) => f?.path).filter(Boolean),
+      skipPr: input.skipPr,
+      draft: input.draft,
+    } as Record<string, unknown>,
+    ctx,
+    async () => {
+      const message = String(input.message || "").trim();
+      if (!message) {
+        throw new Error("Falta `message` (descripción del commit/PR).");
+      }
+      const rawFiles = Array.isArray(input.files) ? input.files : [];
+      if (rawFiles.length === 0) {
+        throw new Error(
+          "Falta `files`. Pasa al menos { path, content }. Whitelist: src/, docs/, scripts/, prisma/schema.prisma.",
+        );
+      }
+      const files: GitHubFileSpec[] = rawFiles.map((f, i) => {
+        if (!f || typeof f.path !== "string" || !f.path.trim()) {
+          throw new Error("files[" + i + "].path es obligatorio.");
+        }
+        if (typeof f.content !== "string") {
+          throw new Error(
+            "files[" + i + "].content es obligatorio (string).",
+          );
+        }
+        return {
+          path: f.path,
+          content: f.content,
+          mode: f.mode || "100644",
+        };
+      });
+
+      const githubInput: CommitToGitHubInput = {
+        branch: input.branch,
+        baseBranch: input.baseBranch,
+        files,
+        message,
+        prTitle: input.prTitle,
+        prBody: input.prBody,
+        skipPr: input.skipPr,
+        draft: input.draft,
+      };
+
+      const result = await commitFilesToGitHubPr(githubInput, {
+        email: ctx.email,
+        conversationId: ctx.conversationId,
+      });
+
+      return {
+        ...result,
+        // El audit log usa touchedPaths para reportar qué se tocó. En esta
+        // tool aplica a paths del repo en GitHub, no a fs local.
+        touchedPaths: result.filesChanged,
       };
     },
   );
