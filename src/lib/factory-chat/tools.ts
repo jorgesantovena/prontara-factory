@@ -37,6 +37,8 @@ import {
   seedDemoDataTool,
   hardReprovisionTenantTool,
   commitToGitHubPrTool,
+  readGitHubFileTool,
+  listGitHubDirTool,
 } from "@/lib/factory-chat/write-tools";
 
 export type ToolSchema = {
@@ -334,6 +336,53 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
         },
       },
       required: ["clientId"],
+    },
+  },
+  {
+    name: "read_github_file",
+    description:
+      "Lee un fichero del repo de GitHub (rama main por defecto, o la que indiques en `ref`). Pensada para serverless donde read_repo_file no funciona porque el filesystem es read-only. También útil en local para leer la versión real de main aunque tengas cambios sin commitear localmente. Whitelist: src/, docs/, scripts/, prisma/, package.json, tsconfig.json, README.md, next.config.ts, .github/. Si el fichero es grande, usa byteLimit (default 8000, máx 80000) y byteOffset para paginar.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description: "Ruta relativa al repo. Ej: 'src/lib/factory/sector-pack-registry.ts'.",
+        },
+        ref: {
+          type: "string",
+          description:
+            "Rama, tag o SHA. Default 'main'. Útil para leer un fichero tal y como está en una rama de PR antes de iterar sobre ella.",
+        },
+        byteLimit: {
+          type: "number",
+          description: "Bytes a devolver. Default 8000, máximo 80000.",
+        },
+        byteOffset: {
+          type: "number",
+          description: "Offset desde el cual leer. Default 0.",
+        },
+      },
+      required: ["path"],
+    },
+  },
+  {
+    name: "list_github_dir",
+    description:
+      "Lista las entradas (ficheros y subdirectorios) de un directorio del repo en GitHub. Default path 'src'. Útil para explorar la estructura cuando no sabes dónde está algo. Devuelve nombre, type (file/dir/symlink/submodule), y size de cada entrada.",
+    input_schema: {
+      type: "object",
+      properties: {
+        path: {
+          type: "string",
+          description:
+            "Ruta del directorio relativo al repo. Default 'src'. Whitelist: src/, docs/, scripts/, prisma/, .github/.",
+        },
+        ref: {
+          type: "string",
+          description: "Rama, tag o SHA. Default 'main'.",
+        },
+      },
     },
   },
   {
@@ -665,6 +714,23 @@ export async function executeTool(
             reason?: string;
           },
           context!,
+        );
+        return JSON.stringify(result, null, 2);
+      }
+      case "read_github_file": {
+        const result = await readGitHubFileTool(
+          input as {
+            path?: string;
+            ref?: string;
+            byteOffset?: number;
+            byteLimit?: number;
+          },
+        );
+        return JSON.stringify(result, null, 2);
+      }
+      case "list_github_dir": {
+        const result = await listGitHubDirTool(
+          input as { path?: string; ref?: string },
         );
         return JSON.stringify(result, null, 2);
       }

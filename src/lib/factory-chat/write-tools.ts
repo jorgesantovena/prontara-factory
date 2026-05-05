@@ -25,9 +25,13 @@ import {
 import { assertCodeModeAvailable } from "@/lib/factory-chat/runtime-mode";
 import {
   commitFilesToGitHubPr,
+  readGitHubFile,
+  listGitHubDir,
   type CommitToGitHubInput,
   type CommitToGitHubResult,
   type GitHubFileSpec,
+  type ReadGitHubFileResult,
+  type ListGitHubDirResult,
 } from "@/lib/factory-chat/github-pr";
 import {
   regenerateTenantByClientId,
@@ -818,4 +822,55 @@ export async function commitToGitHubPrTool(
       };
     },
   );
+}
+
+// ---------------------------------------------------------------------------
+// read_github_file — lectura de fichero del repo desde el chat (sirve en serverless)
+// ---------------------------------------------------------------------------
+
+export type ReadGitHubFileToolInput = {
+  path?: string;
+  ref?: string;
+  byteOffset?: number;
+  byteLimit?: number;
+};
+
+/**
+ * Read-only — no pasa por audit. El chat lo usa para inspeccionar el
+ * estado actual de un fichero del repo en GitHub antes de generar un
+ * cambio. Sirve tanto en local (lee de la rama main de GitHub remota)
+ * como en producción serverless (lee también de GitHub porque el fs
+ * local no tiene los fuentes).
+ *
+ * NOTA: lee de GitHub, no del filesystem local. En local, si has hecho
+ * cambios sin commitear, esta tool NO los verá. Para ver cambios locales
+ * sin commitear usa read_repo_file (filesystem-mode).
+ */
+export async function readGitHubFileTool(
+  input: ReadGitHubFileToolInput,
+): Promise<ReadGitHubFileResult> {
+  const path = String(input.path || "").trim();
+  if (!path) throw new Error("Falta `path`.");
+  return readGitHubFile({
+    path,
+    ref: input.ref,
+    byteOffset: input.byteOffset,
+    byteLimit: input.byteLimit,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// list_github_dir — listado de un directorio del repo en GitHub
+// ---------------------------------------------------------------------------
+
+export type ListGitHubDirToolInput = {
+  path?: string;
+  ref?: string;
+};
+
+export async function listGitHubDirTool(
+  input: ListGitHubDirToolInput,
+): Promise<ListGitHubDirResult> {
+  const path = String(input.path || "").trim() || "src";
+  return listGitHubDir({ path, ref: input.ref });
 }

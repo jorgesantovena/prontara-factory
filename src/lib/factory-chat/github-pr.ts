@@ -1,13 +1,17 @@
 /**
- * Cliente GitHub para crear ramas + commits + PRs desde el chat de Factory.
+ * Cliente GitHub para leer ficheros y crear ramas + commits + PRs desde
+ * el chat de Factory.
  *
  * Por qué existe:
  *   En producción serverless (Vercel) el filesystem es read-only, así que
- *   las write tools de código (write_repo_file, patch_repo_file) están
- *   gateadas. La forma correcta de modificar el repo desde el chat de
- *   producción es vía GitHub API: el chat genera el cambio, lo sube a una
- *   rama nueva, abre PR contra main, y Jorge lo revisa+mergea desde la
- *   web de GitHub o desde la app móvil. Vercel auto-despliega tras merge.
+ *   las read/write tools de código (read_repo_file, write_repo_file,
+ *   patch_repo_file) están gateadas. La forma correcta de leer y modificar
+ *   el repo desde el chat de producción es vía GitHub API:
+ *     - Lectura: Contents API (GET /repos/{}/{}/contents/{path}). Para
+ *       ficheros >1MB la Contents API rechaza, fallback a Git Blobs API.
+ *     - Escritura: Git Data API (blobs/trees/commits/refs) + Pulls API.
+ *       El chat genera el cambio, lo sube a rama nueva, abre PR contra
+ *       main. Jorge revisa+mergea desde web/móvil. Vercel auto-despliega.
  *
  * Diseño:
  *   - Usa la Git Data API (blobs/trees/commits/refs) para meter N ficheros
@@ -496,3 +500,255 @@ export async function commitFilesToGitHubPr(
     prDraft,
   };
 }
+
+// ===========================================================================
+// READ — Contents API + Git Blobs API
+// ===========================================================================
+
+const READ_WHITELIST_PREFIXES = [
+  "src/",
+  "docs/",
+  "scripts/",
+  "prisma/",
+  "package.json",
+  "tsconfig.json",
+  "README.md",
+  "next.config.ts",
+  ".github/",
+];
+
+const READ_DENY_PATTERNS = [
+  /(^|\/)\.env(\..+)?$/i,
+  /(^|\/)node_modules(\/|$)/i,
+  /(^|\/)\.git(\/|$)/i,
+  /(^|\/)data(\/|$)/i,
+  /(^|\/)\.next(\/|$)/i,
+];
+
+/** Tope para devolver el contenido al chat. Más grande dispara fallback Git Blobs API. */
+const READ_INLINE_MAX_BYTES = 1_000_000; // 1 MB
+/** Tope absoluto: por encima rechazamos para no inundar el contexto. */
+const READ_ABSOLUTE_MAX_BYTES = 5_000_000; // 5 MB
+
+function assertReadPathAllowed(rel: string) {
+  const norm = normalizePath(rel);
+  if (!norm) {
+    throw new Error("Ruta vacía.");
+  }
+  if (norm.startsWith("..") || norm.startsWith("/")) {
+    throw new Error("Ruta fuera del repo: '" + rel + "'.");
+  }
+  for (const pattern of READ_DENY_PATTERNS) {
+    if (pattern.test(norm)) {
+      throw new Error(
+        "Ruta prohibida para lectura: '" +
+          rel +
+          "' (deny pattern " +
+          pattern.source +
+          ").",
+      );
+    }
+  }
+  // Para directorios el path puede ser exactamente "src" o "src/" → normalizamos.
+  const allowed = READ_WHITELIST_PREFIXES.some(
+    (p) => norm === p.replace(/\/$/, "") || norm.startsWith(p),
+  );
+  if (!allowed) {
+    throw new Error(
+      "Ruta no permitida para lectura: '" +
+        rel +
+        "'. Whitelist: " +
+        READ_WHITELIST_PREFIXES.join(", "),
+    );
+  }
+}
+
+type ContentsFileResponse = {
+  type: "file";
+  size: number;
+  name: string;
+  path: string;
+  sha: string;
+  content?: string;
+  encoding?: string;
+  /** Cuando size > 1 MB la Contents API responde sin content y hay que ir a blobs. */
+  download_url?: string | null;
+};
+
+type ContentsDirEntry = {
+  type: "file" | "dir" | "symlink" | "submodule";
+  size: number;
+  name: string;
+  path: string;
+  sha: string;
+};
+
+type BlobLargeResponse = {
+  sha: string;
+  size: number;
+  content: string;
+  encoding: string;
+};
+
+export type ReadGitHubFileInput = {
+  path: string;
+  /** Default "main". Puede ser nombre de rama, tag o SHA. */
+  ref?: string;
+  /** Bytes a devolver al inicio del fichero. Default 8000, máx 80000. */
+  byteLimit?: number;
+  /** Offset desde el cual leer. Default 0. */
+  byteOffset?: number;
+};
+
+export type ReadGitHubFileResult = {
+  path: string;
+  ref: string;
+  sha: string;
+  totalSize: number;
+  returnedBytes: number;
+  truncated: boolean;
+  content: string;
+};
+
+export async function readGitHubFile(
+  input: ReadGitHubFileInput,
+): Promise<ReadGitHubFileResult> {
+  const rel = String(input.path || "").trim();
+  assertReadPathAllowed(rel);
+  const norm = normalizePath(rel);
+  const ref = String(input.ref || DEFAULT_BASE_BRANCH).trim();
+
+  // 1. Pedir Contents API
+  const endpoint =
+    "/contents/" +
+    norm.split("/").map(encodeURIComponent).join("/") +
+    "?ref=" +
+    encodeURIComponent(ref);
+
+  const meta = await ghFetch<ContentsFileResponse | ContentsDirEntry[]>(
+    "GET",
+    endpoint,
+  );
+
+  if (Array.isArray(meta)) {
+    throw new Error(
+      "La ruta '" +
+        rel +
+        "' es un directorio, no un fichero. Usa list_github_dir para listarlo.",
+    );
+  }
+
+  if (meta.type !== "file") {
+    throw new Error(
+      "Tipo no soportado para '" + rel + "': " + meta.type + ".",
+    );
+  }
+
+  if (meta.size > READ_ABSOLUTE_MAX_BYTES) {
+    throw new Error(
+      "Fichero demasiado grande (" +
+        meta.size +
+        " bytes, máx " +
+        READ_ABSOLUTE_MAX_BYTES +
+        "). No se devuelve para no inundar contexto.",
+    );
+  }
+
+  let raw: string;
+
+  if (meta.content && meta.encoding === "base64") {
+    // Contents API devuelve content con saltos de línea cada 60 chars que
+    // hay que limpiar antes de decodificar.
+    const cleaned = meta.content.replace(/\s/g, "");
+    raw = Buffer.from(cleaned, "base64").toString("utf-8");
+  } else {
+    // Fichero >1 MB: fallback Git Blobs API por SHA.
+    const blob = await ghFetch<BlobLargeResponse>(
+      "GET",
+      "/git/blobs/" + encodeURIComponent(meta.sha),
+    );
+    if (blob.encoding !== "base64") {
+      throw new Error(
+        "Encoding inesperado en blob " + meta.sha + ": " + blob.encoding,
+      );
+    }
+    const cleaned = blob.content.replace(/\s/g, "");
+    raw = Buffer.from(cleaned, "base64").toString("utf-8");
+  }
+
+  const offset = Math.max(0, input.byteOffset || 0);
+  const limit = Math.max(1, Math.min(input.byteLimit || 8_000, 80_000));
+  const slice = raw.slice(offset, offset + limit);
+  const truncated = raw.length > offset + limit;
+
+  return {
+    path: norm,
+    ref,
+    sha: meta.sha,
+    totalSize: meta.size,
+    returnedBytes: Buffer.byteLength(slice, "utf-8"),
+    truncated,
+    content: slice,
+  };
+}
+
+export type ListGitHubDirInput = {
+  path: string;
+  ref?: string;
+};
+
+export type ListGitHubDirEntry = {
+  name: string;
+  path: string;
+  type: "file" | "dir" | "symlink" | "submodule";
+  size: number;
+};
+
+export type ListGitHubDirResult = {
+  path: string;
+  ref: string;
+  entries: ListGitHubDirEntry[];
+};
+
+export async function listGitHubDir(
+  input: ListGitHubDirInput,
+): Promise<ListGitHubDirResult> {
+  const rel = String(input.path || "").trim() || "src";
+  assertReadPathAllowed(rel);
+  const norm = normalizePath(rel);
+  const ref = String(input.ref || DEFAULT_BASE_BRANCH).trim();
+
+  const endpoint =
+    "/contents/" +
+    norm.split("/").map(encodeURIComponent).join("/") +
+    "?ref=" +
+    encodeURIComponent(ref);
+
+  const meta = await ghFetch<ContentsFileResponse | ContentsDirEntry[]>(
+    "GET",
+    endpoint,
+  );
+
+  if (!Array.isArray(meta)) {
+    throw new Error(
+      "La ruta '" +
+        rel +
+        "' es un fichero, no un directorio. Usa read_github_file para leerlo.",
+    );
+  }
+
+  return {
+    path: norm,
+    ref,
+    entries: meta.map((entry) => ({
+      name: entry.name,
+      path: entry.path,
+      type: entry.type,
+      size: entry.size,
+    })),
+  };
+}
+// READ_INLINE_MAX_BYTES queda como constante de referencia; se respeta vía
+// el threshold de 1MB que hace que content venga vacío en Contents API y
+// dispare el fallback a blobs.
+void READ_INLINE_MAX_BYTES;
