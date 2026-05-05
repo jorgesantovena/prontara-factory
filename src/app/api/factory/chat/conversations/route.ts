@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { requireFactoryAdmin } from "@/lib/factory-chat/auth";
-import { createConversation, listConversations } from "@/lib/factory-chat/storage";
+import {
+  createConversationAsync,
+  listConversationsAsync,
+} from "@/lib/persistence/factory-chat-storage-async";
 
 /**
  * GET /api/factory/chat/conversations
@@ -11,7 +14,8 @@ export async function GET(request: NextRequest) {
   const admin = requireFactoryAdmin(request);
   if (!admin) return unauthorized();
   try {
-    return NextResponse.json({ ok: true, conversations: listConversations(admin.accountId) });
+    const conversations = await listConversationsAsync(admin.accountId);
+    return NextResponse.json({ ok: true, conversations });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: err instanceof Error ? err.message : "Error listando conversaciones." },
@@ -29,7 +33,7 @@ export async function POST(request: NextRequest) {
   if (!admin) return unauthorized();
   try {
     const body = (await request.json().catch(() => ({}))) as { title?: string };
-    const meta = createConversation(admin.accountId, body.title);
+    const meta = await createConversationAsync(admin.accountId, body.title);
     return NextResponse.json({ ok: true, meta });
   } catch (err) {
     return NextResponse.json(

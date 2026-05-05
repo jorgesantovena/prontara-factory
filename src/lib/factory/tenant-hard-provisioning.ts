@@ -123,7 +123,7 @@ function buildDefaultEmail(displayName: string, slug: string): string {
   return "admin@" + base.replace(/^\.+|\.+$/g, "") + ".local";
 }
 
-export function hardReprovisionTenant(input: HardReprovisionInput): HardReprovisionResult {
+export async function hardReprovisionTenant(input: HardReprovisionInput): Promise<HardReprovisionResult> {
   const clientId = String(input.clientId || "").trim();
   if (!clientId) throw new Error("Falta clientId.");
 
@@ -233,7 +233,7 @@ export function hardReprovisionTenant(input: HardReprovisionInput): HardReprovis
   let seedSummary: HardReprovisionResult["seedSummary"] = null;
   if (input.seedDemo) {
     try {
-      const result = seedDemoDataForTenant({
+      const result = await seedDemoDataForTenant({
         clientId: tenant.clientId,
         mode: input.seedDemo,
       });

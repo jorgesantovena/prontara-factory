@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { requireFactoryAdmin } from "@/lib/factory-chat/auth";
-import { readRecentAuditEntries } from "@/lib/factory-chat/audit";
+import { readRecentAuditEntriesAsync } from "@/lib/persistence/factory-chat-audit-async";
 
 /**
  * GET /api/factory/auditoria
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   const limitRaw = Number(sp.get("limit") || "100");
   const lookbackRaw = Number(sp.get("lookbackDays") || "14");
 
-  const entries = readRecentAuditEntries({
+  const entries = await readRecentAuditEntriesAsync({
     limit: Number.isFinite(limitRaw) ? Math.max(1, Math.min(limitRaw, 500)) : 100,
     lookbackDays: Number.isFinite(lookbackRaw) ? Math.max(1, Math.min(lookbackRaw, 90)) : 14,
     tool: sp.get("tool") || undefined,

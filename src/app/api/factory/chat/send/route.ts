@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import type { NextRequest } from "next/server";
 import { requireFactoryAdmin } from "@/lib/factory-chat/auth";
-import { appendMessage, readConversation, renameConversation } from "@/lib/factory-chat/storage";
+import {
+  appendMessageAsync,
+  readConversationAsync,
+  renameConversationAsync,
+} from "@/lib/persistence/factory-chat-storage-async";
 import { readUploadText, getUploadBinaryPath } from "@/lib/factory-chat/uploads";
 import { runAgent, type StreamEvent } from "@/lib/factory-chat/anthropic";
 import type { ChatAttachmentRef, ChatMessage } from "@/lib/factory-chat/types";
@@ -125,7 +129,7 @@ export async function POST(request: NextRequest) {
     return jsonResponse(400, { ok: false, error: "Mensaje vacío." });
   }
 
-  const conv = readConversation(admin.accountId, conversationId);
+  const conv = await readConversationAsync(admin.accountId, conversationId);
   if (!conv) {
     return jsonResponse(404, { ok: false, error: "Conversación no encontrada." });
   }
@@ -205,11 +209,15 @@ export async function POST(request: NextRequest) {
     attachments: attachmentRefs,
     createdAt: new Date().toISOString(),
   };
-  appendMessage(admin.accountId, conversationId, userMessage);
+  await appendMessageAsync(admin.accountId, conversationId, userMessage);
 
   // Si es el primer mensaje real, usamos su texto como título.
   if (conv.meta.title === "Nueva conversación" && userContent) {
-    renameConversation(admin.accountId, conversationId, userContent.slice(0, 80));
+    await renameConversationAsync(
+      admin.accountId,
+      conversationId,
+      userContent.slice(0, 80),
+    );
   }
 
   // Construimos el historial para Anthropic con todos los mensajes previos
@@ -283,7 +291,7 @@ export async function POST(request: NextRequest) {
           createdAt: new Date().toISOString(),
           toolName: toolInvocations.length > 0 ? toolInvocations.map((t) => t.name).join(", ") : undefined,
         };
-        appendMessage(admin.accountId, conversationId, assistantMessage);
+        await appendMessageAsync(admin.accountId, conversationId, assistantMessage);
       }
 
       controller.close();

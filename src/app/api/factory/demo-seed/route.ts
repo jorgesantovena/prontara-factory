@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = seedDemoDataForTenant({
+    const result = await seedDemoDataForTenant({
       clientId: body.clientId,
       mode: body.mode,
       modules: Array.isArray(body.modules) ? body.modules : undefined,

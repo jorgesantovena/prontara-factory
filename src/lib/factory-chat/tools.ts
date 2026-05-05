@@ -21,6 +21,7 @@ import { SECTOR_PACKS, getSectorPackByKey } from "@/lib/factory/sector-pack-regi
 import { getFactoryHealthSnapshot } from "@/lib/factory/factory-health";
 import type { ToolContext } from "@/lib/factory-chat/audit";
 import { searchCodebase } from "@/lib/factory-chat/codebase-index";
+import { isCodeModeAvailable } from "@/lib/factory-chat/runtime-mode";
 import {
   writeRepoFileTool,
   patchRepoFileTool,
@@ -408,6 +409,11 @@ export async function executeTool(
         return JSON.stringify(health, null, 2);
       }
       case "read_repo_file": {
+        if (!isCodeModeAvailable()) {
+          return errorJson(
+            "read_repo_file solo está disponible cuando el chat corre en local con acceso al repo (pnpm dev). En producción serverless no hay fuente del repo accesible.",
+          );
+        }
         const p = input as { path?: string; byteOffset?: number; byteLimit?: number };
         if (!p.path) return errorJson("Falta path.");
         if (!isPathSafe(p.path)) {
@@ -437,6 +443,11 @@ export async function executeTool(
         );
       }
       case "search_codebase": {
+        if (!isCodeModeAvailable()) {
+          return errorJson(
+            "search_codebase solo está disponible en local con acceso al repo. En producción serverless el código fuente no está en el bundle desplegado.",
+          );
+        }
         const p = input as { query?: string; limit?: number; pathFilter?: string };
         const result = searchCodebase({
           query: p.query || "",
@@ -446,6 +457,11 @@ export async function executeTool(
         return JSON.stringify(result, null, 2);
       }
       case "list_repo_files": {
+        if (!isCodeModeAvailable()) {
+          return errorJson(
+            "list_repo_files solo está disponible en local con acceso al repo. En producción serverless no hay fuente del repo accesible.",
+          );
+        }
         const p = input as { path?: string };
         const rel = p.path || ".";
         if (!isPathSafe(rel === "." ? "src/" : rel)) {
@@ -499,7 +515,7 @@ export async function executeTool(
         return JSON.stringify(result, null, 2);
       }
       case "read_audit_log": {
-        const result = readAuditLogTool(
+        const result = await readAuditLogTool(
           input as { limit?: number; tool?: string; conversationId?: string },
         );
         return JSON.stringify(result, null, 2);

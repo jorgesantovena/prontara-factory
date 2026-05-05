@@ -18,9 +18,9 @@ import { createHash } from "node:crypto";
 import { resolveTenantByClientId } from "@/lib/saas/tenant-registry";
 import { getSectorPackByKey } from "@/lib/factory/sector-pack-registry";
 import {
-  listModuleRecords,
-  saveModuleRecords,
-} from "@/lib/erp/active-client-data-store";
+  listModuleRecordsAsync,
+  saveModuleRecordsAsync,
+} from "@/lib/persistence/active-client-data-store-async";
 import type { SectorPackDefinition } from "@/lib/factory/sector-pack-definition";
 
 export type DemoSeedMode = "merge" | "replace";
@@ -97,7 +97,7 @@ function resolvePackForTenant(clientId: string): {
   return { pack, displayName: tenant.displayName };
 }
 
-export function seedDemoDataForTenant(input: DemoSeedInput): DemoSeedResult {
+export async function seedDemoDataForTenant(input: DemoSeedInput): Promise<DemoSeedResult> {
   const mode: DemoSeedMode = input.mode === "replace" ? "replace" : "merge";
   const clientId = String(input.clientId || "").trim();
   if (!clientId) throw new Error("Falta clientId.");
@@ -118,7 +118,7 @@ export function seedDemoDataForTenant(input: DemoSeedInput): DemoSeedResult {
     const normalized = (demoModule.records || []).map((r) => normalizeRow(demoModule.moduleKey, r, now));
 
     if (mode === "replace") {
-      saveModuleRecords(demoModule.moduleKey, normalized, clientId);
+      await saveModuleRecordsAsync(demoModule.moduleKey, normalized, clientId);
       modulesProcessed.push({
         moduleKey: demoModule.moduleKey,
         insertedRows: normalized.length,
@@ -130,7 +130,7 @@ export function seedDemoDataForTenant(input: DemoSeedInput): DemoSeedResult {
     }
 
     // merge
-    const current = listModuleRecords(demoModule.moduleKey, clientId);
+    const current = await listModuleRecordsAsync(demoModule.moduleKey, clientId);
     const existingIds = new Set(current.map((r) => String(r.id || "")));
     const toAppend: Array<Record<string, string>> = [];
     let skipped = 0;
@@ -144,7 +144,7 @@ export function seedDemoDataForTenant(input: DemoSeedInput): DemoSeedResult {
     }
     const merged = [...current, ...toAppend];
     if (toAppend.length > 0) {
-      saveModuleRecords(demoModule.moduleKey, merged, clientId);
+      await saveModuleRecordsAsync(demoModule.moduleKey, merged, clientId);
     }
     modulesProcessed.push({
       moduleKey: demoModule.moduleKey,

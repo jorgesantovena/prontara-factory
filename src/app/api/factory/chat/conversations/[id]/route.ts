@@ -2,10 +2,10 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { requireFactoryAdmin } from "@/lib/factory-chat/auth";
 import {
-  deleteConversation,
-  readConversation,
-  renameConversation,
-} from "@/lib/factory-chat/storage";
+  deleteConversationAsync,
+  readConversationAsync,
+  renameConversationAsync,
+} from "@/lib/persistence/factory-chat-storage-async";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -17,7 +17,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const admin = requireFactoryAdmin(request);
   if (!admin) return unauthorized();
   const { id } = await context.params;
-  const conv = readConversation(admin.accountId, id);
+  const conv = await readConversationAsync(admin.accountId, id);
   if (!conv) {
     return NextResponse.json(
       { ok: false, error: "Conversación no encontrada." },
@@ -36,7 +36,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   if (!admin) return unauthorized();
   const { id } = await context.params;
   const body = (await request.json().catch(() => ({}))) as { title?: string };
-  const meta = renameConversation(admin.accountId, id, body.title || "");
+  const meta = await renameConversationAsync(admin.accountId, id, body.title || "");
   if (!meta) {
     return NextResponse.json(
       { ok: false, error: "Conversación no encontrada." },
@@ -54,7 +54,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   const admin = requireFactoryAdmin(request);
   if (!admin) return unauthorized();
   const { id } = await context.params;
-  const removed = deleteConversation(admin.accountId, id);
+  const removed = await deleteConversationAsync(admin.accountId, id);
   return NextResponse.json({ ok: removed });
 }
 

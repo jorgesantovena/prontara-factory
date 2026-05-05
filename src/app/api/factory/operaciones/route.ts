@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const snapshot = getOperationsSnapshot();
+    const snapshot = await getOperationsSnapshot();
     return NextResponse.json({ ok: true, snapshot });
   } catch (err) {
     return NextResponse.json(

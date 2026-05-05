@@ -325,6 +325,47 @@ model DomainEvent {
 }
 
 // =====================================================================
+// FactoryChatConversation + FactoryChatMessage — persistencia del chat
+// del operador en /factory/chat.
+//
+// Cada operador (cuenta Factory) tiene N conversaciones. Cada conversación
+// tiene una lista append-only de mensajes (user/assistant/tool). Los
+// adjuntos (imágenes, docs) se guardan como referencias JSON en el
+// campo `attachmentsJson` del mensaje — los binarios viven en /api/factory/chat/uploads.
+//
+// Reemplaza el storage filesystem de data/factory/chat/<accountId>/*.jsonl
+// para que el chat funcione en serverless (Vercel) sin filesystem persistente.
+// =====================================================================
+model FactoryChatConversation {
+  id           String   @id
+  accountId    String
+  title        String
+  messageCount Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  messages FactoryChatMessage[]
+
+  @@index([accountId, updatedAt])
+}
+
+model FactoryChatMessage {
+  id              String   @id
+  conversationId  String
+  role            String   // user | assistant | tool
+  content         String   /// texto del mensaje (en role=tool es JSON serializado)
+  toolName        String?
+  toolInput       Json?
+  toolUseId       String?
+  attachmentsJson Json?    /// array de ChatAttachmentRef
+  createdAt       DateTime @default(now())
+
+  conversation FactoryChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+}
+
+// =====================================================================
 // FactoryNotification — eventos visibles para el operador en /factory.
 //
 // Se persisten cuando ocurre algo relevante en el negocio (alta,

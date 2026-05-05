@@ -2,7 +2,7 @@
  * Tools de escritura del chat de Factory (Fase 2).
  *
  * Diseño:
- *   - Toda mutación pasa por snapshotFiles() + withAudit(). No hay escrituras
+ *   - Toda mutación pasa por snapshotFiles() + withAuditAsync(). No hay escrituras
  *     silenciosas.
  *   - Whitelist estricto de rutas: solo src/, docs/, scripts/, prisma/schema.prisma.
  *     Nunca se puede tocar .env*, data/**, .git/**, node_modules/**.
@@ -12,12 +12,17 @@
 import fs from "node:fs";
 import path from "node:path";
 import { execSync } from "node:child_process";
-import { withAudit, readRecentAuditEntries, type ToolContext } from "@/lib/factory-chat/audit";
+import type { ToolContext } from "@/lib/factory-chat/audit";
+import {
+  withAuditAsync,
+  readRecentAuditEntriesAsync,
+} from "@/lib/persistence/factory-chat-audit-async";
 import {
   snapshotFiles,
   listBackupSnapshots,
   restoreSnapshot,
 } from "@/lib/factory-chat/backups";
+import { assertCodeModeAvailable } from "@/lib/factory-chat/runtime-mode";
 import {
   regenerateTenantByClientId,
   invalidateFactoryCaches,
@@ -115,7 +120,8 @@ export async function writeRepoFileTool(
   input: WriteRepoFileInput,
   ctx: ToolContext,
 ): Promise<WriteRepoFileResult> {
-  return withAudit("write_repo_file", input as Record<string, unknown>, ctx, async () => {
+  return withAuditAsync("write_repo_file", input as Record<string, unknown>, ctx, async () => {
+    assertCodeModeAvailable("write_repo_file");
     const rel = String(input.path || "").trim();
     const content = String(input.content || "");
 
@@ -173,7 +179,8 @@ export async function patchRepoFileTool(
   input: PatchRepoFileInput,
   ctx: ToolContext,
 ): Promise<PatchRepoFileResult> {
-  return withAudit("patch_repo_file", input as Record<string, unknown>, ctx, async () => {
+  return withAuditAsync("patch_repo_file", input as Record<string, unknown>, ctx, async () => {
+    assertCodeModeAvailable("patch_repo_file");
     const rel = String(input.path || "").trim();
     const oldString = String(input.oldString || "");
     const newString = String(input.newString || "");
@@ -268,7 +275,8 @@ export async function runTscCheckTool(
   input: RunTscCheckInput,
   ctx: ToolContext,
 ): Promise<RunTscCheckResult> {
-  return withAudit("run_tsc_check", input as Record<string, unknown>, ctx, async () => {
+  return withAuditAsync("run_tsc_check", input as Record<string, unknown>, ctx, async () => {
+    assertCodeModeAvailable("run_tsc_check");
     const root = projectRoot();
     const tscBin =
       process.platform === "win32"
@@ -325,7 +333,8 @@ export async function runLintCheckTool(
   input: RunLintCheckInput,
   ctx: ToolContext,
 ): Promise<RunLintCheckResult> {
-  return withAudit("run_lint_check", input as Record<string, unknown>, ctx, async () => {
+  return withAuditAsync("run_lint_check", input as Record<string, unknown>, ctx, async () => {
+    assertCodeModeAvailable("run_lint_check");
     const root = projectRoot();
     const eslintBin =
       process.platform === "win32"
@@ -391,8 +400,10 @@ export type ReadAuditLogResult = {
   }>;
 };
 
-export function readAuditLogTool(input: ReadAuditLogInput): ReadAuditLogResult {
-  const entries = readRecentAuditEntries({
+export async function readAuditLogTool(
+  input: ReadAuditLogInput,
+): Promise<ReadAuditLogResult> {
+  const entries = await readRecentAuditEntriesAsync({
     limit: input.limit,
     tool: input.tool,
     conversationId: input.conversationId,
@@ -422,6 +433,7 @@ export type ListBackupSnapshotsInput = {
 };
 
 export function listBackupSnapshotsTool(input: ListBackupSnapshotsInput) {
+  assertCodeModeAvailable("list_backup_snapshots");
   return {
     snapshots: listBackupSnapshots(input.limit),
   };
@@ -445,11 +457,12 @@ export async function restoreBackupSnapshotTool(
   input: RestoreBackupSnapshotInput,
   ctx: ToolContext,
 ): Promise<RestoreBackupSnapshotResult> {
-  return withAudit(
+  return withAuditAsync(
     "restore_backup_snapshot",
     input as Record<string, unknown>,
     ctx,
     async () => {
+      assertCodeModeAvailable("restore_backup_snapshot");
       const backupRef = String(input.backupRef || "").trim();
       if (!backupRef) throw new Error("Falta backupRef.");
       if (!/^[A-Za-z0-9_-]+$/.test(backupRef)) {
@@ -500,7 +513,7 @@ export async function regenerateTenantTool(
   input: RegenerateTenantInput,
   ctx: ToolContext,
 ): Promise<RegenerateTenantToolResult> {
-  return withAudit("regenerate_tenant", input as Record<string, unknown>, ctx, async () => {
+  return withAuditAsync("regenerate_tenant", input as Record<string, unknown>, ctx, async () => {
     const clientId = String(input.clientId || "").trim();
     if (!clientId) throw new Error("Falta clientId.");
 
@@ -542,7 +555,7 @@ export async function invalidateFactoryCacheTool(
   input: InvalidateFactoryCacheInput,
   ctx: ToolContext,
 ): Promise<InvalidateFactoryCacheResult> {
-  return withAudit(
+  return withAuditAsync(
     "invalidate_factory_cache",
     input as Record<string, unknown>,
     ctx,
@@ -583,11 +596,11 @@ export async function seedDemoDataTool(
   input: SeedDemoDataInput,
   ctx: ToolContext,
 ): Promise<SeedDemoDataToolResult> {
-  return withAudit("seed_demo_data", input as Record<string, unknown>, ctx, async () => {
+  return withAuditAsync("seed_demo_data", input as Record<string, unknown>, ctx, async () => {
     const clientId = String(input.clientId || "").trim();
     if (!clientId) throw new Error("Falta clientId.");
 
-    const result = seedDemoDataForTenant({
+    const result = await seedDemoDataForTenant({
       clientId,
       mode: input.mode,
       modules: input.modules,
@@ -655,7 +668,7 @@ export async function hardReprovisionTenantTool(
   input: HardReprovisionToolInput,
   ctx: ToolContext,
 ): Promise<HardReprovisionToolResult> {
-  return withAudit(
+  return withAuditAsync(
     "hard_reprovision_tenant",
     // input sanitizado para el audit (resetAdminPassword sí se guarda, es un flag booleano)
     input as Record<string, unknown>,
@@ -664,7 +677,7 @@ export async function hardReprovisionTenantTool(
       const clientId = String(input.clientId || "").trim();
       if (!clientId) throw new Error("Falta clientId.");
 
-      const result = hardReprovisionTenant({
+      const result = await hardReprovisionTenant({
         clientId,
         resetAdminPassword: Boolean(input.resetAdminPassword),
         seedDemo: input.seedDemo,

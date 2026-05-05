@@ -26,7 +26,8 @@ import {
   type ProvisioningStateRecord,
   type ProvisioningState,
 } from "@/lib/factory/provisioning-state-machine";
-import { readRecentAuditEntries, type AuditEntry } from "@/lib/factory-chat/audit";
+import type { AuditEntry } from "@/lib/factory-chat/audit";
+import { readRecentAuditEntriesAsync } from "@/lib/persistence/factory-chat-audit-async";
 
 const TRIAL_ALERT_DAYS = 3;
 const CHAT_ACTIVITY_LIMIT = 15;
@@ -235,7 +236,7 @@ function countChatErrors24h(entries: AuditEntry[], now: number): number {
   }).length;
 }
 
-export function getOperationsSnapshot(): OperationsSnapshot {
+export async function getOperationsSnapshot(): Promise<OperationsSnapshot> {
   const now = Date.now();
   const tenants = listTenantClientsIndex();
   const health = getFactoryHealthSnapshot();
@@ -244,7 +245,7 @@ export function getOperationsSnapshot(): OperationsSnapshot {
   const provisioningIncidents = buildProvisioningIncidents(tenants);
   const healthIncidents = buildHealthIncidents(health.rows);
 
-  const auditEntries = readRecentAuditEntries({
+  const auditEntries = await readRecentAuditEntriesAsync({
     limit: 200,
     lookbackDays: CHAT_ACTIVITY_LOOKBACK_DAYS,
   });

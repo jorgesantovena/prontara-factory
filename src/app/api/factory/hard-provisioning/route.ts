@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const result = hardReprovisionTenant({
+    const result = await hardReprovisionTenant({
       clientId: body.clientId,
       resetAdminPassword: Boolean(body.resetAdminPassword),
       seedDemo: body.seedDemo,
