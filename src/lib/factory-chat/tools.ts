@@ -15,7 +15,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { listTenantClientsIndex } from "@/lib/saas/tenant-clients-index";
+import { listTenantClientsIndexAsync } from "@/lib/persistence/tenant-clients-index-async";
 import { getFactoryClientDetail } from "@/lib/factory/factory-client-detail";
 import { SECTOR_PACKS, getSectorPackByKey } from "@/lib/factory/sector-pack-registry";
 import { getFactoryHealthSnapshot } from "@/lib/factory/factory-health";
@@ -365,7 +365,7 @@ export async function executeTool(
 
     switch (name) {
       case "list_tenants": {
-        const list = listTenantClientsIndex();
+        const list = await listTenantClientsIndexAsync();
         return JSON.stringify(
           list.map((t) => ({
             clientId: t.clientId,
