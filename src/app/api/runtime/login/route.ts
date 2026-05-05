@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { resolveRuntimeRequestContext } from "@/lib/saas/runtime-request-context";
+import { resolveRuntimeRequestContextAsync } from "@/lib/saas/runtime-request-context-async";
 import { findTenantAccountByCredentialsAsync } from "@/lib/persistence/account-store-async";
 import { attachSessionCookie } from "@/lib/saas/auth-session";
 import {
@@ -15,7 +15,7 @@ const LOGIN_ATTEMPTS_PER_IP_TENANT_EMAIL = 5;
 
 export async function POST(request: NextRequest) {
   try {
-    const context = resolveRuntimeRequestContext(request);
+    const context = await resolveRuntimeRequestContextAsync(request);
 
     if (!context.ok || !context.tenant) {
       return NextResponse.json(
