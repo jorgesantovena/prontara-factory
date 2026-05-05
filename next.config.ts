@@ -129,7 +129,12 @@ const nextConfig: NextConfigWithEslint = {
       // Caches de build / dev tooling.
       "./.next/cache/**/*",
       "**/node_modules/.cache/**",
-      "**/node_modules/@swc/**",
+      // ⚠️ NO excluir @swc completo: @swc/helpers es runtime dep de Next 16.
+      // Solo excluir el binario nativo del transpilador, no los helpers.
+      "**/node_modules/@swc/core/**",
+      "**/node_modules/@swc/core-linux-*/**",
+      "**/node_modules/@swc/core-darwin-*/**",
+      "**/node_modules/@swc/core-win32-*/**",
       "**/node_modules/@esbuild/**",
       "**/node_modules/typescript/**",
       "**/node_modules/eslint/**",
@@ -137,7 +142,9 @@ const nextConfig: NextConfigWithEslint = {
       "**/node_modules/@eslint/**",
       "**/node_modules/vitest/**",
       "**/node_modules/@vitest/**",
-      "**/node_modules/prisma/**",
+      // ⚠️ NO excluir prisma completo: @prisma/client se necesita en runtime.
+      // Solo excluir prisma CLI (el comando de migrate/generate, no el client).
+      "**/node_modules/prisma/build/**",
     ],
   },
 
