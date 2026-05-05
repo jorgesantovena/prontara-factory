@@ -16,6 +16,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { listTenantClientsIndexAsync } from "@/lib/persistence/tenant-clients-index-async";
+import { getTenantSnapshotAsync } from "@/lib/persistence/tenant-snapshot-async";
+import { getPersistenceBackend } from "@/lib/persistence/db";
 import { getFactoryClientDetail } from "@/lib/factory/factory-client-detail";
 import { SECTOR_PACKS, getSectorPackByKey } from "@/lib/factory/sector-pack-registry";
 import { getFactoryHealthSnapshot } from "@/lib/factory/factory-health";
@@ -380,6 +382,12 @@ export async function executeTool(
       case "read_tenant_detail": {
         const p = input as { clientId?: string };
         if (!p.clientId) return errorJson("Falta clientId.");
+        // En modo Postgres usamos un snapshot ligero específico para
+        // serverless. En filesystem caemos al detalle completo legacy.
+        if (getPersistenceBackend() === "postgres") {
+          const snapshot = await getTenantSnapshotAsync(p.clientId);
+          return JSON.stringify(snapshot, null, 2);
+        }
         const snapshot = getFactoryClientDetail(p.clientId);
         return JSON.stringify(snapshot, null, 2);
       }
@@ -405,6 +413,34 @@ export async function executeTool(
         return JSON.stringify(pack, null, 2);
       }
       case "read_factory_health": {
+        // factory-health usa lectura intensiva de filesystem (.prontara/clients/,
+        // data/saas/) que no está disponible en serverless. En modo Postgres
+        // devolvemos un health derivado de la tabla Tenant.
+        if (getPersistenceBackend() === "postgres") {
+          const list = await listTenantClientsIndexAsync();
+          return JSON.stringify(
+            {
+              source: "postgres",
+              summary: {
+                totalTenants: list.length,
+                healthyTenants: list.length, // En Postgres no tenemos noción de "tenant corrupto"; todo lo que está en la tabla cuenta como healthy.
+                partialTenants: 0,
+                corruptTenants: 0,
+              },
+              tenants: list.map((t) => ({
+                clientId: t.clientId,
+                slug: t.slug,
+                displayName: t.displayName,
+                lastUpdatedAt: t.lastUpdatedAt,
+              })),
+              notes: [
+                "read_factory_health en producción serverless lee solo de Postgres. Las métricas de filesystem (artifacts, evolution-state) no están disponibles.",
+              ],
+            },
+            null,
+            2,
+          );
+        }
         const health = getFactoryHealthSnapshot();
         return JSON.stringify(health, null, 2);
       }

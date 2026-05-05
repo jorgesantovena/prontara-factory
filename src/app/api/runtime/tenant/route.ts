@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
+import { readActiveTenantState } from "@/lib/saas/tenant-registry";
 import {
-  listDiskTenants,
-  readActiveTenantState,
-  resolveActiveTenant,
-} from "@/lib/saas/tenant-registry";
+  listAllTenantsAsync,
+  resolveActiveTenantAsync,
+} from "@/lib/saas/tenant-resolver-async";
 
 export async function GET() {
   try {
     const activeState = readActiveTenantState();
-    const activeTenant = resolveActiveTenant();
-    const tenants = listDiskTenants();
+    const activeTenant = await resolveActiveTenantAsync();
+    const tenants = await listAllTenantsAsync();
 
     return NextResponse.json({
       ok: true,

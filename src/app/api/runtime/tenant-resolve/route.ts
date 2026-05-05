@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveTenantFromRequest } from "@/lib/saas/tenant-resolver";
+import { resolveTenantFromRequestAsync } from "@/lib/saas/tenant-resolver-async";
 
 export async function GET(request: NextRequest) {
   try {
-    const resolution = resolveTenantFromRequest(request);
+    const resolution = await resolveTenantFromRequestAsync(request);
 
     if (!resolution.ok) {
       return NextResponse.json(

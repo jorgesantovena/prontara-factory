@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { resolveRuntimeRequestContext } from "@/lib/saas/runtime-request-context";
+import { resolveRuntimeRequestContextAsync } from "@/lib/saas/runtime-request-context-async";
 import { activatePaidPlan } from "@/lib/saas/billing-store";
 
 export async function POST(request: NextRequest) {
   try {
-    const context = resolveRuntimeRequestContext(request);
+    const context = await resolveRuntimeRequestContextAsync(request);
 
     if (!context.ok || !context.tenant || !context.branding) {
       return NextResponse.json(

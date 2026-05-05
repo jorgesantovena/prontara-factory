@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server";
 import { requireTenantSession } from "@/lib/saas/auth-session";
 import { getDashboardSnapshot } from "@/lib/erp/dashboard-metrics";
 import { getStartupReadiness } from "@/lib/erp/startup-readiness";
-import { resolveRuntimeRequestContext } from "@/lib/saas/runtime-request-context";
+import { resolveRuntimeRequestContextAsync } from "@/lib/saas/runtime-request-context-async";
 import { getTenantRuntimeConfigFromRequest } from "@/lib/saas/tenant-runtime-config";
 import { buildOperationalAlerts } from "@/lib/erp/operational-alerts";
 import { getOrCreateTrialState } from "@/lib/saas/trial-store";
@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   try {
     const snapshot = getDashboardSnapshot(session.clientId);
     const readiness = getStartupReadiness(snapshot);
-    const context = resolveRuntimeRequestContext(request);
+    const context = await resolveRuntimeRequestContextAsync(request);
     const runtimeConfig = getTenantRuntimeConfigFromRequest(request);
     const dashboardPriorities =
       runtimeConfig.ok && runtimeConfig.config

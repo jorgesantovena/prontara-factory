@@ -231,6 +231,52 @@ export async function resolveTenantByClientIdAsync(
   return fsResolveTenantBySlug(trimmed);
 }
 
+export async function listAllTenantsAsync(): Promise<TenantDefinition[]> {
+  if (getPersistenceBackend() === "filesystem") {
+    // Importamos perezosamente para evitar dependencia circular con
+    // tenant-registry.ts.
+    const { listDiskTenants } = await import("@/lib/saas/tenant-registry");
+    return listDiskTenants();
+  }
+
+  const rows = await withPrisma(async (prisma) => {
+    const c = prisma as unknown as {
+      tenant: {
+        findMany: (a: {
+          select: {
+            clientId: true;
+            slug: true;
+            displayName: true;
+            status: true;
+            sector: true;
+            businessType: true;
+            brandingJson: true;
+            definition: true;
+            updatedAt: true;
+          };
+          orderBy: { updatedAt: "desc" };
+        }) => Promise<TenantRow[]>;
+      };
+    };
+    return await c.tenant.findMany({
+      select: {
+        clientId: true,
+        slug: true,
+        displayName: true,
+        status: true,
+        sector: true,
+        businessType: true,
+        brandingJson: true,
+        definition: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+  });
+
+  return ((rows as TenantRow[]) || []).map(rowToTenantDefinition);
+}
+
 export async function resolveActiveTenantAsync(): Promise<TenantDefinition | null> {
   if (getPersistenceBackend() === "postgres") {
     // En Postgres no hay concepto de "active tenant" como en filesystem

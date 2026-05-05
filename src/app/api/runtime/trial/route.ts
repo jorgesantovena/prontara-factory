@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { resolveRuntimeRequestContext } from "@/lib/saas/runtime-request-context";
+import { resolveRuntimeRequestContextAsync } from "@/lib/saas/runtime-request-context-async";
 import { getOrCreateTrialState } from "@/lib/saas/trial-store";
 import { getSessionFromRequest } from "@/lib/saas/auth-session";
 
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const context = resolveRuntimeRequestContext(request);
+    const context = await resolveRuntimeRequestContextAsync(request);
     if (!context.ok || !context.tenant) {
       return NextResponse.json(
         {

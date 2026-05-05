@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { resolveTenantBySlug } from "@/lib/saas/tenant-resolver";
+import { resolveTenantBySlugAsync } from "@/lib/saas/tenant-resolver-async";
 import {
   getTenantAccountByEmailAsync,
   listTenantAccountsAsync,
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const tenant = resolveTenantBySlug(slug);
+  const tenant = await resolveTenantBySlugAsync(slug);
   if (!tenant) {
     // Mismo response que si no existiera la cuenta para no filtrar info.
     return NextResponse.json({ ok: true, sent: false });
