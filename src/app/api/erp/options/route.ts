@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { listModuleRecords } from "@/lib/erp/active-client-data-store";
+import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 import { requireTenantSession } from "@/lib/saas/auth-session";
 
 export async function GET(request: NextRequest) {
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rows = listModuleRecords(moduleKey, session.clientId);
+    const rows = await listModuleRecordsAsync(moduleKey, session.clientId);
 
     const options = rows
       .map((item) => {

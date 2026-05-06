@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  createModuleRecord,
-  deleteModuleRecord,
-  listModuleRecords,
-  updateModuleRecord,
-} from "@/lib/erp/active-client-data-store";
+  createModuleRecordAsync,
+  deleteModuleRecordAsync,
+  listModuleRecordsAsync,
+  updateModuleRecordAsync,
+} from "@/lib/persistence/active-client-data-store-async";
 import { requireTenantSession } from "@/lib/saas/auth-session";
 import {
   assertCanCreateOne,
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const rows = listModuleRecords(moduleKey, session.clientId);
+    const rows = await listModuleRecordsAsync(moduleKey, session.clientId);
 
     return NextResponse.json({
       ok: true,
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      const created = createModuleRecord(moduleKey, body?.payload || {}, tenant);
+      const created = await createModuleRecordAsync(moduleKey, body?.payload || {}, tenant);
       return NextResponse.json({ ok: true, row: created });
     }
 
@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const updated = updateModuleRecord(moduleKey, recordId, body?.payload || {}, tenant);
+      const updated = await updateModuleRecordAsync(moduleKey, recordId, body?.payload || {}, tenant);
       return NextResponse.json({ ok: true, row: updated });
     }
 
@@ -142,7 +142,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      deleteModuleRecord(moduleKey, recordId, tenant);
+      await deleteModuleRecordAsync(moduleKey, recordId, tenant);
       return NextResponse.json({ ok: true });
     }
 
