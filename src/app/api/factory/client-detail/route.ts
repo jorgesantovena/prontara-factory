@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const snapshot = getFactoryClientDetail(clientId);
+    const snapshot = await getFactoryClientDetail(clientId);
 
     return NextResponse.json({
       ok: true,

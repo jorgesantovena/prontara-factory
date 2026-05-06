@@ -3,7 +3,7 @@ import { buildDemoPresentationFromRequest } from "@/lib/factory/demo-presentatio
 
 export async function GET(request: NextRequest) {
   try {
-    const presentation = buildDemoPresentationFromRequest(request);
+    const presentation = await buildDemoPresentationFromRequest(request);
 
     return NextResponse.json({
       ok: true,

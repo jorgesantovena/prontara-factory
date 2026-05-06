@@ -118,13 +118,13 @@ function buildHero(input: {
   };
 }
 
-export function buildDemoPresentationFromRequest(
+export async function buildDemoPresentationFromRequest(
   request: NextRequest
-): DemoPresentationResult {
+): Promise<DemoPresentationResult> {
   const context = resolveRuntimeRequestContext(request);
   const blueprint = resolveBusinessBlueprintFromRequest(request);
   const packPreview = buildSectorPackPreviewFromRequest(request);
-  const dashboard = getDashboardSnapshot();
+  const dashboard = await getDashboardSnapshot();
   const startup = getStartupReadiness(dashboard);
 
   const displayName =

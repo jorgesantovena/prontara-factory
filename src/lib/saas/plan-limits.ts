@@ -1,9 +1,7 @@
-import {
-  getOrCreateBillingSubscription,
-  getPlanDefinition,
-} from "@/lib/saas/billing-store";
-import { listModuleRecords } from "@/lib/erp/active-client-data-store";
-import { listTenantAccounts } from "@/lib/saas/account-store";
+import { getPlanDefinition } from "@/lib/saas/billing-store";
+import { getOrCreateBillingSubscriptionAsync } from "@/lib/persistence/billing-store-async";
+import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
+import { listTenantAccountsAsync } from "@/lib/persistence/account-store-async";
 import type {
   BillingLimitValue,
   BillingPlanDefinition,
@@ -63,19 +61,21 @@ function getCurrentMonthPrefix(now = new Date()) {
   return year + "-" + month;
 }
 
-function safeList(moduleKey: string, clientId: string) {
+async function safeList(moduleKey: string, clientId: string): Promise<Array<Record<string, string>>> {
   try {
-    return listModuleRecords(moduleKey, clientId) as Array<Record<string, string>>;
+    return (await listModuleRecordsAsync(moduleKey, clientId)) as Array<Record<string, string>>;
   } catch {
     return [];
   }
 }
 
-export function buildUsageSnapshot(clientId: string): BillingUsageSnapshot {
-  const users = listTenantAccounts(clientId).length;
-  const clientes = safeList("clientes", clientId).length;
-  const documentos = safeList("documentos", clientId).length;
-  const facturas = safeList("facturacion", clientId);
+export async function buildUsageSnapshot(clientId: string): Promise<BillingUsageSnapshot> {
+  const [accounts, clientesList, documentosList, facturas] = await Promise.all([
+    listTenantAccountsAsync(clientId),
+    safeList("clientes", clientId),
+    safeList("documentos", clientId),
+    safeList("facturacion", clientId),
+  ]);
   const prefix = getCurrentMonthPrefix();
 
   const facturasMes = facturas.filter((item) => {
@@ -83,7 +83,12 @@ export function buildUsageSnapshot(clientId: string): BillingUsageSnapshot {
     return fecha.startsWith(prefix);
   }).length;
 
-  return { users, clientes, facturasMes, documentos };
+  return {
+    users: accounts.length,
+    clientes: clientesList.length,
+    facturasMes,
+    documentos: documentosList.length,
+  };
 }
 
 function getPlanLimit(plan: BillingPlanDefinition, resource: PlanResource): BillingLimitValue {
@@ -136,8 +141,8 @@ export function mapModuleToPlanResource(moduleKey: string): PlanResource | null 
  * effects (still creates a default trial row if none exists, matching the
  * behaviour of the rest of the billing flow).
  */
-function getCurrentPlan(clientId: string): BillingPlanDefinition {
-  const subscription = getOrCreateBillingSubscription({
+async function getCurrentPlan(clientId: string): Promise<BillingPlanDefinition> {
+  const subscription = await getOrCreateBillingSubscriptionAsync({
     tenantId: clientId,
     clientId,
     slug: clientId,
@@ -150,13 +155,13 @@ function getCurrentPlan(clientId: string): BillingPlanDefinition {
  * Returns `{ ok, reason }` without throwing, so callers can decide how to
  * respond (UI warning vs hard block).
  */
-export function canCreateOne(
+export async function canCreateOne(
   clientId: string,
-  resource: PlanResource
-): { ok: boolean; used: number; limit: BillingLimitValue; planKey: string } {
-  const plan = getCurrentPlan(clientId);
+  resource: PlanResource,
+): Promise<{ ok: boolean; used: number; limit: BillingLimitValue; planKey: string }> {
+  const plan = await getCurrentPlan(clientId);
   const limit = getPlanLimit(plan, resource);
-  const usage = buildUsageSnapshot(clientId);
+  const usage = await buildUsageSnapshot(clientId);
   const used = getUsage(usage, resource);
 
   if (limit == null) {
@@ -170,8 +175,8 @@ export function canCreateOne(
  * Throws `PlanLimitError` if the tenant cannot create another record of the
  * given resource under its current plan.
  */
-export function assertCanCreateOne(clientId: string, resource: PlanResource): void {
-  const check = canCreateOne(clientId, resource);
+export async function assertCanCreateOne(clientId: string, resource: PlanResource): Promise<void> {
+  const check = await canCreateOne(clientId, resource);
   if (!check.ok) {
     throw new PlanLimitError({
       resource,

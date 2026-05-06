@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
       const resource = mapModuleToPlanResource(moduleKey);
       if (resource) {
         try {
-          assertCanCreateOne(tenant, resource);
+          await assertCanCreateOne(tenant, resource);
         } catch (error) {
           if (error instanceof PlanLimitError) {
             return NextResponse.json(

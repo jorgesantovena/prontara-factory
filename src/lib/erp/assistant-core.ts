@@ -1,6 +1,6 @@
 import { getDashboardSnapshot } from "@/lib/erp/dashboard-metrics";
 import { getClient360Snapshot } from "@/lib/erp/client-360";
-import { listModuleRecords } from "@/lib/erp/active-client-data-store";
+import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 
 export type AssistantAnswer = {
   title: string;
@@ -18,11 +18,11 @@ type AssistantContext = {
   assistantSuggestion?: string;
 };
 
-export function answerErpAssistant(
+export async function answerErpAssistant(
   prompt: string,
   activeClientId?: string,
   context?: AssistantContext
-): AssistantAnswer {
+): Promise<AssistantAnswer> {
   const raw = String(prompt || "").trim();
   const lower = normalize(raw);
 
@@ -41,7 +41,7 @@ export function answerErpAssistant(
   }
 
   if (lower.includes("factura") || lower.includes("cuota") || lower.includes("ticket") || lower.includes("recibo")) {
-    const rows = listModuleRecords("facturacion", activeClientId);
+    const rows = await listModuleRecordsAsync("facturacion", activeClientId);
     const pending = rows.filter((item) =>
       ["emitida", "pendiente", "vencida"].includes(normalize(item.estado))
     );
@@ -59,7 +59,7 @@ export function answerErpAssistant(
   }
 
   if (lower.includes("actividad") || lower.includes("resumen")) {
-    const snapshot = getDashboardSnapshot(activeClientId);
+    const snapshot = await getDashboardSnapshot(activeClientId);
 
     return {
       title: "Resumen operativo",
@@ -75,11 +75,11 @@ export function answerErpAssistant(
   }
 
   if (lower.includes("cliente") || lower.includes("paciente") || lower.includes("socio") || lower.includes("familia")) {
-    const clientes = listModuleRecords("clientes", activeClientId);
+    const clientes = await listModuleRecordsAsync("clientes", activeClientId);
     const found = clientes.find((item) => lower.includes(normalize(item.nombre)));
 
     if (found) {
-      const detail = getClient360Snapshot(String(found.nombre || ""), activeClientId);
+      const detail = await getClient360Snapshot(String(found.nombre || ""), activeClientId);
       return {
         title: "Visión 360",
         summary: "He encontrado información relacionada con " + String(found.nombre || ""),

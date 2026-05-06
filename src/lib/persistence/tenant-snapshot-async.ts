@@ -134,7 +134,7 @@ export async function getTenantSnapshotAsync(
   if (getPersistenceBackend() === "filesystem") {
     // En filesystem usamos el detalle pesado original y devolvemos un
     // shape compatible con el async (sin todos los campos extra).
-    const heavy = getFactoryClientDetail(clientId);
+    const heavy = await getFactoryClientDetail(clientId);
     return {
       ok: heavy.ok,
       clientId: heavy.clientId,

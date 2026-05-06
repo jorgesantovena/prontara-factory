@@ -43,13 +43,13 @@ export async function POST(request: NextRequest) {
 
     // Router por vertical: si el tenant es software-factory intentamos
     // responder con los intents específicos. Si null → cae al genérico.
-    let answer = null as ReturnType<typeof answerErpAssistant> | null;
+    let answer = null as Awaited<ReturnType<typeof answerErpAssistant>> | null;
     if (businessType === "software-factory") {
       answer = answerSoftwareFactoryIntent(prompt, session.clientId, displayName);
     }
 
     if (!answer) {
-      answer = answerErpAssistant(prompt, session.clientId, {
+      answer = await answerErpAssistant(prompt, session.clientId, {
         labels: config?.labels,
         assistantWelcome: config?.texts?.assistantWelcome,
         assistantSuggestion: config?.texts?.assistantSuggestion,

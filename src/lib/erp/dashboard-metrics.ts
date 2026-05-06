@@ -1,4 +1,4 @@
-import { listModuleRecords } from "@/lib/erp/active-client-data-store";
+import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 
 export type DashboardMetric = {
   key: string;
@@ -39,9 +39,9 @@ export type DashboardSnapshot = {
   };
 };
 
-function safeModule(moduleKey: string, clientId?: string) {
+async function safeModule(moduleKey: string, clientId?: string): Promise<Array<Record<string, string>>> {
   try {
-    return listModuleRecords(moduleKey, clientId);
+    return await listModuleRecordsAsync(moduleKey, clientId);
   } catch {
     return [];
   }
@@ -82,13 +82,16 @@ function buildActivity(
   }));
 }
 
-export function getDashboardSnapshot(clientId?: string): DashboardSnapshot {
-  const clientes = safeModule("clientes", clientId);
-  const crm = safeModule("crm", clientId);
-  const proyectos = safeModule("proyectos", clientId);
-  const presupuestos = safeModule("presupuestos", clientId);
-  const facturacion = safeModule("facturacion", clientId);
-  const documentos = safeModule("documentos", clientId);
+export async function getDashboardSnapshot(clientId?: string): Promise<DashboardSnapshot> {
+  const [clientes, crm, proyectos, presupuestos, facturacion, documentos] =
+    await Promise.all([
+      safeModule("clientes", clientId),
+      safeModule("crm", clientId),
+      safeModule("proyectos", clientId),
+      safeModule("presupuestos", clientId),
+      safeModule("facturacion", clientId),
+      safeModule("documentos", clientId),
+    ]);
 
   const oportunidadesAbiertas = countByStatus(crm, ["lead", "contactado", "propuesta", "abierto"]);
   const proyectosActivos = countByStatus(proyectos, ["en_marcha", "activo", "planificado", "en_riesgo"]);

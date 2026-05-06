@@ -29,7 +29,7 @@ export default async function DemoPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const request = buildRequestFromSearchParams(resolvedSearchParams);
-  const presentation = buildDemoPresentationFromRequest(request);
+  const presentation = await buildDemoPresentationFromRequest(request);
 
   return (
     <main

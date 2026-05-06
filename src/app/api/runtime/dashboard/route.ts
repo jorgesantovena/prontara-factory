@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const snapshot = getDashboardSnapshot(session.clientId);
+    const snapshot = await getDashboardSnapshot(session.clientId);
     const readiness = getStartupReadiness(snapshot);
     const context = await resolveRuntimeRequestContextAsync(request);
     const runtimeConfig = getTenantRuntimeConfigFromRequest(request);
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       runtimeConfig.ok && runtimeConfig.config
         ? runtimeConfig.config.dashboardPriorities
         : [];
-    const alerts = buildOperationalAlerts(session.clientId);
+    const alerts = await buildOperationalAlerts(session.clientId);
 
     // Si el tenant es del vertical Software Factory, añadimos alertas
     // específicas de caducidad de proyectos. La función no falla si no

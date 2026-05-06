@@ -1,4 +1,4 @@
-import { listModuleRecords } from "@/lib/erp/active-client-data-store";
+import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 
 export type Client360RelatedItem = {
   id: string;
@@ -58,13 +58,16 @@ function buildItems(
     }));
 }
 
-export function getClient360Snapshot(clientName: string, activeClientId?: string): Client360Snapshot {
-  const clientes = listModuleRecords("clientes", activeClientId);
-  const crm = listModuleRecords("crm", activeClientId);
-  const proyectos = listModuleRecords("proyectos", activeClientId);
-  const presupuestos = listModuleRecords("presupuestos", activeClientId);
-  const facturacion = listModuleRecords("facturacion", activeClientId);
-  const documentos = listModuleRecords("documentos", activeClientId);
+export async function getClient360Snapshot(clientName: string, activeClientId?: string): Promise<Client360Snapshot> {
+  const [clientes, crm, proyectos, presupuestos, facturacion, documentos] =
+    await Promise.all([
+      listModuleRecordsAsync("clientes", activeClientId),
+      listModuleRecordsAsync("crm", activeClientId),
+      listModuleRecordsAsync("proyectos", activeClientId),
+      listModuleRecordsAsync("presupuestos", activeClientId),
+      listModuleRecordsAsync("facturacion", activeClientId),
+      listModuleRecordsAsync("documentos", activeClientId),
+    ]);
 
   const clientRecord =
     clientes.find((item) => sameClient(String(item.nombre || ""), clientName)) || null;

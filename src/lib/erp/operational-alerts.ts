@@ -14,7 +14,7 @@
  * cualquier tenant; el vertical añade en su propio overview.
  */
 
-import { listModuleRecords } from "@/lib/erp/active-client-data-store";
+import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 
 export type OperationalAlertSeverity = "info" | "warn" | "danger";
 
@@ -47,22 +47,22 @@ function daysBetween(from: number, to: number): number {
   return Math.floor((to - from) / (1000 * 60 * 60 * 24));
 }
 
-function safeList(moduleKey: string, clientId: string): Array<Record<string, string>> {
+async function safeList(moduleKey: string, clientId: string): Promise<Array<Record<string, string>>> {
   try {
-    return listModuleRecords(moduleKey, clientId);
+    return await listModuleRecordsAsync(moduleKey, clientId);
   } catch {
     return [];
   }
 }
 
-export function buildOperationalAlerts(clientId: string): OperationalAlert[] {
+export async function buildOperationalAlerts(clientId: string): Promise<OperationalAlert[]> {
   if (!clientId) return [];
 
   const alerts: OperationalAlert[] = [];
   const now = Date.now();
 
   // ---- Facturas vencidas ----
-  const facturas = safeList("facturacion", clientId);
+  const facturas = await safeList("facturacion", clientId);
   for (const row of facturas) {
     const estado = normalize(row.estado);
     if (INVOICE_PAID_STATES.includes(estado)) continue;
@@ -87,7 +87,8 @@ export function buildOperationalAlerts(clientId: string): OperationalAlert[] {
   }
 
   // ---- Propuestas paradas ----
-  const propuestas = safeList("presupuestos", clientId).filter((row) =>
+  const propuestasAll = await safeList("presupuestos", clientId);
+  const propuestas = propuestasAll.filter((row) =>
     PROPOSAL_OPEN_STATES.includes(normalize(row.estado)),
   );
   for (const row of propuestas) {
@@ -111,7 +112,7 @@ export function buildOperationalAlerts(clientId: string): OperationalAlert[] {
   }
 
   // ---- Clientes inactivos ----
-  const clientes = safeList("clientes", clientId);
+  const clientes = await safeList("clientes", clientId);
   for (const row of clientes) {
     if (normalize(row.estado) !== "inactivo") continue;
 

@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const snapshot = getClient360Snapshot(clientName, session.clientId);
+    const snapshot = await getClient360Snapshot(clientName, session.clientId);
 
     return NextResponse.json({
       ok: true,

@@ -160,7 +160,7 @@ function resolveClientId(input: string): string {
   return String(input || "").trim();
 }
 
-export function getFactoryClientDetail(clientIdInput: string): FactoryClientDetailSnapshot {
+export async function getFactoryClientDetail(clientIdInput: string): Promise<FactoryClientDetailSnapshot> {
   const clientId = resolveClientId(clientIdInput);
   if (!clientId) {
     throw new Error("Falta clientId.");
@@ -427,13 +427,13 @@ export function getFactoryClientDetail(clientIdInput: string): FactoryClientDeta
       total: checks.length,
       checks,
     },
-    operational: resolveOperationalMetrics(clientId),
+    operational: await resolveOperationalMetrics(clientId),
   };
 }
 
-function resolveOperationalMetrics(clientId: string): FactoryClientDetailSnapshot["operational"] {
+async function resolveOperationalMetrics(clientId: string): Promise<FactoryClientDetailSnapshot["operational"]> {
   try {
-    const snapshot = getDashboardSnapshot(clientId);
+    const snapshot = await getDashboardSnapshot(clientId);
     return {
       totalClientes: snapshot.summary.totalClientes,
       oportunidadesAbiertas: snapshot.summary.oportunidadesAbiertas,

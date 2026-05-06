@@ -529,7 +529,7 @@ export async function executeTool(
           const snapshot = await getTenantSnapshotAsync(p.clientId);
           return JSON.stringify(snapshot, null, 2);
         }
-        const snapshot = getFactoryClientDetail(p.clientId);
+        const snapshot = await getFactoryClientDetail(p.clientId);
         return JSON.stringify(snapshot, null, 2);
       }
       case "list_verticals": {
