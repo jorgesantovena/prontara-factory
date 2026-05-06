@@ -191,6 +191,42 @@ function FactoryChatPageInner() {
     setPendingAttachments((prev) => prev.filter((a) => a.id !== id));
   }
 
+  /**
+   * Captura imágenes pegadas con Ctrl+V en el textarea (típicamente
+   * capturas de pantalla del portapapeles del SO). Cuando hay imágenes
+   * las subimos al endpoint de uploads igual que el botón del clip y
+   * cancelamos el paste por defecto para que no se inserte texto basura
+   * tipo "[object File]". Si solo hay texto, dejamos el paste nativo.
+   */
+  async function onPasteEvent(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.kind === "file" && item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          // Las imágenes pegadas suelen llamarse "image.png" sin nombre
+          // útil. Renombramos con un timestamp para que el chat las
+          // muestre identificables en el listado de adjuntos.
+          const ext = file.type.split("/")[1] || "png";
+          const renamed = new File(
+            [file],
+            "captura-" + new Date().toISOString().replace(/[:.]/g, "-") + "." + ext,
+            { type: file.type },
+          );
+          imageFiles.push(renamed);
+        }
+      }
+    }
+    if (imageFiles.length === 0) return;
+    e.preventDefault();
+    const dt = new DataTransfer();
+    for (const f of imageFiles) dt.items.add(f);
+    await onFilesSelected(dt.files);
+  }
+
   // ---- Envío del mensaje con streaming SSE ------------------------------
   async function sendMessage() {
     if (busy) return;
@@ -489,7 +525,8 @@ function FactoryChatPageInner() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={onKeyDown}
-              placeholder="Escribe lo que necesitas. Enter para enviar, Shift+Enter para salto de línea."
+              onPaste={onPasteEvent}
+              placeholder="Escribe lo que necesitas. Enter para enviar, Shift+Enter para salto de línea. Pega capturas con Ctrl+V."
               rows={2}
               style={{
                 width: "100%",
