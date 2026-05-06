@@ -19,7 +19,7 @@ import { getPersistenceBackend, withPrisma } from "@/lib/persistence/db";
 
 type ModuleRow = {
   id: string;
-  payload: Record<string, string>;
+  payloadJson: Record<string, string>;
 };
 
 function resolveClientId(clientId?: string): string {
@@ -60,7 +60,7 @@ export async function listModuleRecordsAsync(
         orderBy: { createdAt: "desc" },
       });
     });
-    return (rows || []).map((r) => ({ id: r.id, ...r.payload }));
+    return (rows || []).map((r) => ({ id: r.id, ...r.payloadJson }));
   }
   return fsList(moduleKey, clientId);
 }
@@ -100,7 +100,7 @@ export async function saveModuleRecordsAsync(
               tenantId,
               clientId: cid,
               moduleKey,
-              payload: norm,
+              payloadJson: norm,
             },
           }),
         );
@@ -145,7 +145,7 @@ export async function createModuleRecordAsync(
           tenantId: tenant?.id || cid,
           clientId: cid,
           moduleKey,
-          payload: created,
+          payloadJson: created,
         },
       });
     });
@@ -179,13 +179,13 @@ export async function updateModuleRecordAsync(
         tenantModuleRecord: {
           updateMany: (a: {
             where: { id: string; clientId: string; moduleKey: string };
-            data: { payload: Record<string, string> };
+            data: { payloadJson: Record<string, string> };
           }) => unknown;
         };
       };
       await c.tenantModuleRecord.updateMany({
         where: { id: String(recordId), clientId: cid, moduleKey },
-        data: { payload: next },
+        data: { payloadJson: next },
       });
     });
     return next;

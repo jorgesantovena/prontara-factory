@@ -251,7 +251,7 @@ async function main() {
             tenantId: tenant.id,
             clientId: tenant.clientId,
             moduleKey,
-            payload: r,
+            payloadJson: r,
           },
         }),
       );
@@ -284,7 +284,7 @@ async function main() {
             tenantId: tenant.id,
             clientId: tenant.clientId,
             moduleKey,
-            payload: r,
+            payloadJson: r,
           },
         }),
       );
