@@ -39,6 +39,7 @@ import {
   commitToGitHubPrTool,
   readGitHubFileTool,
   listGitHubDirTool,
+  softwareFactoryBillingPreviewTool,
 } from "@/lib/factory-chat/write-tools";
 
 export type ToolSchema = {
@@ -383,6 +384,25 @@ export const TOOL_SCHEMAS: ToolSchema[] = [
           description: "Rama, tag o SHA. Default 'main'.",
         },
       },
+    },
+  },
+  {
+    name: "software_factory_billing_preview",
+    description:
+      "Para tenants del vertical Software Factory: devuelve la previsión de facturación de un mes concreto (default: mes actual) cruzando partes de horas con proyectos. Solo cuenta actividades con facturable=si y facturado=no. Agrupa por cliente y proyecto, calcula importes (horas × tarifa). Útil para responder '¿qué facturas tengo pendientes este mes?' o '¿cuánto vamos a cobrar a Acme?'. Requiere clientId del tenant (no del operador Factory).",
+    input_schema: {
+      type: "object",
+      properties: {
+        clientId: {
+          type: "string",
+          description: "clientId del tenant del vertical SF (ej: estandar-20260419194129).",
+        },
+        mes: {
+          type: "string",
+          description: "Mes a consultar en formato YYYY-MM. Default: mes actual.",
+        },
+      },
+      required: ["clientId"],
     },
   },
   {
@@ -731,6 +751,12 @@ export async function executeTool(
       case "list_github_dir": {
         const result = await listGitHubDirTool(
           input as { path?: string; ref?: string },
+        );
+        return JSON.stringify(result, null, 2);
+      }
+      case "software_factory_billing_preview": {
+        const result = await softwareFactoryBillingPreviewTool(
+          input as { clientId?: string; mes?: string },
         );
         return JSON.stringify(result, null, 2);
       }

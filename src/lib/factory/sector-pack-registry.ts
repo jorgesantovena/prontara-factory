@@ -251,6 +251,21 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo", kind: "text", required: true, placeholder: "acta / backlog / entregable / técnico" },
     { moduleKey: "documentos", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
 
+    // Parte de horas (actividades) — campos explícitos.
+    { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", kind: "text", required: true, placeholder: "YYYY-MM-DD" },
+    { moduleKey: "actividades", fieldKey: "persona", label: "Persona", kind: "text", required: true, placeholder: "Quien imputa las horas" },
+    { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto", kind: "relation", required: true, relationModuleKey: "proyectos" },
+    { moduleKey: "actividades", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Qué se hizo en este tramo" },
+    { moduleKey: "actividades", fieldKey: "horas", label: "Horas", kind: "text", required: true, placeholder: "Decimal: 0.5, 1, 4, 7.5..." },
+    { moduleKey: "actividades", fieldKey: "kilometros", label: "Km", kind: "text", placeholder: "Km recorridos imputables al cliente" },
+    { moduleKey: "actividades", fieldKey: "tipoTrabajo", label: "Tipo de trabajo", kind: "text", placeholder: "desarrollo / análisis / soporte / qa / reunion / documentacion" },
+    { moduleKey: "actividades", fieldKey: "facturable", label: "Facturable", kind: "status", placeholder: "si / no — heredado del proyecto" },
+    { moduleKey: "actividades", fieldKey: "tarifaHora", label: "Tarifa €/h", kind: "text", placeholder: "Heredada del proyecto/catálogo. Sobrescribible aquí." },
+    { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado", kind: "status", placeholder: "si / no — se marca al generar factura" },
+    { moduleKey: "actividades", fieldKey: "facturaNumero", label: "Factura nº", kind: "text", placeholder: "Número de la factura donde se incluyó" },
+    { moduleKey: "actividades", fieldKey: "tareaRelacionada", label: "Tarea", kind: "text", placeholder: "Tarea asociada (opcional)" },
+    { moduleKey: "actividades", fieldKey: "notas", label: "Notas", kind: "text", placeholder: "Observaciones internas" },
+
     // Catálogo de servicios — campos del tipo de servicio.
     {
       moduleKey: "catalogo-servicios",
@@ -315,6 +330,16 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "catalogo-servicios", fieldKey: "facturablePorDefecto", label: "Facturable" },
     { moduleKey: "catalogo-servicios", fieldKey: "vigenciaMesesPorDefecto", label: "Vigencia (meses)" },
     { moduleKey: "catalogo-servicios", fieldKey: "tarifaHoraDefault", label: "€/h" },
+
+    { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", isPrimary: true },
+    { moduleKey: "actividades", fieldKey: "persona", label: "Persona" },
+    { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto" },
+    { moduleKey: "actividades", fieldKey: "concepto", label: "Concepto" },
+    { moduleKey: "actividades", fieldKey: "horas", label: "Horas" },
+    { moduleKey: "actividades", fieldKey: "kilometros", label: "Km" },
+    { moduleKey: "actividades", fieldKey: "facturable", label: "Facturable" },
+    { moduleKey: "actividades", fieldKey: "tarifaHora", label: "€/h" },
+    { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado" },
   ],
   dashboardPriorities: [
     { key: "pipeline", label: "Pipeline", description: "Valor potencial del negocio.", order: 1 },
@@ -420,18 +445,44 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { codigo: "INC-2026-008", titulo: "Error 500 al intentar borrar línea de pedido", proyecto: "ERP comercial Acme — Fase 2", reportadoPor: "Usuario admin Acme", asignado: "Pablo", severidad: "media", tipo: "bug", estado: "abierta", version: "v1.2.0", fechaApertura: "2026-04-26", descripcion: "Al intentar borrar la última línea de un pedido, el servidor devuelve 500.", solucion: "" },
     ]},
     { moduleKey: "actividades", records: [
-      { fecha: "2026-04-21", persona: "Pablo", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Implementar API REST de pedidos", concepto: "Diseño endpoints + validaciones", horas: "6", facturable: "si", tipoTrabajo: "desarrollo", notas: "" },
-      { fecha: "2026-04-22", persona: "Pablo", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Implementar API REST de pedidos", concepto: "Implementación CRUD pedidos", horas: "6", facturable: "si", tipoTrabajo: "desarrollo", notas: "" },
-      { fecha: "2026-04-22", persona: "Laura", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Diseñar modelo de datos del módulo de pedidos", concepto: "Cierre de modelo de datos + revisión con cliente", horas: "4", facturable: "si", tipoTrabajo: "analisis", notas: "Reunión con Acme para validar modelo." },
-      { fecha: "2026-04-23", persona: "Carlos", proyecto: "Integración POS Nova", tareaRelacionada: "Conectar Stripe sandbox al POS", concepto: "Implementación SDK Stripe + tests", horas: "5", facturable: "si", tipoTrabajo: "desarrollo", notas: "" },
-      { fecha: "2026-04-24", persona: "Carlos", proyecto: "Integración POS Nova", tareaRelacionada: "Conectar Stripe sandbox al POS", concepto: "Tests end-to-end de pago", horas: "5", facturable: "si", tipoTrabajo: "qa", notas: "" },
-      { fecha: "2026-04-21", persona: "Ana", proyecto: "Plataforma soporte Binary", tareaRelacionada: "Investigar causa raíz del cuelgue", concepto: "Profile de memoria + análisis del worker", horas: "4", facturable: "si", tipoTrabajo: "analisis", notas: "" },
-      { fecha: "2026-04-22", persona: "Ana", proyecto: "Plataforma soporte Binary", tareaRelacionada: "Investigar causa raíz del cuelgue", concepto: "Reproducción local del leak con datos sintéticos", horas: "4", facturable: "si", tipoTrabajo: "analisis", notas: "" },
-      { fecha: "2026-04-25", persona: "Ana", proyecto: "Plataforma soporte Binary", tareaRelacionada: "Documentar arquitectura embeddings", concepto: "Redacción del documento técnico", horas: "5", facturable: "si", tipoTrabajo: "documentacion", notas: "" },
-      { fecha: "2026-04-23", persona: "Miguel", proyecto: "Gestión taller López", tareaRelacionada: "Bug IVA descuento", concepto: "Diagnóstico del cálculo erróneo", horas: "2", facturable: "si", tipoTrabajo: "soporte", notas: "" },
-      { fecha: "2026-04-10", persona: "Miguel", proyecto: "Gestión taller López", tareaRelacionada: "Formación usuarios", concepto: "Sesión presencial 2h con mecánicos", horas: "2", facturable: "si", tipoTrabajo: "reunion", notas: "Bien recibido. Pendiente de mandar guía rápida." },
-      { fecha: "2026-04-10", persona: "Miguel", proyecto: "Gestión taller López", tareaRelacionada: "Formación usuarios", concepto: "Preparación material formativo", horas: "2", facturable: "no", tipoTrabajo: "documentacion", notas: "Trabajo interno." },
-      { fecha: "2026-04-26", persona: "Pablo", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Bug INC-2026-008", concepto: "Análisis y reproducción del error 500", horas: "1.5", facturable: "no", tipoTrabajo: "soporte", notas: "Garantía de la fase 1." },
+      // ===== Acme Labs — Fase 2 (facturable, presupuesto cerrado: NO se factura por horas, va al hito) =====
+      { fecha: "2026-04-21", persona: "Pablo", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Implementar API REST de pedidos", concepto: "Diseño endpoints + validaciones", horas: "6", kilometros: "0", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "Cubierto por presupuesto cerrado de Fase 2." },
+      { fecha: "2026-04-22", persona: "Pablo", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Implementar API REST de pedidos", concepto: "Implementación CRUD pedidos", horas: "6", kilometros: "0", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "" },
+      { fecha: "2026-04-22", persona: "Laura", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Diseñar modelo de datos del módulo de pedidos", concepto: "Cierre de modelo + revisión con cliente", horas: "4", kilometros: "120", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "analisis", notas: "Reunión presencial en Acme." },
+      // ===== Acme Labs — SOP (facturable por horas) =====
+      { fecha: "2026-04-15", persona: "Pablo", proyecto: "Soporte usuarios Acme", tareaRelacionada: "", concepto: "Resolver dudas funcionales sobre módulo facturación", horas: "1.5", kilometros: "0", facturable: "si", tarifaHora: "55", facturado: "si", facturaNumero: "FAC-TECH-035", tipoTrabajo: "soporte", notas: "" },
+      { fecha: "2026-04-22", persona: "Pablo", proyecto: "Soporte usuarios Acme", tareaRelacionada: "", concepto: "Diagnóstico problema de impresión en cliente concreto", horas: "2", kilometros: "0", facturable: "si", tarifaHora: "55", facturado: "no", facturaNumero: "", tipoTrabajo: "soporte", notas: "Pendiente de facturar este mes." },
+      // ===== Acme Labs — EVOLU mensual =====
+      { fecha: "2026-04-18", persona: "Laura", proyecto: "Evolutivo sprint mensual Acme", tareaRelacionada: "", concepto: "Mejora pantalla pedidos según feedback usuario", horas: "8", kilometros: "0", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "" },
+      { fecha: "2026-04-25", persona: "Laura", proyecto: "Evolutivo sprint mensual Acme", tareaRelacionada: "", concepto: "Filtros avanzados en listado clientes", horas: "6", kilometros: "60", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "Visita a Acme para validar UX." },
+
+      // ===== Nova Retail — Integración (facturable, presupuesto cerrado) =====
+      { fecha: "2026-04-23", persona: "Carlos", proyecto: "Integración POS Nova", tareaRelacionada: "Conectar Stripe sandbox al POS", concepto: "Implementación SDK Stripe + tests", horas: "5", kilometros: "0", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "" },
+      { fecha: "2026-04-24", persona: "Carlos", proyecto: "Integración POS Nova", tareaRelacionada: "Conectar Stripe sandbox al POS", concepto: "Tests end-to-end de pago", horas: "5", kilometros: "180", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "qa", notas: "Visita a tienda piloto Nova." },
+
+      // ===== Binary Forge — Plataforma soporte =====
+      { fecha: "2026-04-21", persona: "Ana", proyecto: "Plataforma soporte Binary", tareaRelacionada: "Investigar causa raíz del cuelgue", concepto: "Profile de memoria + análisis del worker", horas: "4", kilometros: "0", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", tipoTrabajo: "analisis", notas: "" },
+      { fecha: "2026-04-22", persona: "Ana", proyecto: "Plataforma soporte Binary", tareaRelacionada: "Investigar causa raíz del cuelgue", concepto: "Reproducción local del leak con datos sintéticos", horas: "4", kilometros: "0", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", tipoTrabajo: "analisis", notas: "" },
+      { fecha: "2026-04-25", persona: "Ana", proyecto: "Plataforma soporte Binary", tareaRelacionada: "Documentar arquitectura embeddings", concepto: "Redacción del documento técnico", horas: "5", kilometros: "0", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", tipoTrabajo: "documentacion", notas: "" },
+
+      // ===== Binary Forge — Bolsa horas correctivo (facturable contra bolsa) =====
+      { fecha: "2026-04-15", persona: "Diego", proyecto: "Bolsa horas correctivo Binary", tareaRelacionada: "", concepto: "Hotfix bug autenticación SSO", horas: "3", kilometros: "0", facturable: "si", tarifaHora: "60", facturado: "si", facturaNumero: "FAC-TECH-036", tipoTrabajo: "soporte", notas: "Resta 3h de la bolsa de 30h." },
+      { fecha: "2026-04-23", persona: "Diego", proyecto: "Bolsa horas correctivo Binary", tareaRelacionada: "", concepto: "Investigación error 500 en exportación", horas: "5", kilometros: "0", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "soporte", notas: "" },
+
+      // ===== Talleres López — Mantenimiento RGPD (cerrado, ya facturado) =====
+      { fecha: "2026-03-15", persona: "Miguel", proyecto: "Mantenimiento adaptativo López — RGPD", tareaRelacionada: "", concepto: "Análisis requisitos RGPD nuevos", horas: "4", kilometros: "40", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-033", tipoTrabajo: "analisis", notas: "" },
+      { fecha: "2026-03-20", persona: "Miguel", proyecto: "Mantenimiento adaptativo López — RGPD", tareaRelacionada: "", concepto: "Implementación módulo consentimientos", horas: "8", kilometros: "0", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-033", tipoTrabajo: "desarrollo", notas: "" },
+      { fecha: "2026-04-05", persona: "Miguel", proyecto: "Mantenimiento adaptativo López — RGPD", tareaRelacionada: "", concepto: "Tests + entrega + documentación", horas: "4", kilometros: "40", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-033", tipoTrabajo: "qa", notas: "Cierre del proyecto." },
+
+      // ===== Talleres López — Bolsa correctivo (sin facturar todavía) =====
+      { fecha: "2026-04-23", persona: "Miguel", proyecto: "Bolsa horas correctivo López", tareaRelacionada: "Bug IVA descuento", concepto: "Diagnóstico cálculo erróneo IVA", horas: "2", kilometros: "40", facturable: "si", tarifaHora: "55", facturado: "no", facturaNumero: "", tipoTrabajo: "soporte", notas: "Visita al taller." },
+
+      // ===== Talleres López — Formación cerrada y facturada =====
+      { fecha: "2026-04-10", persona: "Miguel", proyecto: "Formación usuarios López", tareaRelacionada: "", concepto: "Sesión presencial 2h con mecánicos", horas: "2", kilometros: "60", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-034", tipoTrabajo: "reunion", notas: "Bien recibido." },
+      { fecha: "2026-04-08", persona: "Miguel", proyecto: "Formación usuarios López", tareaRelacionada: "", concepto: "Preparación material formativo", horas: "2", kilometros: "0", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", tipoTrabajo: "documentacion", notas: "Preparación interna no facturable al cliente." },
+
+      // ===== Imputación a proyecto MANT (no facturable nunca) =====
+      { fecha: "2026-04-26", persona: "Pablo", proyecto: "Mantenimiento anual Acme", tareaRelacionada: "", concepto: "Bug error 500 al borrar línea de pedido", horas: "1.5", kilometros: "0", facturable: "no", tarifaHora: "55", facturado: "no", facturaNumero: "", tipoTrabajo: "soporte", notas: "Bug propio cubierto por mantenimiento." },
     ]},
     { moduleKey: "versiones", records: [
       { version: "v1.0.0", proyecto: "ERP comercial Acme — Fase 2", tipo: "major", estado: "publicada", fechaPrevista: "2026-02-15", fechaEntrega: "2026-02-18", responsable: "Laura", notasRelease: "Primera versión productiva. Módulos: clientes, productos, facturación básica.", entornos: "Pro Acme" },

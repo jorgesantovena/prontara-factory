@@ -34,6 +34,10 @@ import {
   type ListGitHubDirResult,
 } from "@/lib/factory-chat/github-pr";
 import {
+  getMonthlyBillingPreview,
+  type BillingPreview,
+} from "@/lib/verticals/software-factory/billing-preview";
+import {
   regenerateTenantByClientId,
   invalidateFactoryCaches,
 } from "@/lib/saas/tenant-regeneration";
@@ -873,4 +877,27 @@ export async function listGitHubDirTool(
 ): Promise<ListGitHubDirResult> {
   const path = String(input.path || "").trim() || "src";
   return listGitHubDir({ path, ref: input.ref });
+}
+
+// ---------------------------------------------------------------------------
+// software_factory_billing_preview — previsión de facturación del mes
+// ---------------------------------------------------------------------------
+
+export type SoftwareFactoryBillingPreviewInput = {
+  clientId?: string;
+  mes?: string;
+};
+
+/**
+ * Read-only — no requiere audit. Cruza actividades + proyectos + catálogo
+ * para listar las horas que están pendientes de facturar este mes
+ * (facturable=si, facturado=no), agrupadas por cliente y proyecto, con
+ * importes calculados.
+ */
+export async function softwareFactoryBillingPreviewTool(
+  input: SoftwareFactoryBillingPreviewInput,
+): Promise<BillingPreview> {
+  const clientId = String(input.clientId || "").trim();
+  if (!clientId) throw new Error("Falta clientId.");
+  return getMonthlyBillingPreview(clientId, input.mes);
 }

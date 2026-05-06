@@ -6,6 +6,7 @@ import { getStartupReadiness } from "@/lib/erp/startup-readiness";
 import { resolveRuntimeRequestContextAsync } from "@/lib/saas/runtime-request-context-async";
 import { getTenantRuntimeConfigFromRequest } from "@/lib/saas/tenant-runtime-config";
 import { buildOperationalAlerts } from "@/lib/erp/operational-alerts";
+import { buildSoftwareFactoryAlertsAsync } from "@/lib/verticals/software-factory/alerts";
 import { getOrCreateTrialState } from "@/lib/saas/trial-store";
 import { checkTenantSubscription } from "@/lib/saas/subscription-guard";
 
@@ -41,6 +42,21 @@ export async function GET(request: NextRequest) {
         ? runtimeConfig.config.dashboardPriorities
         : [];
     const alerts = buildOperationalAlerts(session.clientId);
+
+    // Si el tenant es del vertical Software Factory, añadimos alertas
+    // específicas de caducidad de proyectos. La función no falla si no
+    // hay módulo proyectos o no hay datos — devuelve array vacío.
+    const isSoftwareFactory =
+      String(context.tenant?.businessType || "").toLowerCase() ===
+      "software-factory";
+    if (isSoftwareFactory) {
+      try {
+        const sfAlerts = await buildSoftwareFactoryAlertsAsync(session.clientId);
+        alerts.push(...sfAlerts);
+      } catch {
+        // Si falla el cálculo de alertas SF, dejamos las genéricas y seguimos.
+      }
+    }
 
     // Estado del trial. El tenant-guard marca `active | expired`; para la
     // UI también exponemos días restantes y fecha de expiración.
