@@ -43,19 +43,19 @@ export async function GET(request: NextRequest) {
         : [];
     const alerts = await buildOperationalAlerts(session.clientId);
 
-    // Si el tenant es del vertical Software Factory, añadimos alertas
-    // específicas de caducidad de proyectos. La función no falla si no
-    // hay módulo proyectos o no hay datos — devuelve array vacío.
-    const isSoftwareFactory =
-      String(context.tenant?.businessType || "").toLowerCase() ===
-      "software-factory";
-    if (isSoftwareFactory) {
-      try {
-        const sfAlerts = await buildSoftwareFactoryAlertsAsync(session.clientId);
-        alerts.push(...sfAlerts);
-      } catch {
-        // Si falla el cálculo de alertas SF, dejamos las genéricas y seguimos.
-      }
+    // Alertas de caducidad de proyectos. Originalmente se ejecutaban solo
+    // cuando context.tenant.businessType === "software-factory", pero ese
+    // gate dejaba sin avisos a tenants donde el campo businessType venía
+    // vacío del Postgres (eg. dataset migrado en frío) aunque sí tuvieran
+    // proyectos con fechaCaducidad. La función `buildSoftwareFactoryAlertsAsync`
+    // ya es defensiva: si el módulo `proyectos` no existe o ningún registro
+    // tiene fechaCaducidad, devuelve array vacío. Por eso es seguro
+    // ejecutarla siempre.
+    try {
+      const sfAlerts = await buildSoftwareFactoryAlertsAsync(session.clientId);
+      alerts.push(...sfAlerts);
+    } catch {
+      // Si falla el cálculo de alertas SF, dejamos las genéricas y seguimos.
     }
 
     // Estado del trial. El tenant-guard marca `active | expired`; para la

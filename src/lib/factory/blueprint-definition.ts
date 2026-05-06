@@ -50,6 +50,11 @@ export type BlueprintTextConfig = {
   emptyStateMap: Record<string, string>;
 };
 
+export type BlueprintFieldOption = {
+  value: string;
+  label: string;
+};
+
 export type BlueprintFieldConfig = {
   moduleKey: string;
   fieldKey: string;
@@ -58,6 +63,7 @@ export type BlueprintFieldConfig = {
   required?: boolean;
   relationModuleKey?: string;
   placeholder?: string;
+  options?: BlueprintFieldOption[];
 };
 
 export type BlueprintDemoDataConfig = {

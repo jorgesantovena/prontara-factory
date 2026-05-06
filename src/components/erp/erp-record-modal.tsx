@@ -219,6 +219,27 @@ export default function ErpRecordModal({
                   </option>
                 ))}
               </select>
+            ) : field.kind === "status" && field.options && field.options.length > 0 ? (
+              <select
+                value={values[field.key] || ""}
+                onChange={(event) => updateField(field.key, event.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 12px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: 8,
+                  fontSize: 14,
+                  background: "#ffffff",
+                  boxSizing: "border-box",
+                }}
+              >
+                <option value="">— Selecciona —</option>
+                {field.options.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             ) : (
               <input
                 type={

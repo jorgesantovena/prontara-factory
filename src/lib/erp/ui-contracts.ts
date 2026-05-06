@@ -9,6 +9,11 @@ export type UiFieldKind =
   | "status"
   | "relation";
 
+export type UiFieldOption = {
+  value: string;
+  label: string;
+};
+
 export type UiFieldDefinition = {
   key: string;
   label: string;
@@ -16,6 +21,7 @@ export type UiFieldDefinition = {
   required?: boolean;
   placeholder?: string;
   relationModuleKey?: string;
+  options?: UiFieldOption[];
 };
 
 export type UiModuleContract = {

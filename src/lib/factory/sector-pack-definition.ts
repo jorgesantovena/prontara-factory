@@ -7,6 +7,11 @@ export type SectorPackEntity = {
   relatedTo?: string[];
 };
 
+export type SectorPackFieldOption = {
+  value: string;
+  label: string;
+};
+
 export type SectorPackField = {
   moduleKey: string;
   fieldKey: string;
@@ -15,6 +20,7 @@ export type SectorPackField = {
   required?: boolean;
   relationModuleKey?: string;
   placeholder?: string;
+  options?: SectorPackFieldOption[];
 };
 
 export type SectorPackTableColumn = {

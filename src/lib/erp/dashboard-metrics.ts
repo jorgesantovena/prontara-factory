@@ -99,7 +99,12 @@ export async function getDashboardSnapshot(clientId?: string): Promise<Dashboard
   const facturasPendientes = countByStatus(facturacion, ["emitida", "pendiente", "vencida"]);
 
   const pipelineAbierto = crm.reduce((acc, item) => {
-    return acc + moneyToNumber(String(item.importe || item.valor || "0"));
+    // El schema de CRM usa `valorEstimado` (ver module-schemas.ts). Mantenemos
+    // los fallbacks `importe` y `valor` para tenants legacy o packs que usen
+    // otro nombre de campo.
+    return acc + moneyToNumber(
+      String(item.valorEstimado || item.importe || item.valor || "0"),
+    );
   }, 0);
 
   const metrics: DashboardMetric[] = [

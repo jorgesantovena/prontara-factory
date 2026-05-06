@@ -542,6 +542,7 @@ export default function GenericModuleRuntimePage({
             required?: boolean;
             relationModuleKey?: string;
             placeholder?: string;
+            options?: Array<{ value: string; label: string }>;
           }>
         }
         initialValue={modalMode === "edit" ? selected : null}
