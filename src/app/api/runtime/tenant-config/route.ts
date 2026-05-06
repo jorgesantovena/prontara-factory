@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getTenantRuntimeConfigFromRequest } from "@/lib/saas/tenant-runtime-config";
+import { resolveRequestTenantRuntimeAsync } from "@/lib/saas/request-tenant-runtime-async";
 
 export async function GET(request: NextRequest) {
   try {
-    const result = getTenantRuntimeConfigFromRequest(request);
+    const result = await resolveRequestTenantRuntimeAsync(request);
 
     if (!result.ok || !result.config) {
       return NextResponse.json(
