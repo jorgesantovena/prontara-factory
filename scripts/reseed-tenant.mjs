@@ -40,8 +40,42 @@ import { randomUUID, createHash } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
 
+// Auto-carga DATABASE_URL desde .env.local o .env si no está en process.env.
+// Eso evita tener que pegar la URL cada vez en consola.
+function loadDatabaseUrlFromEnvFiles() {
+  if (process.env.DATABASE_URL) return;
+  const candidates = [".env.local", ".env"];
+  for (const file of candidates) {
+    const filePath = resolve(process.cwd(), file);
+    if (!existsSync(filePath)) continue;
+    const content = readFileSync(filePath, "utf8");
+    for (const rawLine of content.split(/\r?\n/)) {
+      const line = rawLine.trim();
+      if (!line || line.startsWith("#")) continue;
+      const m = line.match(/^DATABASE_URL\s*=\s*(.*)$/);
+      if (!m) continue;
+      let value = m[1].trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      if (value) {
+        process.env.DATABASE_URL = value;
+        console.log("[reseed] DATABASE_URL leída de " + file);
+        return;
+      }
+    }
+  }
+}
+
+loadDatabaseUrlFromEnvFiles();
+
 if (!process.env.DATABASE_URL) {
-  console.error("[reseed] Falta DATABASE_URL.");
+  console.error(
+    "[reseed] No encuentro DATABASE_URL ni en process.env ni en .env.local ni en .env. Añádela a .env.local antes de seguir.",
+  );
   process.exit(1);
 }
 const clientId = String(process.env.PRONTARA_RESEED_CLIENT_ID || "").trim();
