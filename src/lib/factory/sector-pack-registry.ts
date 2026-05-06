@@ -191,6 +191,7 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     documentos: "Entregables",
     ajustes: "Ajustes",
     asistente: "Asistente",
+    "catalogo-servicios": "Catálogo de servicios",
   },
   renameMap: {
     proyecto: "proyecto",
@@ -215,12 +216,23 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "mantenimientos", enabled: true, label: "Mantenimientos", navigationLabel: "Mantenimientos", emptyState: "Sin contratos de mantenimiento activos." },
     { moduleKey: "justificantes", enabled: true, label: "Justificantes", navigationLabel: "Justificantes", emptyState: "Sin justificantes emitidos." },
     { moduleKey: "descripciones-proyecto", enabled: true, label: "Descripción del proyecto", navigationLabel: "Descripción", emptyState: "Sin descripción técnica del proyecto." },
+    // Catálogo de tipos de servicio (líneas estándar contratables: INST, MANT, NUEDES, SOP, FORM, ...)
+    { moduleKey: "catalogo-servicios", enabled: true, label: "Catálogo de servicios", navigationLabel: "Catálogo", emptyState: "Aún no hay tipos de servicio definidos." },
   ],
   entities: [
     { key: "cliente", label: "Cliente", description: "Cliente de la software factory.", moduleKey: "clientes", primaryFields: ["nombre", "email", "telefono"], relatedTo: ["oportunidad", "proyecto", "propuesta", "factura", "entregable"] },
     { key: "oportunidad", label: "Oportunidad", description: "Seguimiento comercial.", moduleKey: "crm", primaryFields: ["empresa", "contacto", "fase", "valor"], relatedTo: ["cliente", "propuesta"] },
     { key: "proyecto", label: "Proyecto", description: "Proyecto técnico en marcha.", moduleKey: "proyectos", primaryFields: ["nombre", "cliente", "responsable", "estado"], relatedTo: ["cliente", "entregable", "factura"] },
     { key: "entregable", label: "Entregable", description: "Documento o entregable del proyecto.", moduleKey: "documentos", primaryFields: ["nombre", "tipo", "cliente"], relatedTo: ["cliente", "proyecto"] },
+    {
+      key: "tipoServicio",
+      label: "Tipo de servicio",
+      description:
+        "Línea de servicio estándar que se asigna a clientes (INST, MANT, NUEDES, SOP, FORM, etc.). Define defaults de facturación y vigencia que cada proyecto cliente hereda y puede sobrescribir.",
+      moduleKey: "catalogo-servicios",
+      primaryFields: ["codigo", "descripcion", "facturablePorDefecto"],
+      relatedTo: ["proyecto"],
+    },
   ],
   fields: [
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Proyecto", kind: "text", required: true, placeholder: "ERP comercial, integración API..." },
@@ -231,6 +243,53 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "documentos", fieldKey: "nombre", label: "Entregable", kind: "text", required: true, placeholder: "Acta, backlog, documentación..." },
     { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo", kind: "text", required: true, placeholder: "acta / backlog / entregable / técnico" },
     { moduleKey: "documentos", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
+
+    // Catálogo de servicios — campos del tipo de servicio.
+    {
+      moduleKey: "catalogo-servicios",
+      fieldKey: "codigo",
+      label: "Código",
+      kind: "text",
+      required: true,
+      placeholder: "INST, MANT, NUEDES, SOP, FORM, VERIFACTU, ...",
+    },
+    {
+      moduleKey: "catalogo-servicios",
+      fieldKey: "descripcion",
+      label: "Descripción",
+      kind: "text",
+      required: true,
+      placeholder: "Descripción del servicio que se factura/imputa.",
+    },
+    {
+      moduleKey: "catalogo-servicios",
+      fieldKey: "facturablePorDefecto",
+      label: "Facturable por defecto",
+      kind: "status",
+      required: true,
+      placeholder: "si / no",
+    },
+    {
+      moduleKey: "catalogo-servicios",
+      fieldKey: "vigenciaMesesPorDefecto",
+      label: "Vigencia (meses)",
+      kind: "text",
+      placeholder: "12 — meses por defecto desde alta hasta caducidad",
+    },
+    {
+      moduleKey: "catalogo-servicios",
+      fieldKey: "tarifaHoraDefault",
+      label: "Tarifa €/h por defecto",
+      kind: "text",
+      placeholder: "55 — tarifa por hora si el proyecto no tiene override",
+    },
+    {
+      moduleKey: "catalogo-servicios",
+      fieldKey: "notas",
+      label: "Notas internas",
+      kind: "text",
+      placeholder: "Cuándo aplica, casuísticas, condiciones...",
+    },
   ],
   tableColumns: [
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Proyecto", isPrimary: true },
@@ -239,6 +298,12 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "proyectos", fieldKey: "estado", label: "Estado" },
     { moduleKey: "documentos", fieldKey: "nombre", label: "Entregable", isPrimary: true },
     { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
+
+    { moduleKey: "catalogo-servicios", fieldKey: "codigo", label: "Código", isPrimary: true },
+    { moduleKey: "catalogo-servicios", fieldKey: "descripcion", label: "Descripción" },
+    { moduleKey: "catalogo-servicios", fieldKey: "facturablePorDefecto", label: "Facturable" },
+    { moduleKey: "catalogo-servicios", fieldKey: "vigenciaMesesPorDefecto", label: "Vigencia (meses)" },
+    { moduleKey: "catalogo-servicios", fieldKey: "tarifaHoraDefault", label: "€/h" },
   ],
   dashboardPriorities: [
     { key: "pipeline", label: "Pipeline", description: "Valor potencial del negocio.", order: 1 },
@@ -346,6 +411,19 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { numero: "JUS-2026-002", proyecto: "ERP comercial Acme", fecha: "2026-03-31", personaResponsable: "Laura", personaCliente: "Acme — Laura Martín", horas: "60", trabajos: "Reportes mensuales de ventas, exportación a Excel, ajustes UX. Entrega de v1.1.0.", version: "v1.1.0", estado: "firmado", notas: "" },
       { numero: "JUS-2026-003", proyecto: "Gestión taller López", fecha: "2026-04-08", personaResponsable: "Miguel", personaCliente: "Talleres López — Roberto López", horas: "32", trabajos: "Implementación del portal cliente con nuevo logo y mejora del módulo de órdenes de trabajo. Formación de 2h a mecánicos. Entrega v2.1.0.", version: "v2.1.0", estado: "firmado", notas: "" },
       { numero: "JUS-2026-004", proyecto: "Plataforma soporte Binary", fecha: "2026-04-25", personaResponsable: "Ana", personaCliente: "Binary Forge — Diego Peña", horas: "26", trabajos: "Análisis y diagnóstico del memory leak del worker de embeddings. Documentación de arquitectura. Pendiente publicar hotfix v0.3.2.", version: "", estado: "enviado", notas: "Pendiente firma del cliente." },
+    ]},
+    { moduleKey: "catalogo-servicios", records: [
+      { codigo: "INST", descripcion: "Servicios de Actualización e Instalación de Software", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Onboarding inicial incluido en el contrato. Versiones puntuales puntuales por petición." },
+      { codigo: "MANT", descripcion: "Servicios de Mantenimiento contra errores de programación", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Cubierto por la cuota mensual. Bugs introducidos por nosotros. NO cubre nuevos desarrollos ni cambios de alcance." },
+      { codigo: "NUEDES", descripcion: "Servicios de Desarrollo de nuevos módulos/funcionalidades", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "60", notas: "Funcionalidad nueva pedida por el cliente. Se factura por horas." },
+      { codigo: "SOP", descripcion: "Soporte a usuarios", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Asistencia funcional a usuarios finales. Tickets, dudas, formación puntual. Bolsa de horas o por uso." },
+      { codigo: "FORM", descripcion: "Formación a usuarios", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "6", tarifaHoraDefault: "65", notas: "Sesiones de formación presencial u online. Material formativo. Suele facturarse por jornada." },
+      { codigo: "VERIFACTU", descripcion: "Adaptación a Veri*factu (AEAT)", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Adaptación al sistema Veri*factu de la AEAT. Incluido en mantenimiento si el cliente está al día con cuotas." },
+      { codigo: "SOPV", descripcion: "Soporte vConta (módulo contabilidad)", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Soporte específico del módulo de contabilidad vConta. Por uso." },
+      { codigo: "SERPRE", descripcion: "Servicios de Desarrollo contra Presupuesto", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "60", notas: "Servicio cerrado por presupuesto fijo. Las horas no se facturan en línea — se factura el presupuesto entero al cierre del hito." },
+      { codigo: "FASE_I", descripcion: "Servicios de Desarrollo de fase de proyecto cerrado", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "0", tarifaHoraDefault: "60", notas: "Iniciativa concreta con kickoff y deliverable final. Vigencia 0 = vinculada al cierre de fase, no a fecha." },
+      { codigo: "BOLSA", descripcion: "Bolsa de horas prepagada", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Bolsa prepagada. Las horas imputadas restan saldo. Cuando se agota, se renueva o se factura el sobreconsumo." },
+      { codigo: "EVOLU", descripcion: "Mantenimiento evolutivo (sprint mensual)", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "1", tarifaHoraDefault: "60", notas: "Sprint mensual de mejoras priorizadas con el cliente. Renovación mensual." },
     ]},
     { moduleKey: "descripciones-proyecto", records: [
       { proyecto: "ERP comercial Acme", objetivoNegocio: "Sustituir el ERP heredado de Acme (Navision 2010) por una solución moderna que permita escalar el negocio comercial sin la deuda técnica actual y reducir el tiempo de cierre mensual de 5 días a 1.", alcance: "Entra: módulos de clientes, productos, pedidos, facturación, reportes mensuales y exportación a contabilidad. NO entra: e-commerce, integración con Amazon, ni RRHH (lo gestionan en Sage).", restricciones: "Migración de 8 años de histórico desde Navision. Calendario condicionado al cierre fiscal de junio.", equipo: "Project lead: Laura. Devs: Pablo + freelance externo (4h/sem). QA: equipo de Acme.", riesgos: "1) Datos heredados con inconsistencias (alto). 2) Disponibilidad limitada del usuario clave de Acme (medio). 3) Integración con Sage no probada (medio).", estadoSituacional: "verde", ultimaActualizacion: "2026-04-22" },
