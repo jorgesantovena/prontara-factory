@@ -1,4 +1,19 @@
-export type TenantAccountRole = "owner" | "admin" | "manager" | "staff";
+/**
+ * Roles soportados por las cuentas del runtime del tenant.
+ *
+ * - owner / admin / manager / staff: roles operativos internos del tenant.
+ * - clienteFinal (SF-11): rol restringido pensado para que un cliente del
+ *   tenant (no el operador) entre a un portal limitado a ver SUS propios
+ *   justificantes. El filtrado se hace por match entre `fullName` de la
+ *   cuenta y el campo `cliente` del registro. Sin acceso a clientes,
+ *   proyectos, facturación ni catálogo.
+ */
+export type TenantAccountRole =
+  | "owner"
+  | "admin"
+  | "manager"
+  | "staff"
+  | "clienteFinal";
 export type TenantAccountStatus = "pending" | "active" | "disabled";
 
 export type TenantAccountRecord = {

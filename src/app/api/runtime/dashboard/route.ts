@@ -7,6 +7,7 @@ import { resolveRuntimeRequestContextAsync } from "@/lib/saas/runtime-request-co
 import { getTenantRuntimeConfigFromRequest } from "@/lib/saas/tenant-runtime-config";
 import { buildOperationalAlerts } from "@/lib/erp/operational-alerts";
 import { buildSoftwareFactoryAlertsAsync } from "@/lib/verticals/software-factory/alerts";
+import { getSoftwareFactoryKpisAsync } from "@/lib/verticals/software-factory/dashboard-kpis";
 import { getOrCreateTrialState } from "@/lib/saas/trial-store";
 import { checkTenantSubscriptionAsync } from "@/lib/saas/subscription-guard";
 
@@ -88,6 +89,23 @@ export async function GET(request: NextRequest) {
         }
       : null;
 
+    // SF-09: KPIs específicos del vertical software-factory. Solo se calculan
+    // si el tenant es de ese vertical; en otros casos kpisVertical = null
+    // para que el front pueda hacer un null check único.
+    const businessType = String(
+      context.tenant?.businessType || context.config?.businessType || "",
+    )
+      .trim()
+      .toLowerCase();
+    let kpisVertical: Awaited<ReturnType<typeof getSoftwareFactoryKpisAsync>> | null = null;
+    if (businessType === "software-factory") {
+      try {
+        kpisVertical = await getSoftwareFactoryKpisAsync(session.clientId);
+      } catch {
+        kpisVertical = null;
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       tenant: {
@@ -100,6 +118,7 @@ export async function GET(request: NextRequest) {
           null,
         shortName: context.branding?.shortName || null,
         accentColor: context.branding?.accentColor || null,
+        businessType: businessType || null,
       },
       snapshot,
       readiness,
@@ -107,6 +126,7 @@ export async function GET(request: NextRequest) {
       alerts,
       trial,
       subscription,
+      kpisVertical,
     });
   } catch (error) {
     return NextResponse.json(

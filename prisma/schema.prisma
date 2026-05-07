@@ -236,6 +236,47 @@ model TenantModuleRecord {
 }
 
 // ===========================================================================
+// Verifactu / AEAT — registro de envíos (SF-12, stub).
+//
+// Cada factura emitida desde el módulo "facturacion" puede generar un
+// VerifactuSubmission cuando el operador pulsa "Verifactu" en la fila.
+// El registro guarda el XML preparado, el estado del envío y, cuando
+// AEAT responda, el CSV/huella y los datos del QR para insertar en el
+// PDF de la factura.
+//
+// status:
+//   - prepared: payload generado, pendiente de firmar y enviar
+//   - sent:     enviado a AEAT, respuesta OK con CSV
+//   - error:    fallo al enviar — errorMsg con detalle
+//
+// La firma XML-DSig y el envío al web service AEAT son trabajo de
+// integración real (requieren certificado de la sociedad). Hoy el flujo
+// llega hasta status="prepared" y deja el resto como TODO documentado
+// en docs/verifactu-pendientes.md.
+// ===========================================================================
+
+model VerifactuSubmission {
+  id                     String   @id @default(cuid())
+  tenantId               String
+  clientId               String
+  /// id del registro en el módulo "facturacion" (TenantModuleRecord.id)
+  facturaModuleRecordId  String
+  /// número de factura visible (ej. FAC-2026-001), copiado para auditoría
+  facturaNumero          String
+  status                 String   /// prepared | sent | error
+  xmlPayload             String   /// XML preparado (sin firmar). En postgres es text.
+  csvHuella              String?  /// CSV devuelto por AEAT cuando status=sent
+  qrPayload              String?  /// URL/contenido para QR a embeber en PDF
+  errorMsg               String?
+  createdAt              DateTime @default(now())
+  sentAt                 DateTime?
+
+  @@index([clientId, createdAt])
+  @@index([facturaModuleRecordId])
+  @@index([status, createdAt])
+}
+
+// ===========================================================================
 // Numeración correlativa por tenant + año (SF-01)
 //
 // Mantiene contadores correlativos para facturas, presupuestos y
