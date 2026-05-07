@@ -679,6 +679,16 @@ const GIMNASIO_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text", placeholder: "Cuota mensual abril" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "39 EUR" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "emitida / cobrada / vencida" },
+
+    // Bonos y packs (presupuestos) — SF-19.
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº bono", kind: "text", placeholder: "Déjalo vacío y se autoasigna PRES-YYYY-NNN" },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Socio", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Bono 10 sesiones personal" },
+    { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "350 EUR" },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / agotado", options: [
+      { value: "activo", label: "Activo" },
+      { value: "agotado", label: "Agotado" },
+    ] },
   ],
   tableColumns: [
     { moduleKey: "clientes", fieldKey: "nombre", label: "Socio", isPrimary: true },
@@ -692,6 +702,13 @@ const GIMNASIO_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Socio" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
+
+    // Bonos y packs (presupuestos) — SF-19.
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº", isPrimary: true },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Socio" },
+    { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto" },
+    { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe" },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
   ],
   dashboardPriorities: [
     { key: "clientes", label: "Socios activos", description: "Socios al día con su cuota.", order: 1 },
@@ -833,6 +850,16 @@ const PELUQUERIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text", placeholder: "Corte y peinado + producto" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "45 EUR" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "emitido / cobrado / pendiente" },
+
+    // Bonos (presupuestos) — SF-19.
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº bono", kind: "text", placeholder: "Déjalo vacío y se autoasigna PRES-YYYY-NNN" },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Bono 10 lavados + peinados" },
+    { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "150 EUR" },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / agotado", options: [
+      { value: "activo", label: "Activo" },
+      { value: "agotado", label: "Agotado" },
+    ] },
   ],
   tableColumns: [
     { moduleKey: "clientes", fieldKey: "nombre", label: "Cliente", isPrimary: true },
@@ -847,6 +874,13 @@ const PELUQUERIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
+
+    // Bonos (presupuestos) — SF-19.
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº", isPrimary: true },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Cliente" },
+    { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto" },
+    { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe" },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
   ],
   dashboardPriorities: [
     { key: "proyectos", label: "Citas de hoy", description: "Citas agendadas para hoy.", order: 1 },
@@ -1175,6 +1209,17 @@ const COLEGIO_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text", placeholder: "Cuota mensual + comedor + transporte" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "320 EUR" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "emitido / cobrado / vencido / devuelto" },
+
+    // Servicios complementarios (presupuestos) — SF-19.
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº servicio", kind: "text", placeholder: "Déjalo vacío y se autoasigna PRES-YYYY-NNN" },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Familia", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Comedor + transporte" },
+    { moduleKey: "presupuestos", fieldKey: "precio_mensual", label: "Precio mensual", kind: "money", required: true, placeholder: "180 EUR" },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / suspendido / baja", options: [
+      { value: "activo", label: "Activo" },
+      { value: "suspendido", label: "Suspendido" },
+      { value: "baja", label: "Baja" },
+    ] },
   ],
   tableColumns: [
     { moduleKey: "clientes", fieldKey: "nombre", label: "Familia / Alumno", isPrimary: true },
@@ -1189,6 +1234,13 @@ const COLEGIO_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Familia" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
+
+    // Servicios complementarios (presupuestos) — SF-19.
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº", isPrimary: true },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Familia" },
+    { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto" },
+    { moduleKey: "presupuestos", fieldKey: "precio_mensual", label: "Precio mensual" },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
   ],
   dashboardPriorities: [
     { key: "clientes", label: "Familias matriculadas", description: "Familias activas en el centro.", order: 1 },

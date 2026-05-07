@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 /**
  * Botón "Emitir mes" para el módulo de facturas del vertical Software
@@ -43,6 +43,34 @@ export default function EmitMonthlyButton({ onAfterEmit }: { onAfterEmit?: () =>
   const [mes, setMes] = useState<string>(buildPreviousMonth());
   const [feedback, setFeedback] = useState<string | null>(null);
   const [feedbackKind, setFeedbackKind] = useState<"ok" | "error" | "info">("info");
+  // SF-18: el botón solo aplica al vertical software-factory (cruza
+  // módulo "actividades" inexistente en los demás packs). Hasta que
+  // sepamos el businessType del tenant logueado, no renderizamos nada
+  // para evitar el flash de un botón que va a desaparecer.
+  const [businessType, setBusinessType] = useState<string | null>(null);
+  const [businessTypeLoaded, setBusinessTypeLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch("/api/runtime/tenant-config", {
+          cache: "no-store",
+        });
+        const data = await response.json();
+        if (cancelled) return;
+        const bt = String(data?.config?.businessType || "").trim().toLowerCase();
+        setBusinessType(bt || null);
+      } catch {
+        if (!cancelled) setBusinessType(null);
+      } finally {
+        if (!cancelled) setBusinessTypeLoaded(true);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function handleEmit() {
     const confirmed = window.confirm(
@@ -110,6 +138,11 @@ export default function EmitMonthlyButton({ onAfterEmit }: { onAfterEmit?: () =>
         ? { border: "#fecaca", bg: "#fef2f2", color: "#991b1b" }
         : { border: "#bfdbfe", bg: "#eff6ff", color: "#1e3a8a" };
 
+  // SF-18: render condicional. Hasta que sepamos el businessType, no
+  // pintamos nada; si no es software-factory, tampoco.
+  if (!businessTypeLoaded) return null;
+  if (businessType !== "software-factory") return null;
+
   return (
     <div style={{ display: "grid", gap: 8, justifyItems: "end" }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -138,6 +171,29 @@ export default function EmitMonthlyButton({ onAfterEmit }: { onAfterEmit?: () =>
             }}
           />
         </label>
+        <a
+          href={mes ? "/api/erp/billing-export?mes=" + encodeURIComponent(mes) + "&format=csv" : "#"}
+          onClick={(event) => {
+            if (!mes) event.preventDefault();
+          }}
+          download
+          style={{
+            border: "1px solid #d1d5db",
+            borderRadius: 8,
+            background: "#ffffff",
+            color: "#374151",
+            padding: "10px 14px",
+            cursor: mes ? "pointer" : "not-allowed",
+            fontWeight: 600,
+            fontSize: 13,
+            textDecoration: "none",
+            whiteSpace: "nowrap",
+            opacity: mes ? 1 : 0.5,
+          }}
+          title="Descarga un CSV con todas las horas pendientes de facturar del mes seleccionado"
+        >
+          Descargar CSV
+        </a>
         <button
           type="button"
           onClick={handleEmit}
