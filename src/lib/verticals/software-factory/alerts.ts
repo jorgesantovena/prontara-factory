@@ -11,6 +11,7 @@
  */
 import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 import { buildProjectExpirationAlerts } from "@/lib/verticals/software-factory/project-expiration";
+import { getBolsasSaldoAsync } from "@/lib/verticals/software-factory/bolsa-saldo";
 import type { OperationalAlert } from "@/lib/erp/operational-alerts";
 
 /**
@@ -73,6 +74,56 @@ export async function buildSoftwareFactoryAlertsAsync(
         href: "/proyectos",
       });
     }
+  }
+
+  // SF-06: alertas de bolsa de horas. Solo emitimos para warn/depleted —
+  // ok y watch quedan como información en /proyectos pero no notifican.
+  try {
+    const bolsas = await getBolsasSaldoAsync(clientId);
+    for (const bolsa of bolsas) {
+      if (bolsa.horasTotales <= 0) continue; // bolsa sin total definido — no se puede calcular saldo
+      if (bolsa.severidad === "depleted") {
+        out.push({
+          key: "sf-bolsa-agotada-" + bolsa.proyectoId,
+          severity: "danger",
+          title:
+            "Bolsa agotada: " +
+            bolsa.proyecto +
+            " (" +
+            bolsa.cliente +
+            ")",
+          detail:
+            "Consumidas " +
+            bolsa.horasConsumidas +
+            "h de " +
+            bolsa.horasTotales +
+            "h contratadas. Renueva o emite ampliación antes de imputar más horas.",
+          href: "/proyectos",
+        });
+      } else if (bolsa.severidad === "warn") {
+        out.push({
+          key: "sf-bolsa-baja-" + bolsa.proyectoId,
+          severity: "warn",
+          title:
+            "Bolsa casi agotada: " +
+            bolsa.proyecto +
+            " (" +
+            bolsa.cliente +
+            ")",
+          detail:
+            "Quedan " +
+            bolsa.horasRestantes +
+            "h de " +
+            bolsa.horasTotales +
+            "h (" +
+            bolsa.porcentajeConsumido +
+            "% consumido). Considera ampliar antes de que se agote.",
+          href: "/proyectos",
+        });
+      }
+    }
+  } catch {
+    // No bloqueamos el resto de alertas si esto falla — log silencioso.
   }
 
   return out;

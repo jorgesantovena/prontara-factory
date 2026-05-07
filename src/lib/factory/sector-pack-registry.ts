@@ -254,6 +254,7 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "proyectos", fieldKey: "fechaCaducidad", label: "Fecha de caducidad", kind: "date", placeholder: "YYYY-MM-DD — fin de vigencia del contrato" },
     { moduleKey: "proyectos", fieldKey: "kilometros", label: "Km acumulados", kind: "text", placeholder: "Km imputados a este proyecto (sumatorio de partes)" },
     { moduleKey: "proyectos", fieldKey: "tarifaHoraOverride", label: "Tarifa €/h", kind: "text", placeholder: "Vacío → usa la del catálogo. Numérico → override puntual." },
+    { moduleKey: "proyectos", fieldKey: "horasTotales", label: "Horas totales (bolsa)", kind: "text", placeholder: "Solo aplica a codigoTipo=BOLSA — total horas contratadas" },
     { moduleKey: "proyectos", fieldKey: "notas", label: "Notas", kind: "text", placeholder: "Condiciones específicas, observaciones..." },
 
     { moduleKey: "documentos", fieldKey: "nombre", label: "Entregable", kind: "text", required: true, placeholder: "Acta, backlog, documentación..." },
@@ -441,12 +442,12 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
 
       // ===== Binary Forge — soporte IA con riesgo =====
       { nombre: "Plataforma soporte Binary", cliente: "Binary Forge", codigoTipo: "FASE_I", responsable: "Ana", estado: "activo", facturable: "no", fechaInicio: "2026-02-01", fechaCaducidad: "2026-08-31", kilometros: "0", tarifaHoraOverride: "65", notas: "Memory leak no resuelto. Coste de tokens en riesgo. Estado ámbar." },
-      { nombre: "Bolsa horas correctivo Binary", cliente: "Binary Forge", codigoTipo: "BOLSA", responsable: "Ana", estado: "activo", facturable: "si", fechaInicio: "2026-01-01", fechaCaducidad: "2026-12-31", kilometros: "0", tarifaHoraOverride: "60", notas: "30h prepagadas. Saldo: 22h." },
+      { nombre: "Bolsa horas correctivo Binary", cliente: "Binary Forge", codigoTipo: "BOLSA", responsable: "Ana", estado: "activo", facturable: "si", fechaInicio: "2026-01-01", fechaCaducidad: "2026-12-31", kilometros: "0", tarifaHoraOverride: "60", horasTotales: "30", notas: "30h prepagadas. Saldo se actualiza según partes imputados." },
 
       // ===== Talleres López — sustituyendo papel + Excel =====
       { nombre: "Gestión taller López", cliente: "Talleres López", codigoTipo: "FASE_I", responsable: "Miguel", estado: "finalizado", facturable: "no", fechaInicio: "2025-10-01", fechaCaducidad: "2026-04-08", kilometros: "320", tarifaHoraOverride: "55", notas: "Entregada v2.1.0 el 08-abr-2026. Fase cerrada." },
       { nombre: "Mantenimiento adaptativo López — RGPD", cliente: "Talleres López", codigoTipo: "NUEDES", responsable: "Miguel", estado: "finalizado", facturable: "si", fechaInicio: "2026-02-01", fechaCaducidad: "2026-04-15", kilometros: "80", tarifaHoraOverride: "65", notas: "Adaptación RGPD. 16h consumidas de 16h contratadas. Cerrado." },
-      { nombre: "Bolsa horas correctivo López", cliente: "Talleres López", codigoTipo: "BOLSA", responsable: "Miguel", estado: "activo", facturable: "si", fechaInicio: "2026-01-01", fechaCaducidad: "2026-12-31", kilometros: "40", tarifaHoraOverride: "55", notas: "24h prepagadas. Saldo: 13h." },
+      { nombre: "Bolsa horas correctivo López", cliente: "Talleres López", codigoTipo: "BOLSA", responsable: "Miguel", estado: "activo", facturable: "si", fechaInicio: "2026-01-01", fechaCaducidad: "2026-12-31", kilometros: "40", tarifaHoraOverride: "55", horasTotales: "24", notas: "24h prepagadas. Saldo se actualiza según partes imputados." },
       { nombre: "Formación usuarios López", cliente: "Talleres López", codigoTipo: "FORM", responsable: "Miguel", estado: "finalizado", facturable: "si", fechaInicio: "2026-04-10", fechaCaducidad: "2026-04-10", kilometros: "60", tarifaHoraOverride: "65", notas: "Sesión 2h con 4 mecánicos. Facturado." },
 
       // ===== Clínica Ardor — solo en piloto =====
