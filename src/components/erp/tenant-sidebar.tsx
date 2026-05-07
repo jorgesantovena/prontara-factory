@@ -68,11 +68,22 @@ const MODULE_ORDER = [
   "asistente",
   "equipo",
   "ajustes",
+  // CORE-03 — módulos transversales universales del ERP. Insertamos al
+  // final para que NO compitan con el orden semántico del vertical.
+  "tareas",
+  "tickets",
+  "compras",
+  "productos",
+  "reservas",
+  "encuestas",
+  "etiquetas",
+  "plantillas",
 ];
 
 // Items "fijos" no asociados a un módulo del pack: van siempre arriba o abajo.
 const FIXED_TOP = [
   { href: "/", label: "Inicio", moduleKey: "_home", icon: "🏠" },
+  { href: "/buscar", label: "Buscar", moduleKey: "_search", icon: "🔍" },
 ];
 
 // Iconos por módulo (emoji simple para no añadir dependencia de iconos SVG).
@@ -111,6 +122,15 @@ const MODULE_ICON: Record<string, string> = {
   mantenimiento: "🔧",
   personal: "💼",
   egresados: "🎓",
+  // CORE-03
+  tareas: "✔️",
+  tickets: "🎫",
+  compras: "🛒",
+  productos: "🏷️",
+  reservas: "📌",
+  encuestas: "📊",
+  etiquetas: "🏷",
+  plantillas: "📄",
 };
 
 const FALLBACK_LABELS: Record<string, string> = {
@@ -148,6 +168,15 @@ const FALLBACK_LABELS: Record<string, string> = {
   mantenimiento: "Mantenimiento",
   personal: "Personal",
   egresados: "Egresados",
+  // CORE-03
+  tareas: "Tareas",
+  tickets: "Tickets",
+  compras: "Compras",
+  productos: "Productos",
+  reservas: "Reservas",
+  encuestas: "Encuestas",
+  etiquetas: "Etiquetas",
+  plantillas: "Plantillas",
 };
 
 // Módulos "virtuales" que no vienen del pack (no tienen entrada en
@@ -159,8 +188,11 @@ const VIRTUAL_MODULES = new Set(["produccion"]);
 // y se persistan registros, pero NO tienen página propia /<key> — el
 // usuario los ve como tabs dentro de /produccion. Los excluimos del
 // sidebar para evitar 404 (SF-20).
+//
+// CORE-03: "tareas" se quitó de aquí porque ahora es módulo universal
+// del CORE con su propia página /tareas. Sigue accesible como tab
+// dentro de /produccion además, sin conflicto.
 const HUB_CHILDREN_MODULES = new Set([
-  "tareas",
   "incidencias",
   "actividades",
   "versiones",

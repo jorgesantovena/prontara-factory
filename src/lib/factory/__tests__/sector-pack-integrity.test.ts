@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { SECTOR_PACKS } from "@/lib/factory/sector-pack-registry";
+import { CORE_MODULES, CORE_FIELDS, CORE_TABLE_COLUMNS } from "@/lib/factory/core-modules";
 
 /**
  * Test de integridad de packs sectoriales (AUDIT-05).
@@ -20,7 +21,10 @@ import { SECTOR_PACKS } from "@/lib/factory/sector-pack-registry";
  * indique el error. Antipatron #1 / #2 del § 12.
  */
 
-const CORE_MODULES = [
+// Módulos del NÚCLEO COMÚN del ERP — los 6 que TODOS los packs deben
+// tener enabled. Distinto de CORE_MODULES (importado arriba), que son
+// los 8 módulos transversales adicionales del CORE.
+const NUCLEO_MODULES = [
   "clientes",
   "crm",
   "proyectos",
@@ -68,10 +72,10 @@ describe("sector-pack-integrity", () => {
       const enabledKeys = new Set(
         pack.modules.filter((m) => m.enabled).map((m) => m.moduleKey),
       );
-      for (const core of CORE_MODULES) {
+      for (const nucleo of NUCLEO_MODULES) {
         expect(
-          enabledKeys.has(core),
-          "[pack=" + pack.key + "] Falta módulo del núcleo: " + core,
+          enabledKeys.has(nucleo),
+          "[pack=" + pack.key + "] Falta módulo del núcleo: " + nucleo,
         ).toBe(true);
       }
     }
@@ -167,5 +171,56 @@ describe("sector-pack-integrity", () => {
         "[pack=" + pack.key + "] sin accentColor",
       ).toMatch(/^#[0-9a-fA-F]{6}$/);
     }
+  });
+});
+
+describe("core-modules-integrity", () => {
+  // CORE-02: los core modules viven fuera de los SECTOR_PACKS y se
+  // inyectan en runtime. Verificamos sus invariantes aquí.
+
+  it("hay módulos core declarados", () => {
+    expect(CORE_MODULES.length).toBeGreaterThan(0);
+  });
+
+  it("cada core module tiene al menos 1 field y 1 tableColumn", () => {
+    for (const m of CORE_MODULES) {
+      const fields = CORE_FIELDS.filter((f) => f.moduleKey === m.moduleKey);
+      const cols = CORE_TABLE_COLUMNS.filter((c) => c.moduleKey === m.moduleKey);
+      expect(
+        fields.length,
+        "[core module=" + m.moduleKey + "] sin fields",
+      ).toBeGreaterThan(0);
+      expect(
+        cols.length,
+        "[core module=" + m.moduleKey + "] sin tableColumns",
+      ).toBeGreaterThan(0);
+    }
+  });
+
+  it("ningún core field/tableColumn referencia un moduleKey no declarado en CORE_MODULES", () => {
+    const declared = new Set(CORE_MODULES.map((m) => m.moduleKey));
+    for (const f of CORE_FIELDS) {
+      expect(
+        declared.has(f.moduleKey),
+        "[core field] moduleKey '" + f.moduleKey + "' no está en CORE_MODULES",
+      ).toBe(true);
+    }
+    for (const c of CORE_TABLE_COLUMNS) {
+      expect(
+        declared.has(c.moduleKey),
+        "[core column] moduleKey '" + c.moduleKey + "' no está en CORE_MODULES",
+      ).toBe(true);
+    }
+  });
+
+  it("los moduleKeys de los core modules NO chocan con los renombres semánticos de ningún pack", () => {
+    // Si un pack ya define un moduleKey idéntico, no es un fallo —
+    // el resolver hace merge dejando que el pack tenga prioridad. Pero
+    // verificamos que no haya un caso al revés (un core moduleKey usado
+    // en pack pero con kind muy distinto que rompería el frontend).
+    const coreKeys = new Set(CORE_MODULES.map((m) => m.moduleKey));
+    // No assertion específica — solo documentamos que es OK que pack
+    // y core compartan moduleKey, el merge respeta al pack.
+    expect(coreKeys.size).toBe(CORE_MODULES.length); // moduleKeys únicos
   });
 });

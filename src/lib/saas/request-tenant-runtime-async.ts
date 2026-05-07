@@ -21,6 +21,7 @@ import {
 } from "@/lib/saas/request-tenant-runtime";
 import { getPersistenceBackend } from "@/lib/persistence/db";
 import { getSectorPackByKey } from "@/lib/factory/sector-pack-registry";
+import { applyCoreModulesToConfig } from "@/lib/factory/core-modules";
 import type { TenantRuntimeConfigBranding } from "@/lib/saas/tenant-runtime-config";
 
 type BrandingShape = Record<string, unknown>;
@@ -122,7 +123,6 @@ function rebuildConfigForTenant(tenant: TenantDefinition): TenantRuntimeConfig {
   const labels: Record<string, string> = pack ? { ...pack.labels } : {};
   const renameMap: Record<string, string> = pack ? { ...pack.renameMap } : {};
   const modules = pack ? pack.modules.map((item) => ({ ...item })) : [];
-  const moduleKeys = modules.map((item) => item.moduleKey);
 
   const navigationLabelMap: Record<string, string> = {};
   const emptyStateMap: Record<string, string> = {};
@@ -164,6 +164,20 @@ function rebuildConfigForTenant(tenant: TenantDefinition): TenantRuntimeConfig {
     }
   }
 
+  // CORE-02: aplicar módulos universales del core (tareas, tickets,
+  // compras, productos, reservas, encuestas, etiquetas, plantillas).
+  // Mutamos los maps in-place — el pack del vertical tiene prioridad si
+  // ya define algo para esos módulos.
+  applyCoreModulesToConfig({
+    modules,
+    fieldsByModule,
+    tableColumnsByModule,
+    navigationLabelMap,
+    emptyStateMap,
+  });
+  // moduleKeys se reconstruye porque modules se mutó.
+  const moduleKeysFinal = modules.map((m) => m.moduleKey);
+
   return {
     tenantId: tenant.tenantId,
     clientId: tenant.clientId,
@@ -179,7 +193,7 @@ function rebuildConfigForTenant(tenant: TenantDefinition): TenantRuntimeConfig {
     navigationLabelMap,
     emptyStateMap,
     modules,
-    moduleKeys,
+    moduleKeys: moduleKeysFinal,
     fieldsByModule,
     tableColumnsByModule,
     demoDataByModule,
