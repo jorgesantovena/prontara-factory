@@ -19,6 +19,9 @@
 import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 
 export type BillingLineActivity = {
+  /** Id del registro original en el módulo "actividades" — necesario
+   *  para marcarla como facturado=si tras emitir (SF-02). */
+  id: string;
   fecha: string;
   persona: string;
   concepto: string;
@@ -186,6 +189,7 @@ export async function getMonthlyBillingPreview(
     }
 
     projectGroup.actividades.push({
+      id: String(act.id || ""),
       fecha: String(act.fecha || ""),
       persona: String(act.persona || ""),
       concepto: String(act.concepto || ""),

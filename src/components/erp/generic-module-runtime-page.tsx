@@ -54,9 +54,13 @@ function readSectorPack() {
 export default function GenericModuleRuntimePage({
   moduleKey,
   href,
+  extraActions,
 }: {
   moduleKey: string;
   href: string;
+  /** Botones adicionales (ej. "Emitir mes" del vertical SF) que se pintan
+   *  junto al botón "+ Nuevo" en el header de la página. */
+  extraActions?: React.ReactNode;
 }) {
   const [rows, setRows] = useState<Array<Record<string, string>>>([]);
   const [query, setQuery] = useState("");
@@ -280,26 +284,29 @@ export default function GenericModuleRuntimePage({
                 {query ? " (filtrados)" : ""}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelected(null);
-                setModalMode("create");
-              }}
-              style={{
-                border: "none",
-                borderRadius: 8,
-                background: "#1d4ed8",
-                color: "#ffffff",
-                padding: "10px 18px",
-                cursor: "pointer",
-                fontWeight: 700,
-                fontSize: 14,
-                whiteSpace: "nowrap",
-              }}
-            >
-              + Nuevo
-            </button>
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+              {extraActions ? extraActions : null}
+              <button
+                type="button"
+                onClick={() => {
+                  setSelected(null);
+                  setModalMode("create");
+                }}
+                style={{
+                  border: "none",
+                  borderRadius: 8,
+                  background: "#1d4ed8",
+                  color: "#ffffff",
+                  padding: "10px 18px",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                  fontSize: 14,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                + Nuevo
+              </button>
+            </div>
           </div>
         </header>
 
