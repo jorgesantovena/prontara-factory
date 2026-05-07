@@ -22,6 +22,7 @@ import {
 import { getPersistenceBackend } from "@/lib/persistence/db";
 import { getSectorPackByKey } from "@/lib/factory/sector-pack-registry";
 import { applyCoreModulesToConfig } from "@/lib/factory/core-modules";
+import { getCustomFieldsAsync, applyCustomFieldsToConfig } from "@/lib/saas/custom-fields-resolver";
 import type { TenantRuntimeConfigBranding } from "@/lib/saas/tenant-runtime-config";
 
 type BrandingShape = Record<string, unknown>;
@@ -283,13 +284,27 @@ export async function resolveRequestTenantRuntimeAsync(
     if (bySlug) resolvedTenant = bySlug;
   }
 
+  const config = rebuildConfigForTenant(resolvedTenant);
+
+  // DEV-CF: aplicar custom fields del tenant al config. Los custom
+  // fields tienen prioridad sobre el pack (override total por
+  // moduleKey+fieldKey).
+  try {
+    const customFields = await getCustomFieldsAsync(resolvedTenant.clientId);
+    if (customFields.length > 0) {
+      applyCustomFieldsToConfig(config, customFields);
+    }
+  } catch {
+    // Silencioso — si custom fields fallan, seguimos con el config base.
+  }
+
   return {
     ok: true,
     source: resolution.source,
     requestedSlug: resolution.requestedSlug,
     tenant: resolvedTenant,
     branding: rebuildBrandingForTenant(resolvedTenant),
-    config: rebuildConfigForTenant(resolvedTenant),
+    config,
     artifacts: rebuildArtifactsForTenant(resolvedTenant),
   };
 }

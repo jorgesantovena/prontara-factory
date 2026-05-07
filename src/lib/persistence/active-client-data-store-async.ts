@@ -17,6 +17,7 @@ import {
 import { getActiveClientId } from "@/lib/factory/active-client-registry";
 import { getPersistenceBackend, withPrisma } from "@/lib/persistence/db";
 import { applySequenceToPayloadAsync } from "@/lib/persistence/sequence-counter-async";
+import { processWorkflowRules } from "@/lib/saas/workflow-engine";
 
 type ModuleRow = {
   id: string;
@@ -123,7 +124,17 @@ export async function createModuleRecordAsync(
   // SF-01: si el módulo tiene numeración correlativa configurada y el
   // payload no trae ya un número manual, reservamos uno antes de
   // persistir. Devuelve el payload enriquecido (o intacto si no aplica).
-  const enrichedPayload = await applySequenceToPayloadAsync(moduleKey, payload, cid);
+  const sequencedPayload = await applySequenceToPayloadAsync(moduleKey, payload, cid);
+
+  // DEV-WF: procesa workflow rules para evento create.
+  const wfResult = await processWorkflowRules({
+    clientId: cid,
+    moduleKey,
+    estadoNuevo: String((sequencedPayload as Record<string, unknown>).estado || ""),
+    estadoAnterior: null,
+    payload: sequencedPayload,
+  });
+  const enrichedPayload = wfResult.payloadActualizado;
 
   if (getPersistenceBackend() === "postgres") {
     const now = new Date().toISOString();

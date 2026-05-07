@@ -236,6 +236,105 @@ model TenantModuleRecord {
 }
 
 // ===========================================================================
+// MFA TOTP (DEV-MFA) — segundo factor de autenticación por cuenta.
+//
+// Cuando una cuenta activa MFA, en cada login se le pide código TOTP de
+// 6 dígitos (Google Authenticator o equivalente). Los backupCodes son
+// para recuperar acceso si pierde el dispositivo — cada uno es de un
+// solo uso (consumedAt no null).
+// ===========================================================================
+
+model TenantAccountMfa {
+  id              String   @id @default(cuid())
+  accountId       String   @unique
+  /// Secret en Base32 — visible para que el usuario lo escanee al activar.
+  /// En producción debería cifrarse con PRONTARA_SESSION_SECRET, hoy en claro
+  /// por simplicidad MVP — TODO: cifrar antes de prod-prod.
+  secret          String
+  enabled         Boolean  @default(false)
+  /// Códigos de respaldo en formato JSON: [{ code, consumedAt? }, ...]
+  backupCodesJson Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  enabledAt       DateTime?
+}
+
+// ===========================================================================
+// Workflow rules (DEV-WF) — reglas configurables por tenant.
+// ===========================================================================
+
+model WorkflowRule {
+  id           String   @id @default(cuid())
+  tenantId     String
+  clientId     String
+  name         String
+  /// Módulo que dispara la regla (clientes, proyectos, tareas, etc.)
+  triggerModule String
+  /// Estado al que tiene que cambiar el registro para disparar (vacío = cualquier creación)
+  triggerEstado String?
+  /// Tipo de acción: notify | createTask | setEstado
+  actionType   String
+  /// Payload JSON con detalles de la acción
+  actionPayload Json
+  enabled      Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([clientId, triggerModule, enabled])
+}
+
+// ===========================================================================
+// Custom fields (DEV-CF) — campos personalizados por tenant.
+// ===========================================================================
+
+model TenantCustomField {
+  id          String   @id @default(cuid())
+  tenantId    String
+  clientId    String
+  moduleKey   String
+  fieldKey    String
+  label       String
+  kind        String   /// text | email | tel | textarea | date | number | money | status
+  required    Boolean  @default(false)
+  placeholder String?
+  /// Para kind=status, opciones JSON: [{ value, label }, ...]
+  optionsJson Json?
+  /// Posición relativa entre los campos del módulo (0=primero)
+  position    Int      @default(100)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([clientId, moduleKey, fieldKey])
+  @@index([clientId, moduleKey])
+}
+
+// ===========================================================================
+// Reportes guardados (DEV-REP) — constructor de reportes por tenant.
+// ===========================================================================
+
+model TenantReport {
+  id          String   @id @default(cuid())
+  tenantId    String
+  clientId    String
+  name        String
+  description String?
+  /// Módulo de origen
+  moduleKey   String
+  /// Columnas a mostrar en orden — array de fieldKey
+  columnsJson Json     @default("[]")
+  /// Filtros — array de { field, operator, value }
+  filtersJson Json     @default("[]")
+  /// Campo por el que agrupar (opcional)
+  groupBy     String?
+  /// Tipo de gráfico: none | bar | line | pie
+  chartType   String   @default("none")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([clientId, moduleKey])
+}
+
+// ===========================================================================
 // Verifactu / AEAT — registro de envíos (SF-12, stub).
 //
 // Cada factura emitida desde el módulo "facturacion" puede generar un

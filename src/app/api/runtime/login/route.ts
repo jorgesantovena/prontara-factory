@@ -8,6 +8,8 @@ import {
   consumeRateLimit,
   getClientIp,
 } from "@/lib/saas/rate-limiter";
+import { withPrisma } from "@/lib/persistence/db";
+import { verifyTotpCode } from "@/lib/saas/totp";
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const LOGIN_ATTEMPTS_PER_IP_TENANT = 10;
@@ -98,6 +100,48 @@ export async function POST(request: NextRequest) {
         },
         { status: 401 }
       );
+    }
+
+    // DEV-MFA: si la cuenta tiene MFA activo, exigimos código TOTP. El
+    // body acepta `mfaCode` opcional; si no llega y MFA está activo,
+    // devolvemos status=mfa_required sin crear sesión. Si llega y es
+    // válido, sigue el flujo. Si llega y es inválido, error 401.
+    const mfa = await withPrisma(async (prisma) => {
+      const c = prisma as unknown as {
+        tenantAccountMfa: {
+          findUnique: (a: {
+            where: { accountId: string };
+          }) => Promise<{ secret: string; enabled: boolean } | null>;
+        };
+      };
+      return await c.tenantAccountMfa.findUnique({
+        where: { accountId: account.id },
+      });
+    });
+
+    if (mfa && mfa.enabled) {
+      const mfaCode =
+        typeof body?.mfaCode === "string" ? body.mfaCode.trim() : "";
+      if (!mfaCode) {
+        return NextResponse.json(
+          {
+            ok: false,
+            mfaRequired: true,
+            error: "Esta cuenta requiere código de 2 factores. Introdúcelo y reintenta.",
+          },
+          { status: 401 },
+        );
+      }
+      if (!verifyTotpCode(mfa.secret, mfaCode)) {
+        return NextResponse.json(
+          {
+            ok: false,
+            mfaRequired: true,
+            error: "Código de 2 factores inválido.",
+          },
+          { status: 401 },
+        );
+      }
     }
 
     // Successful login — reset this identity's counters so legitimate users
