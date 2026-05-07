@@ -8,7 +8,7 @@ import { getTenantRuntimeConfigFromRequest } from "@/lib/saas/tenant-runtime-con
 import { buildOperationalAlerts } from "@/lib/erp/operational-alerts";
 import { buildSoftwareFactoryAlertsAsync } from "@/lib/verticals/software-factory/alerts";
 import { getOrCreateTrialState } from "@/lib/saas/trial-store";
-import { checkTenantSubscription } from "@/lib/saas/subscription-guard";
+import { checkTenantSubscriptionAsync } from "@/lib/saas/subscription-guard";
 
 /**
  * GET /api/runtime/dashboard
@@ -73,9 +73,9 @@ export async function GET(request: NextRequest) {
     })();
 
     // Estado de suscripción para pintar banner bloqueante cuando aplique.
-    const subscriptionCheck = (() => {
+    const subscriptionCheck = await (async () => {
       try {
-        return checkTenantSubscription(session);
+        return await checkTenantSubscriptionAsync(session);
       } catch {
         return null;
       }

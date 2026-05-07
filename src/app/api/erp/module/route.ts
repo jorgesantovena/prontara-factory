@@ -11,7 +11,7 @@ import {
   mapModuleToPlanResource,
   PlanLimitError,
 } from "@/lib/saas/plan-limits";
-import { checkTenantSubscription } from "@/lib/saas/subscription-guard";
+import { checkTenantSubscriptionAsync } from "@/lib/saas/subscription-guard";
 
 function unauthorized() {
   return NextResponse.json(
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
     // create/edit/delete; las lecturas siguen funcionando para que el
     // tenant pueda consultar sus datos aunque esté cancelled.
     if (mode === "create" || mode === "edit" || mode === "delete") {
-      const subscription = checkTenantSubscription(session);
+      const subscription = await checkTenantSubscriptionAsync(session);
       if (!subscription.allowed) {
         return NextResponse.json(
           {

@@ -18,6 +18,7 @@ import {
   getOrCreateBillingSubscription,
   getSubscriptionAccessAllowed,
 } from "@/lib/saas/billing-store";
+import { getOrCreateBillingSubscriptionAsync } from "@/lib/persistence/billing-store-async";
 import type { BillingSubscriptionRecord } from "@/lib/saas/billing-definition";
 
 export type SubscriptionGuardOk = {
@@ -34,18 +35,7 @@ export type SubscriptionGuardBlocked = {
 
 export type SubscriptionGuardResult = SubscriptionGuardOk | SubscriptionGuardBlocked;
 
-/**
- * Evalúa si un tenant tiene acceso activo al ERP. No lanza; devuelve un
- * resultado discriminado para que el endpoint decida el código HTTP.
- */
-export function checkTenantSubscription(session: TenantSessionUser): SubscriptionGuardResult {
-  const record = getOrCreateBillingSubscription({
-    tenantId: session.tenantId,
-    clientId: session.clientId,
-    slug: session.slug,
-    displayName: session.fullName || session.email || session.slug,
-  });
-
+function evaluateGuard(record: BillingSubscriptionRecord): SubscriptionGuardResult {
   if (getSubscriptionAccessAllowed(record)) {
     return { allowed: true, record };
   }
@@ -76,4 +66,39 @@ export function checkTenantSubscription(session: TenantSessionUser): Subscriptio
     reason: "Tu suscripción no permite operar el ERP ahora mismo. Revisa /suscripcion.",
     code: "SUBSCRIPTION_NO_ACCESS",
   };
+}
+
+/**
+ * Evalúa si un tenant tiene acceso activo al ERP. No lanza; devuelve un
+ * resultado discriminado para que el endpoint decida el código HTTP.
+ *
+ * @deprecated Usa checkTenantSubscriptionAsync. Esta versión llama al store
+ * sync que toca filesystem y rompe en serverless. Se mantiene solo para no
+ * romper imports externos hasta que migren todos.
+ */
+export function checkTenantSubscription(session: TenantSessionUser): SubscriptionGuardResult {
+  const record = getOrCreateBillingSubscription({
+    tenantId: session.tenantId,
+    clientId: session.clientId,
+    slug: session.slug,
+    displayName: session.fullName || session.email || session.slug,
+  });
+  return evaluateGuard(record);
+}
+
+/**
+ * Versión async dual-mode (postgres | filesystem) — la que deben usar los
+ * endpoints serverless (SF-15: el store sync hace mkdirSync en /var/task,
+ * read-only en Vercel).
+ */
+export async function checkTenantSubscriptionAsync(
+  session: TenantSessionUser,
+): Promise<SubscriptionGuardResult> {
+  const record = await getOrCreateBillingSubscriptionAsync({
+    tenantId: session.tenantId,
+    clientId: session.clientId,
+    slug: session.slug,
+    displayName: session.fullName || session.email || session.slug,
+  });
+  return evaluateGuard(record);
 }
