@@ -260,6 +260,37 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo", kind: "text", required: true, placeholder: "acta / backlog / entregable / técnico" },
     { moduleKey: "documentos", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
 
+    // Propuestas (presupuestos) — SF-14.
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº propuesta", kind: "text", placeholder: "Déjalo vacío y se autoasigna PRES-YYYY-NNN" },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Servicio o trabajo propuesto" },
+    { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "Ej. 14500 EUR" },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "borrador / pendiente / enviado / negociacion / aceptado / rechazado", options: [
+      { value: "borrador", label: "Borrador" },
+      { value: "pendiente", label: "Pendiente" },
+      { value: "enviado", label: "Enviado" },
+      { value: "negociacion", label: "Negociación" },
+      { value: "aceptado", label: "Aceptado" },
+      { value: "rechazado", label: "Rechazado" },
+    ] },
+    { moduleKey: "presupuestos", fieldKey: "fechaEnvio", label: "Fecha de envío", kind: "date" },
+    { moduleKey: "presupuestos", fieldKey: "notas", label: "Notas", kind: "textarea", placeholder: "Observaciones internas sobre la propuesta" },
+
+    // Facturas — SF-14.
+    { moduleKey: "facturacion", fieldKey: "numero", label: "Nº factura", kind: "text", placeholder: "Déjalo vacío y se autoasigna FAC-YYYY-NNN" },
+    { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Concepto facturado" },
+    { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "Ej. 4500 EUR" },
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "emitida / cobrada / vencida / anulada", options: [
+      { value: "emitida", label: "Emitida" },
+      { value: "cobrada", label: "Cobrada" },
+      { value: "vencida", label: "Vencida" },
+      { value: "anulada", label: "Anulada" },
+    ] },
+    { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
+    { moduleKey: "facturacion", fieldKey: "fechaVencimiento", label: "Vencimiento", kind: "date" },
+    { moduleKey: "facturacion", fieldKey: "notas", label: "Notas", kind: "textarea", placeholder: "Observaciones internas sobre la factura" },
+
     // Parte de horas (actividades) — campos explícitos.
     { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", kind: "date", required: true, placeholder: "YYYY-MM-DD" },
     { moduleKey: "actividades", fieldKey: "persona", label: "Persona", kind: "text", required: true, placeholder: "Quien imputa las horas" },
@@ -359,6 +390,21 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "actividades", fieldKey: "facturable", label: "Facturable" },
     { moduleKey: "actividades", fieldKey: "tarifaHora", label: "€/h" },
     { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado" },
+
+    // Propuestas (presupuestos) — SF-14.
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº", isPrimary: true },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Cliente" },
+    { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto" },
+    { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe" },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
+
+    // Facturas — SF-14.
+    { moduleKey: "facturacion", fieldKey: "numero", label: "Nº", isPrimary: true },
+    { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente" },
+    { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto" },
+    { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
+    { moduleKey: "facturacion", fieldKey: "fechaVencimiento", label: "Vencimiento" },
   ],
   dashboardPriorities: [
     { key: "pipeline", label: "Pipeline", description: "Valor potencial del negocio.", order: 1 },
