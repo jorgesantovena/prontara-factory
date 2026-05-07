@@ -55,12 +55,16 @@ export default function GenericModuleRuntimePage({
   moduleKey,
   href,
   extraActions,
+  extraRowActions,
 }: {
   moduleKey: string;
   href: string;
   /** Botones adicionales (ej. "Emitir mes" del vertical SF) que se pintan
    *  junto al botón "+ Nuevo" en el header de la página. */
   extraActions?: React.ReactNode;
+  /** Render por fila (ej. botón "Renovar" en proyectos del vertical SF).
+   *  Se inyecta en la celda Acciones, antes de Editar/Borrar. */
+  extraRowActions?: (row: Record<string, string>) => React.ReactNode;
 }) {
   const [rows, setRows] = useState<Array<Record<string, string>>>([]);
   const [query, setQuery] = useState("");
@@ -422,6 +426,7 @@ export default function GenericModuleRuntimePage({
                         style={{ padding: "8px 14px", textAlign: "right", whiteSpace: "nowrap" }}
                         onClick={(e) => e.stopPropagation()}
                       >
+                        {extraRowActions ? extraRowActions(item) : null}
                         <button
                           type="button"
                           onClick={() => {

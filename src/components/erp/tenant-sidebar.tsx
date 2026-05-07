@@ -37,6 +37,7 @@ const MODULE_ORDER = [
   "presupuestos",
   "facturacion",
   "documentos",
+  "catalogo-servicios",
   "asistente",
   "equipo",
   "ajustes",
@@ -56,6 +57,7 @@ const MODULE_ICON: Record<string, string> = {
   presupuestos: "📄",
   facturacion: "💶",
   documentos: "📎",
+  "catalogo-servicios": "📚",
   asistente: "💬",
   equipo: "👤",
   ajustes: "⚙️",
@@ -69,6 +71,7 @@ const FALLBACK_LABELS: Record<string, string> = {
   presupuestos: "Propuestas",
   facturacion: "Facturas",
   documentos: "Documentos",
+  "catalogo-servicios": "Catálogo de servicios",
   asistente: "Asistente",
   equipo: "Equipo",
   ajustes: "Ajustes",
@@ -164,6 +167,26 @@ export default function TenantSidebar() {
       icon: MODULE_ICON[key] || "📌",
     });
     seen.add(key);
+  }
+
+  // Fallback: módulos del pack que NO están en MODULE_ORDER ni son
+  // virtuales — los añadimos al final para no perder módulos custom
+  // de futuros verticales sin tener que tocar este array. Por ejemplo,
+  // si un pack añade "stock", "rutas" o "consultas", aparecerán aquí.
+  if (config) {
+    for (const m of config.modules) {
+      if (!m || m.enabled === false) continue;
+      const k = m.moduleKey;
+      if (!k || seen.has(k)) continue;
+      if (VIRTUAL_MODULES.has(k)) continue;
+      moduleItems.push({
+        href: buildHref("/" + k, params),
+        label: labelFor(k),
+        moduleKey: k,
+        icon: MODULE_ICON[k] || "📌",
+      });
+      seen.add(k);
+    }
   }
 
   const accent = config?.branding?.accentColor || "#1d4ed8";
