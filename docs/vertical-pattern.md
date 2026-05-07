@@ -502,4 +502,44 @@ El `accentColor` del logo viene del `branding.accentColor` del pack del vertical
 
 ### Anti‑patrón a evitar
 
-**No** hardcodear datos del emisor en el endpoint o en el generador. El emisor SIEMPRE es el tenant, no Prontara ni SISPYME. Solo el endpoint de Verifactu (SF‑12) usa datos de SISPYME explícitamente porque ahí SISPYME es el sujeto pasivo del IVA en la integración AEAT del SaaS, no del tenant.
+**No** hardcodear datos del emisor en el endpoint o en el generador. El emisor SIEMPRE es el tenant, no Prontara ni SISPYME. Esto aplica también al endpoint de Verifactu (AUDIT‑07): el sujeto pasivo del IVA en cada factura emitida es el TENANT (la clínica dental, el taller, la software factory…), no SISPYME. Por eso ambos endpoints usan `resolveTenantEmisorAsync` y leen del módulo `ajustes` del tenant.
+
+## 15. Verifactu — universal a todos los verticales
+
+> Sección añadida 7 mayo 2026 (AUDIT‑07).
+
+Verifactu es obligación legal española vigente para **cualquier empresa que emita facturas**, no solo software factories. El botón **Verifactu** aparece en cada fila de `/facturacion` en los 6 verticales sin distinción.
+
+### Cómo funciona
+
+1. El operador del tenant rellena en `/ajustes` los datos fiscales de su empresa (clave `razon_social` y, sobre todo, `cif`).
+2. Pulsa **Verifactu** en la fila de una factura → se llama a `POST /api/erp/verifactu-emit`.
+3. El endpoint valida que el tenant tiene `cif`. Si falta → error 400 con código `EMISOR_SIN_CIF`.
+4. Si está, construye el XML según subset del esquema AEAT con `tenantEmisor` como `IDEmisorFactura.NIF` y `NombreRazonEmisor`.
+5. Lo guarda en `VerifactuSubmission` con `status="prepared"`.
+
+El envío real (firma XML‑DSig + POST al web service AEAT + procesar CSV/QR) sigue documentado como TODO en `docs/verifactu-pendientes.md`. Cuando el certificado de cada tenant esté disponible, el flujo se completa por tenant.
+
+### Configuración mínima por tenant para emitir Verifactu
+
+En `/ajustes` del tenant, crear AL MENOS estos dos registros:
+
+| nombre | valor |
+|---|---|
+| `razon_social` | "Clínica Ardor S.L." |
+| `cif` | "B12345678" |
+
+Recomendado además:
+
+| nombre | valor |
+|---|---|
+| `direccion` | "Calle Mayor 5, 33007 Oviedo" |
+| `telefono` | "+34 985 123 456" |
+| `email` | "facturacion@clinicaardor.com" |
+
+### Diferencia importante con la facturación del SaaS
+
+- Las **facturas que emite cada tenant a sus clientes** llevan al tenant como emisor.
+- Las **facturas de Prontara al tenant** (cobro de la suscripción mensual) llevan SISPYME, S.L. como emisor — esas las gestiona Stripe + el módulo `BillingInvoice` interno, NO el módulo `facturacion` del runtime del tenant.
+
+Son dos circuitos completamente distintos.

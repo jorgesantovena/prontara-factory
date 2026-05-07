@@ -4,15 +4,16 @@ import { requireTenantSession } from "@/lib/saas/auth-session";
 import { checkTenantSubscriptionAsync } from "@/lib/saas/subscription-guard";
 import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 import { getPersistenceBackend, withPrisma } from "@/lib/persistence/db";
+import { resolveTenantEmisorAsync } from "@/lib/saas/tenant-emisor-resolver";
+import { resolveRequestTenantRuntimeAsync } from "@/lib/saas/request-tenant-runtime-async";
 import {
   buildVerifactuPayload,
   extractImporteFromFactura,
-  type EmisorData,
   type ReceptorData,
 } from "@/lib/verticals/software-factory/verifactu-payload";
 
 /**
- * POST /api/erp/verifactu-emit (SF-12, stub)
+ * POST /api/erp/verifactu-emit (SF-12 / AUDIT-07, stub)
  *
  * Body: { facturaId: string }
  *
@@ -21,19 +22,19 @@ import {
  * status="prepared". El envío real a AEAT (firma XML-DSig + POST al web
  * service) queda como TODO documentado en docs/verifactu-pendientes.md.
  *
+ * AUDIT-07: el emisor del XML es el TENANT (la empresa que emite la
+ * factura — clínica dental, taller, gimnasio, software factory, etc.),
+ * NO SISPYME. SISPYME solo es el emisor del SaaS Prontara, no de las
+ * facturas que cada tenant emite a sus propios clientes. Por eso los
+ * datos fiscales se resuelven con resolveTenantEmisorAsync desde el
+ * módulo "ajustes" del tenant. Si el tenant no tiene CIF configurado,
+ * devolvemos error claro indicándolo.
+ *
  * Idempotente: si ya existe un VerifactuSubmission para esta factura
  * con status != "error", se devuelve el existente sin crear uno nuevo.
  */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-// Datos del emisor — SISPYME S.L. (entidad legal facturadora de Prontara).
-// En el futuro vendrá de un registro Tenant.emisorVerifactu o de una env
-// configurable por tenant si distintos clientes usan distintas sociedades.
-const EMISOR_DEFAULT: EmisorData = {
-  razonSocial: "SISPYME, S.L.",
-  nif: "B33047580",
-};
 
 function unauthorized() {
   return NextResponse.json(
@@ -132,7 +133,27 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 3. Resolver datos del receptor desde clientes (módulo "clientes")
+    // 3. Resolver emisor — el TENANT, no SISPYME. AUDIT-07.
+    const runtime = await resolveRequestTenantRuntimeAsync(request);
+    const tenantEmisor = await resolveTenantEmisorAsync({
+      clientId: session.clientId,
+      brandingDisplayName: runtime?.config?.branding?.displayName,
+      brandingAccentColor: runtime?.config?.branding?.accentColor,
+    });
+
+    if (!tenantEmisor.cif || tenantEmisor.cif === "—") {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Falta el CIF/NIF del emisor en el módulo Ajustes. Verifactu necesita la identidad fiscal del tenant. Crea un registro en /ajustes con clave 'cif' y valor tu CIF antes de enviar.",
+          code: "EMISOR_SIN_CIF",
+        },
+        { status: 400 },
+      );
+    }
+
+    // 4. Resolver datos del receptor desde clientes (módulo "clientes")
     const clientes = await listModuleRecordsAsync("clientes", session.clientId);
     const cliente = clientes.find(
       (c) =>
@@ -144,7 +165,7 @@ export async function POST(request: NextRequest) {
       nif: cliente?.cif || cliente?.nif || undefined,
     };
 
-    // 4. Construir payload XML
+    // 5. Construir payload XML usando el emisor del tenant
     const importeTotal = extractImporteFromFactura(String(factura.importe || "0"));
     const xml = buildVerifactuPayload(
       {
@@ -156,7 +177,10 @@ export async function POST(request: NextRequest) {
           factura.fechaEmision || new Date().toISOString().slice(0, 10),
         ),
       },
-      EMISOR_DEFAULT,
+      {
+        razonSocial: tenantEmisor.razonSocial,
+        nif: tenantEmisor.cif,
+      },
       receptor,
     );
 

@@ -1,25 +1,30 @@
-# Verifactu — pasos pendientes para envío real (SF-12)
+# Verifactu — pasos pendientes para envío real (SF-12 / AUDIT-07)
 
 > Estado actual: **payload preparado, sin envío real a AEAT.**
 > Lo que hay funcionando hoy:
 > - Modelo `VerifactuSubmission` en Postgres.
 > - Helper `buildVerifactuPayload` que genera XML según subset del esquema oficial AEAT.
 > - Endpoint `POST /api/erp/verifactu-emit` que prepara el payload y lo guarda con `status="prepared"`.
-> - Botón **Verifactu** en cada fila de `/facturacion` (solo vertical software-factory).
+> - Botón **Verifactu** en cada fila de `/facturacion` en **TODOS los verticales** (AUDIT-07: la obligación legal es universal para emisores españoles).
+> - Emisor del XML resuelto desde el TENANT (módulo `ajustes` con clave `cif`/`razon_social`), no desde SISPYME.
+> - Validación: si el tenant no tiene `cif` configurado, el endpoint devuelve 400 con código `EMISOR_SIN_CIF`.
 > - Idempotencia: si ya existe un envío para la factura, no se crea otro.
 
 Para llegar a Verifactu en producción real con AEAT hay 5 piezas que faltan:
 
-## 1. Certificado digital de la sociedad
+## 1. Certificado digital de cada tenant (uno por sociedad)
 
-Hay que tener el certificado de **SISPYME, S.L.** (CIF B33047580) emitido por la FNMT o equivalente, instalado de forma que el servidor pueda firmar XML.
+> Cambio importante (AUDIT-07): el certificado NO es de SISPYME, sino del **tenant** que emite la factura. Cada tenant aporta el suyo cuando se da de alta en producción real con Verifactu.
 
-En Vercel serverless lo más práctico es:
+Cada tenant que vaya a usar Verifactu necesita su propio certificado emitido por la FNMT (o equivalente reconocido por AEAT) instalado de forma que el servidor pueda firmar XML en su nombre.
 
-- Convertir el certificado a base64.
-- Guardarlo en una env var: `VERIFACTU_CERT_PEM_B64`.
-- Guardar también la clave privada: `VERIFACTU_KEY_PEM_B64`.
-- En runtime, decodificar y pasar a la librería de firma.
+Diseño multi‑tenant pendiente:
+
+- Una tabla `TenantVerifactuCertificate` en Postgres con `tenantId, certPemB64, keyPemB64, expiresAt, environment ("preproduccion"|"produccion")`.
+- UI en `/ajustes` para subir el certificado (campo file que se convierte a base64 server‑side y se guarda cifrado con `PRONTARA_CERT_ENCRYPTION_KEY`).
+- Cuando se firme un payload Verifactu, leer el cert del tenant correspondiente, no de env vars globales.
+
+Mientras esto no esté: env vars globales `VERIFACTU_CERT_PEM_B64` y `VERIFACTU_KEY_PEM_B64` sirven para hacer pruebas con UN solo tenant (típicamente SISPYME en pre‑producción).
 
 ## 2. Firma XML-DSig del payload
 
