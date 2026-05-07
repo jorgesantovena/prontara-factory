@@ -4,12 +4,13 @@ import { useEffect, useState } from "react";
 import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 import EmitMonthlyButton from "@/components/erp/emit-monthly-button";
 import VerifactuButton from "@/components/erp/verifactu-button";
+import DownloadDocumentButton from "@/components/erp/download-document-button";
 
 export default function FacturacionPage() {
-  // SF-12: el botón Verifactu (igual que "Emitir mes") solo aplica al
-  // vertical software-factory porque el flujo está pensado para SISPYME
-  // como entidad facturadora con su CIF. Otros verticales no tienen
-  // configurado el emisor.
+  // SF-12 / AUDIT-06: el botón Verifactu y Emitir mes solo aplican al
+  // vertical software-factory. El botón Descargar PDF aplica a TODOS los
+  // verticales — la plantilla del PDF es común y se adapta al tenant
+  // automáticamente.
   const [businessType, setBusinessType] = useState<string | null>(null);
   const [businessTypeLoaded, setBusinessTypeLoaded] = useState(false);
 
@@ -46,18 +47,16 @@ export default function FacturacionPage() {
       extraActions={
         <EmitMonthlyButton
           onAfterEmit={() => {
-            // Refresca la página para que la nueva factura aparezca en la
-            // tabla. GenericModuleRuntimePage no expone un reload externo,
-            // así que reload completo es lo más simple y robusto.
             if (typeof window !== "undefined") window.location.reload();
           }}
         />
       }
-      extraRowActions={
-        isSoftwareFactory
-          ? (row) => <VerifactuButton factura={row} />
-          : undefined
-      }
+      extraRowActions={(row) => (
+        <>
+          <DownloadDocumentButton modulo="facturacion" row={row} />
+          {isSoftwareFactory ? <VerifactuButton factura={row} /> : null}
+        </>
+      )}
     />
   );
 }

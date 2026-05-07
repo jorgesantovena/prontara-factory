@@ -441,3 +441,65 @@ Existe `src/lib/factory/__tests__/sector-pack-integrity.test.ts` que verifica au
 - Cada pack tiene demoData para al menos `clientes`, `proyectos` y `facturacion`.
 
 Correr con `pnpm test sector-pack-integrity`. Si falla, el pack nuevo no está completo todavía.
+
+## 14. Plantilla PDF compartida para documentos comerciales
+
+> Sección añadida 7 mayo 2026 (AUDIT‑06). Heredada por **todos** los verticales sin trabajo adicional.
+
+Todos los packs comparten **la misma plantilla** para imprimir presupuestos, facturas, pedidos y albaranes. El layout es idéntico — solo cambian:
+
+- El **título** del documento (PRESUPUESTO / FACTURA / PEDIDO / ALBARÁN / RECIBO / TICKET / BONO), inferido del módulo o forzable con `?titulo=...`.
+- Los datos del **emisor** (razón social, CIF, dirección, teléfono, email, color, iniciales del logo), resueltos desde el tenant.
+- Los datos del **cliente** (razón social, CIF, dirección, contacto), resueltos desde el módulo `clientes` haciendo match por nombre.
+- El **concepto + importe** del registro concreto.
+- La **fecha secundaria** (Vencimiento en facturas, Validez en presupuestos, Entrega en pedidos).
+
+### Arquitectura
+
+- `src/lib/saas/business-document-generator.ts` — render PDF con pdfkit (layout A4 común).
+- `src/lib/saas/tenant-emisor-resolver.ts` — resuelve identidad fiscal del tenant.
+- `src/app/api/erp/business-document-pdf/route.ts` — endpoint GET unificado.
+- `src/components/erp/download-document-button.tsx` — botón "↓ PDF" reusable que se enchufa en `extraRowActions` del `GenericModuleRuntimePage`.
+
+### Cómo enchufarlo en un módulo nuevo
+
+```tsx
+// src/app/pedidos/page.tsx (ejemplo)
+"use client";
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
+import DownloadDocumentButton from "@/components/erp/download-document-button";
+
+export default function PedidosPage() {
+  return (
+    <GenericModuleRuntimePage
+      moduleKey="pedidos"
+      href="/pedidos"
+      extraRowActions={(row) => (
+        <DownloadDocumentButton modulo="pedidos" row={row} />
+      )}
+    />
+  );
+}
+```
+
+Hoy ya está enchufado en `/presupuestos` (todos los verticales) y `/facturacion` (todos los verticales — y al lado del botón Verifactu si es SF).
+
+### Configuración de los datos del emisor por tenant
+
+El operador del tenant rellena los datos fiscales en el módulo `ajustes`. Las claves canónicas que el resolver entiende:
+
+| Clave (en `nombre`/`clave`/`key` del registro) | Campo del PDF |
+|---|---|
+| `razon_social` / `razonSocial` / `nombre_fiscal` | Razón social en cabecera |
+| `cif` / `nif` / `nif_cif` | CIF |
+| `direccion` / `direccion_fiscal` / `domicilio` | Dirección |
+| `telefono` / `tel` / `phone` | Teléfono |
+| `email` / `email_contacto` / `correo` | Email |
+
+Si una clave no existe, se usa fallback (`displayName` del branding para razón social, `—` para los demás). El operador verá el `—` y sabrá que tiene que rellenarlo en `/ajustes`.
+
+El `accentColor` del logo viene del `branding.accentColor` del pack del vertical — automático, no se configura por tenant.
+
+### Anti‑patrón a evitar
+
+**No** hardcodear datos del emisor en el endpoint o en el generador. El emisor SIEMPRE es el tenant, no Prontara ni SISPYME. Solo el endpoint de Verifactu (SF‑12) usa datos de SISPYME explícitamente porque ahí SISPYME es el sujeto pasivo del IVA en la integración AEAT del SaaS, no del tenant.
