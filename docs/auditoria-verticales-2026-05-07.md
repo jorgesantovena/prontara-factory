@@ -192,3 +192,33 @@ Los 6 colores en uso ocupan los principales tonos del espectro. Para añadir nue
 ---
 
 _Auditoría generada el 7 de mayo de 2026 desde el chat Cowork._
+
+---
+
+## Anexo — Cierre del 7 de mayo (mismo día)
+
+Los 5 packs no‑SF se cerraron en una sola tacada (commits AUDIT‑02..04):
+
+- **Clínica Dental** ✅ — añadidos `crm` (nombre, telefono, email, origen, estado, proximoPaso) y `documentos` (nombre, tipo, cliente, fecha, estado) con sus respectivos `tableColumns`. Tipos de documento: consentimiento, historia, radiografia, receta, informe.
+- **Gimnasio** ✅ — añadidos `crm` (Captación) y `documentos` (Contratos / certificados médicos / consentimientos / tarifas).
+- **Peluquería** ✅ — añadidos `crm` y `documentos` (ficha_color, consentimiento, contrato, informe).
+- **Taller** ✅ — añadidos `crm` con campo extra `vehiculo` (marca/modelo) y `documentos` (albaran, hoja_taller, certificado, factura_proveedor, informe).
+- **Colegio** ✅ — añadidos `crm` (Admisiones, con estado matriculado/lead/visitado/perdido) y `documentos` (Expedientes: expediente, autorizacion, admision, boletin, informe). _Corrección: Colegio sí tenía demo data desde antes — la auditoría inicial reportó "0 demo" por un fallo de regex, ya verificado con la lectura directa del registry._
+
+Estado final de los 6 packs tras este cierre:
+
+| Pack | Color | Estado |
+|---|---|---|
+| Clínica Dental | `#0f766e` | ✅ Completo |
+| Software Factory | `#2563eb` | ✅ Completo (referencia) |
+| Gimnasio | `#dc2626` | ✅ Completo |
+| Peluquería | `#db2777` | ✅ Completo |
+| Taller | `#ea580c` | ✅ Completo |
+| Colegio | `#7c3aed` | ✅ Completo |
+
+Todos los verticales tienen ahora paridad funcional para los 6 módulos del núcleo (`clientes`, `crm`, `proyectos`, `presupuestos`, `facturacion`, `documentos`) — fields, tableColumns y demo data presentes. SF mantiene su superioridad por el Hub Producción y Catálogo de Servicios, que son específicos del vertical.
+
+Próximos pasos posibles:
+- Activar tenants reales en cada vertical para validar UX por sector.
+- Si entra un nuevo vertical, usar la paleta libre del § 6.
+- Para SF: avanzar la integración real Verifactu cuando llegue el certificado AEAT.

@@ -81,6 +81,36 @@ const CLINICA_DENTAL_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text", placeholder: "Fase del tratamiento" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "350 EUR" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "emitida / cobrada / vencida" },
+
+    // CRM (oportunidades) — AUDIT-03.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible paciente", kind: "text", required: true, placeholder: "Familia / persona interesada" },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
+    { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "contacto@email.com" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen", kind: "text", placeholder: "Recomendación / Google / Instagram" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "lead / visitado / paciente / perdido", options: [
+      { value: "lead", label: "Lead" },
+      { value: "visitado", label: "Visitado" },
+      { value: "paciente", label: "Paciente" },
+      { value: "perdido", label: "Perdido" },
+    ] },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso", kind: "textarea", placeholder: "Llamar para agendar revisión, enviar presupuesto..." },
+
+    // Documentos — AUDIT-04.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", kind: "text", required: true, placeholder: "Consentimiento ortodoncia, Radiografía..." },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, placeholder: "consentimiento / historia / radiografia / receta / informe", options: [
+      { value: "consentimiento", label: "Consentimiento" },
+      { value: "historia", label: "Historia clínica" },
+      { value: "radiografia", label: "Radiografía" },
+      { value: "receta", label: "Receta" },
+      { value: "informe", label: "Informe" },
+    ] },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Paciente", kind: "relation", relationModuleKey: "clientes" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha", kind: "date" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado", kind: "status", placeholder: "borrador / vigente / archivado", options: [
+      { value: "borrador", label: "Borrador" },
+      { value: "vigente", label: "Vigente" },
+      { value: "archivado", label: "Archivado" },
+    ] },
   ],
   tableColumns: [
     { moduleKey: "clientes", fieldKey: "nombre", label: "Paciente", isPrimary: true },
@@ -100,6 +130,20 @@ const CLINICA_DENTAL_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Paciente" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
+
+    // CRM (oportunidades) — AUDIT-03.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible paciente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso" },
+
+    // Documentos — AUDIT-04.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", isPrimary: true },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Paciente" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado" },
   ],
   dashboardPriorities: [
     { key: "proyectos", label: "Citas de hoy", description: "Citas agendadas hoy en la clínica.", order: 1 },
@@ -713,6 +757,35 @@ const GIMNASIO_PACK: SectorPackDefinition = {
       { value: "activo", label: "Activo" },
       { value: "agotado", label: "Agotado" },
     ] },
+
+    // CRM (Captación) — AUDIT-03.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible socio", kind: "text", required: true, placeholder: "Persona interesada en apuntarse" },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
+    { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "lead@email.com" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen", kind: "text", placeholder: "Instagram / Recomendación / Web" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "lead / visitado / socio / perdido", options: [
+      { value: "lead", label: "Lead" },
+      { value: "visitado", label: "Visitado" },
+      { value: "socio", label: "Socio" },
+      { value: "perdido", label: "Perdido" },
+    ] },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso", kind: "textarea", placeholder: "Llamar para visita, enviar tarifas..." },
+
+    // Documentos — AUDIT-04.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", kind: "text", required: true, placeholder: "Contrato socio, Cert. médico..." },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, placeholder: "contrato / certificado_medico / consentimiento_imagen / tarifa", options: [
+      { value: "contrato", label: "Contrato" },
+      { value: "certificado_medico", label: "Certificado médico" },
+      { value: "consentimiento_imagen", label: "Consentimiento imagen" },
+      { value: "tarifa", label: "Tarifa" },
+    ] },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Socio", kind: "relation", relationModuleKey: "clientes" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha", kind: "date" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado", kind: "status", placeholder: "borrador / vigente / archivado", options: [
+      { value: "borrador", label: "Borrador" },
+      { value: "vigente", label: "Vigente" },
+      { value: "archivado", label: "Archivado" },
+    ] },
   ],
   tableColumns: [
     { moduleKey: "clientes", fieldKey: "nombre", label: "Socio", isPrimary: true },
@@ -733,6 +806,20 @@ const GIMNASIO_PACK: SectorPackDefinition = {
     { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto" },
     { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe" },
     { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
+
+    // CRM (Captación) — AUDIT-03.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible socio", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso" },
+
+    // Documentos — AUDIT-04.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", isPrimary: true },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Socio" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado" },
   ],
   dashboardPriorities: [
     { key: "clientes", label: "Socios activos", description: "Socios al día con su cuota.", order: 1 },
@@ -884,6 +971,35 @@ const PELUQUERIA_PACK: SectorPackDefinition = {
       { value: "activo", label: "Activo" },
       { value: "agotado", label: "Agotado" },
     ] },
+
+    // CRM — AUDIT-03.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", kind: "text", required: true, placeholder: "Persona interesada" },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
+    { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "lead@email.com" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen", kind: "text", placeholder: "Instagram / Recomendación / Web" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "lead / visitado / cliente / perdido", options: [
+      { value: "lead", label: "Lead" },
+      { value: "visitado", label: "Visitado" },
+      { value: "cliente", label: "Cliente" },
+      { value: "perdido", label: "Perdido" },
+    ] },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso", kind: "textarea", placeholder: "Llamar para agendar primera cita..." },
+
+    // Documentos — AUDIT-04.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", kind: "text", required: true, placeholder: "Ficha color cliente, Consentimiento..." },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, placeholder: "ficha_color / consentimiento / contrato / informe", options: [
+      { value: "ficha_color", label: "Ficha de color" },
+      { value: "consentimiento", label: "Consentimiento" },
+      { value: "contrato", label: "Contrato" },
+      { value: "informe", label: "Informe" },
+    ] },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha", kind: "date" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado", kind: "status", placeholder: "borrador / vigente / archivado", options: [
+      { value: "borrador", label: "Borrador" },
+      { value: "vigente", label: "Vigente" },
+      { value: "archivado", label: "Archivado" },
+    ] },
   ],
   tableColumns: [
     { moduleKey: "clientes", fieldKey: "nombre", label: "Cliente", isPrimary: true },
@@ -905,6 +1021,20 @@ const PELUQUERIA_PACK: SectorPackDefinition = {
     { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto" },
     { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe" },
     { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
+
+    // CRM — AUDIT-03.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso" },
+
+    // Documentos — AUDIT-04.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", isPrimary: true },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Cliente" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado" },
   ],
   dashboardPriorities: [
     { key: "proyectos", label: "Citas de hoy", description: "Citas agendadas para hoy.", order: 1 },
@@ -1061,6 +1191,37 @@ const TALLER_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text", placeholder: "OT-2026-0042 - Cambio de aceite y filtros" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe (con IVA)", kind: "money", required: true, placeholder: "108 EUR" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "emitida / cobrada / vencida" },
+
+    // CRM (Captación) — AUDIT-03.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", kind: "text", required: true, placeholder: "Nombre del interesado" },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
+    { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "lead@email.com" },
+    { moduleKey: "crm", fieldKey: "vehiculo", label: "Vehículo", kind: "text", placeholder: "Marca/modelo y matrícula del coche" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen", kind: "text", placeholder: "Recomendación / Cartel / Web" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "lead / visitado / cliente / perdido", options: [
+      { value: "lead", label: "Lead" },
+      { value: "visitado", label: "Visitado" },
+      { value: "cliente", label: "Cliente" },
+      { value: "perdido", label: "Perdido" },
+    ] },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso", kind: "textarea", placeholder: "Diagnosticar ruido, enviar presupuesto..." },
+
+    // Documentos — AUDIT-04.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", kind: "text", required: true, placeholder: "Albarán proveedor, hoja de taller..." },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, placeholder: "albaran / hoja_taller / certificado / factura_proveedor / informe", options: [
+      { value: "albaran", label: "Albarán" },
+      { value: "hoja_taller", label: "Hoja de taller" },
+      { value: "certificado", label: "Certificado" },
+      { value: "factura_proveedor", label: "Factura proveedor" },
+      { value: "informe", label: "Informe" },
+    ] },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha", kind: "date" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado", kind: "status", placeholder: "borrador / vigente / archivado", options: [
+      { value: "borrador", label: "Borrador" },
+      { value: "vigente", label: "Vigente" },
+      { value: "archivado", label: "Archivado" },
+    ] },
   ],
   tableColumns: [
     { moduleKey: "clientes", fieldKey: "nombre", label: "Cliente / vehículo", isPrimary: true },
@@ -1082,6 +1243,20 @@ const TALLER_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
+
+    // CRM (Captación) — AUDIT-03.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
+    { moduleKey: "crm", fieldKey: "vehiculo", label: "Vehículo" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso" },
+
+    // Documentos — AUDIT-04.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", isPrimary: true },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Cliente" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado" },
   ],
   dashboardPriorities: [
     { key: "proyectos", label: "Vehículos en taller", description: "OTs en estado en_taller o esperando_piezas.", order: 1 },
@@ -1244,6 +1419,36 @@ const COLEGIO_PACK: SectorPackDefinition = {
       { value: "suspendido", label: "Suspendido" },
       { value: "baja", label: "Baja" },
     ] },
+
+    // CRM (Admisiones) — AUDIT-02.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Familia interesada", kind: "text", required: true, placeholder: "Apellidos de la familia" },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
+    { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "familia@email.com" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen", kind: "text", placeholder: "Open day / Recomendación / Web" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "lead / visitado / matriculado / perdido", options: [
+      { value: "lead", label: "Lead" },
+      { value: "visitado", label: "Visitado" },
+      { value: "matriculado", label: "Matriculado" },
+      { value: "perdido", label: "Perdido" },
+    ] },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso", kind: "textarea", placeholder: "Enviar formulario admisión, agendar visita..." },
+
+    // Expedientes (documentos) — AUDIT-02.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", kind: "text", required: true, placeholder: "Expediente, Autorización, Boletín..." },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, placeholder: "expediente / autorizacion / admision / boletin / informe", options: [
+      { value: "expediente", label: "Expediente académico" },
+      { value: "autorizacion", label: "Autorización" },
+      { value: "admision", label: "Admisión" },
+      { value: "boletin", label: "Boletín" },
+      { value: "informe", label: "Informe" },
+    ] },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Familia", kind: "relation", relationModuleKey: "clientes" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha", kind: "date" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado", kind: "status", placeholder: "vigente / en_revision / archivado", options: [
+      { value: "vigente", label: "Vigente" },
+      { value: "en_revision", label: "En revisión" },
+      { value: "archivado", label: "Archivado" },
+    ] },
   ],
   tableColumns: [
     { moduleKey: "clientes", fieldKey: "nombre", label: "Familia / Alumno", isPrimary: true },
@@ -1265,6 +1470,20 @@ const COLEGIO_PACK: SectorPackDefinition = {
     { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto" },
     { moduleKey: "presupuestos", fieldKey: "precio_mensual", label: "Precio mensual" },
     { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
+
+    // CRM (Admisiones) — AUDIT-02.
+    { moduleKey: "crm", fieldKey: "nombre", label: "Familia interesada", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso" },
+
+    // Expedientes (documentos) — AUDIT-02.
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", isPrimary: true },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Familia" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado" },
   ],
   dashboardPriorities: [
     { key: "clientes", label: "Familias matriculadas", description: "Familias activas en el centro.", order: 1 },
