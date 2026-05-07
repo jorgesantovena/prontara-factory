@@ -16,6 +16,7 @@ import {
 } from "@/lib/erp/active-client-data-store";
 import { getActiveClientId } from "@/lib/factory/active-client-registry";
 import { getPersistenceBackend, withPrisma } from "@/lib/persistence/db";
+import { applySequenceToPayloadAsync } from "@/lib/persistence/sequence-counter-async";
 
 type ModuleRow = {
   id: string;
@@ -117,14 +118,20 @@ export async function createModuleRecordAsync(
   payload: Record<string, unknown>,
   clientId?: string,
 ): Promise<Record<string, string>> {
+  const cid = resolveClientId(clientId);
+
+  // SF-01: si el módulo tiene numeración correlativa configurada y el
+  // payload no trae ya un número manual, reservamos uno antes de
+  // persistir. Devuelve el payload enriquecido (o intacto si no aplica).
+  const enrichedPayload = await applySequenceToPayloadAsync(moduleKey, payload, cid);
+
   if (getPersistenceBackend() === "postgres") {
-    const cid = resolveClientId(clientId);
     const now = new Date().toISOString();
     const created: Record<string, string> = {
-      id: String(payload.id || randomUUID()),
-      createdAt: String(payload.createdAt || now),
+      id: String(enrichedPayload.id || randomUUID()),
+      createdAt: String(enrichedPayload.createdAt || now),
       updatedAt: now,
-      ...normalizeRow(payload),
+      ...normalizeRow(enrichedPayload),
     };
     await withPrisma(async (prisma) => {
       const c = prisma as unknown as {
@@ -151,7 +158,7 @@ export async function createModuleRecordAsync(
     });
     return created;
   }
-  return fsCreate(moduleKey, payload, clientId);
+  return fsCreate(moduleKey, enrichedPayload, clientId);
 }
 
 export async function updateModuleRecordAsync(

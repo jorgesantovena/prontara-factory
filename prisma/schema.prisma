@@ -52,6 +52,7 @@ model Tenant {
   onboardings         OnboardingState[]
   lifecycle           LifecycleState?
   moduleData          TenantModuleRecord[]
+  sequenceCounters    TenantSequenceCounter[]
   evolutionEvents     EvolutionEvent[]
   auditEvents         AuditEvent[]
 
@@ -232,6 +233,38 @@ model TenantModuleRecord {
 
   @@index([clientId, moduleKey, updatedAt])
   @@index([clientId, moduleKey, id])
+}
+
+// ===========================================================================
+// Numeración correlativa por tenant + año (SF-01)
+//
+// Mantiene contadores correlativos para facturas, presupuestos y
+// justificantes (y cualquier secuencia futura). Una fila por
+// (clientId, sequenceKey, year). El campo `lastNumber` se incrementa
+// atómicamente vía upsert con `increment`, garantizando que dos
+// peticiones concurrentes nunca obtengan el mismo número.
+//
+// Formato del número final renderizado: `${prefix}-${year}-${num.padStart(3,'0')}`
+// (ej: FAC-2026-001, PRES-2026-014, JUS-2026-007). El prefijo se
+// guarda aquí solo como referencia auditable — la lógica de formato
+// vive en `src/lib/persistence/sequence-counter-async.ts`.
+// ===========================================================================
+
+model TenantSequenceCounter {
+  id          String   @id @default(cuid())
+  tenantId    String
+  clientId    String
+  sequenceKey String   /// "facturas" | "presupuestos" | "justificantes"
+  year        Int
+  prefix      String   /// "FAC" | "PRES" | "JUS"
+  lastNumber  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, sequenceKey, year])
+  @@index([clientId, sequenceKey])
 }
 
 // ===========================================================================
