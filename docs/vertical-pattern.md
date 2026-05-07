@@ -280,3 +280,164 @@ El vertical `software-factory` es la referencia viva del patrón. Además de su 
 Si un vertical necesita comportamiento propio más allá del pack (KPIs específicos, intents de asistente, lib dedicada), sigue esta estructura: una carpeta `src/lib/verticals/<nombre>/`, una página opcional `src/app/<nombre>/page.tsx` y APIs propias en `src/app/api/<nombre>/`.
 
 No todos los verticales necesitan esto. La mayoría se resuelven solo con el `SectorPackDefinition`.
+
+---
+
+## 9. Comunes vs específicos — qué se hereda automáticamente y qué hay que rellenar
+
+> Sección añadida 7 mayo 2026 tras el cierre de los 6 packs. Este es el contrato real que tienen que cumplir los verticales.
+
+### A. Lo que es **común** a todos los verticales (ya está hecho, no hay que tocar)
+
+Estas piezas viven en el motor y aplican a cualquier pack sin trabajo adicional:
+
+**Núcleo de módulos del ERP** (los 8 que TODOS los verticales tienen `enabled: true`):
+
+| Módulo | URL | Función |
+|---|---|---|
+| `clientes` | `/clientes` | CRUD de clientes / pacientes / socios / familias / etc. |
+| `crm` | `/crm` | Pipeline comercial — leads y oportunidades |
+| `proyectos` | `/proyectos` | Trabajos / OTs / cursos / planes activos |
+| `presupuestos` | `/presupuestos` | Propuestas / bonos / servicios complementarios |
+| `facturacion` | `/facturacion` | Emisión de facturas / cuotas / recibos / tickets |
+| `documentos` | `/documentos` | Expedientes / fichas técnicas / albaranes / consentimientos |
+| `asistente` | `/asistente` | Chat IA del runtime |
+| `ajustes` | `/ajustes` | Configuración del tenant |
+
+**Funcionalidades transversales** (heredadas):
+
+- Numeración correlativa automática `FAC-YYYY-NNN`, `PRES-YYYY-NNN`, `JUS-YYYY-NNN` — SF‑01.
+- Resolver de tenant por cookie de sesión — SF‑13.
+- Guard de suscripción async (Postgres) — SF‑17.
+- Plan limits por recurso (clientes, facturas/mes, documentos).
+- Branding aplicado automáticamente desde el `accentColor` del pack.
+- Sidebar dinámico que respeta `MODULE_ORDER` + fallback para módulos custom — SF‑04 / SF‑20.
+- Dashboard runtime con métricas básicas, alertas operativas y trial state.
+- Saga de alta (landing → Stripe → tenant creado → email activación → primer login).
+- Páginas legales (/aviso‑legal, /privacidad, /cookies, /contrato).
+- Audit log + backups + RLS Postgres opt‑in.
+
+### B. Lo que es **específico** del vertical y hay que rellenar en el pack
+
+Estas son las piezas que definen el carácter sectorial. Sin ellas, el módulo aparece pero está vacío o roto:
+
+| Pieza | Obligatoriedad | Qué pasa si falta |
+|---|---|---|
+| `branding.accentColor` | obligatorio | Cae a azul Prontara genérico |
+| `branding.displayName` | obligatorio | Sale "Prontara" en vez de tu marca |
+| `labels` (renombre semántico) | recomendado | Ej. "Clientes" en vez de "Pacientes" |
+| `renameMap` (singular/plural) | recomendado | Inconsistencias en el copy |
+| `modules[].enabled` | obligatorio | Si está en `false`, el módulo no aparece en sidebar |
+| `fields[]` por moduleKey | **obligatorio** para cada módulo enabled | **Modal "+ Nuevo" sale sin campos** (bug SF‑14, SF‑21, AUDIT‑02..04) |
+| `tableColumns[]` por moduleKey | **obligatorio** para cada módulo enabled | **Tabla con filas sin columnas** |
+| `demoData[]` por moduleKey | recomendado fuerte | Tenant nuevo arranca vacío sin contexto para entender |
+| `dashboardPriorities` | recomendado | Dashboard sale con prioridades genéricas |
+| `entities` | recomendado | El asistente IA pierde contexto sectorial |
+| `landing` | recomendado | La página de landing comercial sale con copy genérico |
+| `assistantCopy` | opcional | El asistente saluda con copy genérico |
+
+### C. Módulos específicos de un solo vertical (extras del pack)
+
+Algunos verticales añaden módulos que NO están en el núcleo común. Cuando el pack los declara `enabled: true`, automáticamente:
+
+- Aparecen en el sidebar (al final del orden canónico, por el fallback genérico de SF‑04).
+- Necesitan su propia página `src/app/<moduleKey>/page.tsx` (stub que usa `GenericModuleRuntimePage`) **o** vivir como tab dentro de un hub.
+
+Caso real: **Software Factory** declara `catalogo-servicios`, `tareas`, `incidencias`, `actividades`, `versiones`, `mantenimientos`, `justificantes`, `descripciones-proyecto`. De estos:
+
+- `catalogo-servicios` tiene página propia en `/catalogo-servicios`.
+- Los otros 7 son **HUB_CHILDREN** — solo se acceden como tabs dentro de `/produccion`, no en sidebar.
+
+Para añadir un hub‑child sin que aparezca como link 404 en sidebar, hay que añadirlo a `HUB_CHILDREN_MODULES` en `src/components/erp/tenant-sidebar.tsx`.
+
+## 10. Checklist obligatorio para añadir un vertical nuevo
+
+Cuando crees el pack N+1, copia esta lista y márcala. Si todo está en verde, está listo.
+
+```
+[ ] 1. Definir businessType en kebab-case (ej. "panaderia")
+[ ] 2. Elegir accentColor — usar paleta libre del § 11. Verificar 60° HSL de distancia con vecinos
+[ ] 3. Crear const NUEVO_PACK en src/lib/factory/sector-pack-registry.ts
+[ ] 4. Registrarlo en sectorPacks[] (al final del archivo)
+[ ] 5. branding completo (displayName, shortName, accentColor, logoHint, tone)
+[ ] 6. labels para los 8 módulos del núcleo (renombre semántico sectorial)
+[ ] 7. renameMap singular/plural si renombras
+[ ] 8. modules[] con enabled:true para los 8 + extras propios
+[ ] 9. fields[] con AL MENOS clientes, crm, proyectos, presupuestos, facturacion, documentos
+[ ] 10. tableColumns[] paralelo a fields, con isPrimary en al menos uno por módulo
+[ ] 11. demoData con 3-6 registros por módulo común (sin números reales — ficticios pero plausibles)
+[ ] 12. dashboardPriorities con orden 1..5
+[ ] 13. landing (headline, subheadline, bullets, cta)
+[ ] 14. assistantCopy (welcome, suggestion)
+[ ] 15. Si hay módulos extra: añadirlos también a fields/tableColumns/demoData
+[ ] 16. Si hay módulos hub-children (solo accesibles desde otro hub): añadir al HUB_CHILDREN_MODULES en tenant-sidebar.tsx
+[ ] 17. Correr `pnpm test` — el test de integridad sector-pack-integrity debe pasar
+[ ] 18. Crear un tenant local con businessType=<nuevo> y validar visualmente las 6 URLs del núcleo
+```
+
+## 11. Paleta de colores — registro de uso
+
+Colores **ocupados** (no reusar):
+
+| Color | Pack | Sector |
+|---|---|---|
+| `#0f766e` (teal verde‑oscuro) | clinica-dental | salud |
+| `#2563eb` (azul) | software-factory | tecnologia |
+| `#dc2626` (rojo) | gimnasio | fitness |
+| `#db2777` (rosa) | peluqueria | belleza |
+| `#ea580c` (naranja) | taller | automocion |
+| `#7c3aed` (violeta) | colegio | educacion |
+
+Paleta **libre** sugerida (criterio: >60° HSL de distancia de vecinos):
+
+| Color | Tono | Buen candidato para sector |
+|---|---|---|
+| `#16a34a` | green‑600 brillante | alimentación / agricultura |
+| `#059669` | emerald‑600 | jardinería / sostenibilidad |
+| `#65a30d` | lime‑600 amarillento | hostelería casual |
+| `#0891b2` | cyan‑600 | limpieza / servicios profesionales |
+| `#1e40af` | indigo‑700 oscuro | asesoría legal / notarías |
+| `#0284c7` | sky‑600 celeste | turismo / agencias |
+| `#b91c1c` | red‑700 oscuro | seguridad / emergencias |
+| `#be123c` | rose‑700 | moda / boutique |
+| `#c2410c` | orange‑700 oscuro | construcción / obras |
+| `#d97706` | amber‑600 | panadería / pastelería |
+| `#a16207` | yellow‑700 mostaza | gestoría rural |
+| `#6d28d9` | violet‑700 oscuro | academia / formación |
+| `#c026d3` | fuchsia‑600 | eventos / bodas |
+| `#78350f` | amber‑900 marrón | carpintería / madera |
+| `#57534e` | stone‑600 gris pizarra | consultoría B2B |
+| `#1f2937` | slate‑800 antracita | industria / metal |
+
+Cuando se use uno, mover de "libre" a "ocupado" en este documento.
+
+## 12. Anti‑patrones detectados (bugs reales que se han visto)
+
+Estos errores ya pasaron en producción. El test de integridad del § 13 los detecta automáticamente, pero conviene tenerlos en mente:
+
+1. **Módulo enabled sin fields** → modal "+ Nuevo" sale sin campos. Vimos esto en SF (facturacion/presupuestos antes de SF‑14), en gimnasio/peluquería/colegio (presupuestos antes de SF‑19), en los 5 packs no‑SF (crm y documentos antes de AUDIT‑03/04).
+
+2. **Módulo enabled sin tableColumns** → tabla muestra filas pero columnas vacías. Vimos esto en colegio antes de AUDIT‑02.
+
+3. **`fieldKey` en pack pero `key` en frontend** → todos los inputs comparten state y al teclear en uno cambian todos. Lo arreglé en SF‑16 con un mapping en el resolver. Si añades fields nuevos, asegúrate de usar `fieldKey` (consistente con la definición de `SectorPackField`).
+
+4. **Módulo hub‑child con página inexistente** → 404 en sidebar. Lo arreglé en SF‑20: añadir a `HUB_CHILDREN_MODULES`.
+
+5. **Pack sin demo data** → tenant nuevo arranca con tablas vacías y el operador no entiende qué hacer. Aunque el motor funciona, la UX es mala.
+
+6. **Color del pack idéntico (o muy cercano) a otro** → el operador confunde tenants en Factory Chat / dashboard agregado. Mantener regla 60° HSL.
+
+7. **Módulo legacy en `MODULE_ORDER` del sidebar pero no enabled en el pack** → aparece en sidebar pero su página da 404 o está vacía.
+
+8. **Llamar a `getOrCreateBillingSubscription` (sync) desde un endpoint serverless** → toca `/var/task/data/saas/billing` que es read‑only en Vercel, ENOENT. Usar siempre `getOrCreateBillingSubscriptionAsync` (SF‑15).
+
+## 13. Test de integridad de packs
+
+Existe `src/lib/factory/__tests__/sector-pack-integrity.test.ts` que verifica automáticamente:
+
+- Cada pack tiene `accentColor` único (no se solapa con otro).
+- Cada módulo enabled (excluyendo `asistente`, `ajustes` y los hub‑children del SF) tiene al menos 1 `field` y 1 `tableColumn`.
+- Los 6 módulos del núcleo (`clientes`, `crm`, `proyectos`, `presupuestos`, `facturacion`, `documentos`) están enabled en todos los packs.
+- Cada pack tiene demoData para al menos `clientes`, `proyectos` y `facturacion`.
+
+Correr con `pnpm test sector-pack-integrity`. Si falla, el pack nuevo no está completo todavía.
