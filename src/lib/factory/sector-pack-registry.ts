@@ -235,6 +235,22 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     },
   ],
   fields: [
+    // CRM (oportunidades) — SF-21.
+    { moduleKey: "crm", fieldKey: "empresa", label: "Empresa", kind: "text", required: true, placeholder: "Razón social del prospecto" },
+    { moduleKey: "crm", fieldKey: "contacto", label: "Contacto", kind: "text", required: true, placeholder: "Persona con la que tratas" },
+    { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "contacto@empresa.com" },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 600 000 000" },
+    { moduleKey: "crm", fieldKey: "fase", label: "Fase", kind: "status", required: true, placeholder: "lead / contactado / propuesta / negociacion / ganado / perdido", options: [
+      { value: "lead", label: "Lead" },
+      { value: "contactado", label: "Contactado" },
+      { value: "propuesta", label: "Propuesta" },
+      { value: "negociacion", label: "Negociación" },
+      { value: "ganado", label: "Ganado" },
+      { value: "perdido", label: "Perdido" },
+    ] },
+    { moduleKey: "crm", fieldKey: "valorEstimado", label: "Valor estimado", kind: "money", placeholder: "Ej. 14500 EUR" },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso", kind: "textarea", placeholder: "Qué hay que hacer a continuación con este prospecto" },
+
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Proyecto", kind: "text", required: true, placeholder: "ERP comercial, mantenimiento anual..." },
     { moduleKey: "proyectos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
     { moduleKey: "proyectos", fieldKey: "codigoTipo", label: "Código de servicio", kind: "relation", relationModuleKey: "catalogo-servicios", placeholder: "INST, MANT, NUEDES, SOP, FORM..." },
@@ -365,6 +381,13 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     },
   ],
   tableColumns: [
+    // CRM (oportunidades) — SF-21.
+    { moduleKey: "crm", fieldKey: "empresa", label: "Empresa", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "contacto", label: "Contacto" },
+    { moduleKey: "crm", fieldKey: "fase", label: "Fase" },
+    { moduleKey: "crm", fieldKey: "valorEstimado", label: "Valor" },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso" },
+
     { moduleKey: "proyectos", fieldKey: "codigoTipo", label: "Código", isPrimary: true },
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Proyecto" },
     { moduleKey: "proyectos", fieldKey: "cliente", label: "Cliente" },

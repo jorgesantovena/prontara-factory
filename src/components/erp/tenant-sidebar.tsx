@@ -81,6 +81,21 @@ const FALLBACK_LABELS: Record<string, string> = {
 // config.modules) pero sí tienen página propia. Los mostramos siempre.
 const VIRTUAL_MODULES = new Set(["produccion"]);
 
+// Módulos que viven SOLO dentro del hub /produccion (tabs internas).
+// El pack los marca como enabled para que existan como módulos del ERP
+// y se persistan registros, pero NO tienen página propia /<key> — el
+// usuario los ve como tabs dentro de /produccion. Los excluimos del
+// sidebar para evitar 404 (SF-20).
+const HUB_CHILDREN_MODULES = new Set([
+  "tareas",
+  "incidencias",
+  "actividades",
+  "versiones",
+  "mantenimientos",
+  "justificantes",
+  "descripciones-proyecto",
+]);
+
 function readQueryParams() {
   if (typeof window === "undefined") return { tenant: "", sectorPack: "" };
   const sp = new URLSearchParams(window.location.search);
@@ -173,12 +188,15 @@ export default function TenantSidebar() {
   // virtuales — los añadimos al final para no perder módulos custom
   // de futuros verticales sin tener que tocar este array. Por ejemplo,
   // si un pack añade "stock", "rutas" o "consultas", aparecerán aquí.
+  // Excluimos los hijos del hub /produccion porque no tienen página
+  // propia (SF-20).
   if (config) {
     for (const m of config.modules) {
       if (!m || m.enabled === false) continue;
       const k = m.moduleKey;
       if (!k || seen.has(k)) continue;
       if (VIRTUAL_MODULES.has(k)) continue;
+      if (HUB_CHILDREN_MODULES.has(k)) continue;
       moduleItems.push({
         href: buildHref("/" + k, params),
         label: labelFor(k),
