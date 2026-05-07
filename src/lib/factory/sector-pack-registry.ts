@@ -1355,6 +1355,29 @@ const COLEGIO_PACK: SectorPackDefinition = {
     documentos: "Expedientes",
     ajustes: "Ajustes",
     asistente: "Asistente",
+    // SCHOOL-01 — módulos extendidos
+    calificaciones: "Calificaciones",
+    asistencia: "Asistencia",
+    docentes: "Docentes",
+    horarios: "Horarios",
+    planeaciones: "Planeaciones",
+    disciplina: "Convivencia",
+    orientacion: "Orientación",
+    enfermeria: "Enfermería",
+    comunicaciones: "Comunicaciones",
+    eventos: "Calendario",
+    transporte: "Transporte",
+    comedor: "Comedor",
+    biblioteca: "Biblioteca",
+    inventario: "Inventario",
+    mantenimiento: "Mantenimiento",
+    personal: "Personal",
+    visitantes: "Visitantes",
+    tramites: "Trámites",
+    becas: "Becas",
+    actividades: "Extracurriculares",
+    salidas: "Salidas",
+    egresados: "Egresados",
   },
   renameMap: {
     cliente: "familia",
@@ -1376,6 +1399,29 @@ const COLEGIO_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Recibos", navigationLabel: "Recibos", emptyState: "Todavía no hay recibos." },
     { moduleKey: "documentos", enabled: true, label: "Expedientes", navigationLabel: "Expedientes", emptyState: "Sin expedientes cargados." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu colegio." },
+    // SCHOOL-01 — los 22 módulos extendidos del ERP escolar.
+    { moduleKey: "calificaciones", enabled: true, label: "Calificaciones", navigationLabel: "Calificaciones", emptyState: "Todavía no hay notas registradas." },
+    { moduleKey: "asistencia", enabled: true, label: "Asistencia", navigationLabel: "Asistencia", emptyState: "Sin registros de asistencia hoy." },
+    { moduleKey: "docentes", enabled: true, label: "Docentes", navigationLabel: "Docentes", emptyState: "Todavía no hay docentes." },
+    { moduleKey: "horarios", enabled: true, label: "Horarios", navigationLabel: "Horarios", emptyState: "Sin horarios definidos." },
+    { moduleKey: "planeaciones", enabled: true, label: "Planeaciones", navigationLabel: "Planeaciones", emptyState: "Sin planeaciones cargadas." },
+    { moduleKey: "disciplina", enabled: true, label: "Convivencia", navigationLabel: "Convivencia", emptyState: "Sin incidencias registradas." },
+    { moduleKey: "orientacion", enabled: true, label: "Orientación", navigationLabel: "Orientación", emptyState: "Sin atenciones registradas." },
+    { moduleKey: "enfermeria", enabled: true, label: "Enfermería", navigationLabel: "Enfermería", emptyState: "Sin atenciones médicas registradas." },
+    { moduleKey: "comunicaciones", enabled: true, label: "Comunicaciones", navigationLabel: "Comunicaciones", emptyState: "Sin comunicados enviados." },
+    { moduleKey: "eventos", enabled: true, label: "Calendario", navigationLabel: "Calendario", emptyState: "Sin eventos en el calendario." },
+    { moduleKey: "transporte", enabled: true, label: "Transporte", navigationLabel: "Transporte", emptyState: "Sin rutas configuradas." },
+    { moduleKey: "comedor", enabled: true, label: "Comedor", navigationLabel: "Comedor", emptyState: "Sin menús cargados." },
+    { moduleKey: "biblioteca", enabled: true, label: "Biblioteca", navigationLabel: "Biblioteca", emptyState: "Sin préstamos registrados." },
+    { moduleKey: "inventario", enabled: true, label: "Inventario", navigationLabel: "Inventario", emptyState: "Sin activos registrados." },
+    { moduleKey: "mantenimiento", enabled: true, label: "Mantenimiento", navigationLabel: "Mantenimiento", emptyState: "Sin solicitudes de mantenimiento." },
+    { moduleKey: "personal", enabled: true, label: "Personal", navigationLabel: "Personal", emptyState: "Sin personal registrado." },
+    { moduleKey: "visitantes", enabled: true, label: "Visitantes", navigationLabel: "Visitantes", emptyState: "Sin registros de visitantes." },
+    { moduleKey: "tramites", enabled: true, label: "Trámites", navigationLabel: "Trámites", emptyState: "Sin trámites pendientes." },
+    { moduleKey: "becas", enabled: true, label: "Becas", navigationLabel: "Becas", emptyState: "Sin becas concedidas." },
+    { moduleKey: "actividades", enabled: true, label: "Extracurriculares", navigationLabel: "Extracurriculares", emptyState: "Sin actividades extracurriculares." },
+    { moduleKey: "salidas", enabled: true, label: "Salidas", navigationLabel: "Salidas", emptyState: "Sin salidas pedagógicas planificadas." },
+    { moduleKey: "egresados", enabled: true, label: "Egresados", navigationLabel: "Egresados", emptyState: "Sin egresados registrados." },
     { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
   ],
   entities: [
@@ -1449,6 +1495,236 @@ const COLEGIO_PACK: SectorPackDefinition = {
       { value: "en_revision", label: "En revisión" },
       { value: "archivado", label: "Archivado" },
     ] },
+
+    // ============================================================
+    // SCHOOL-01 — fields de los 22 módulos extendidos del ERP escolar
+    // ============================================================
+
+    // Calificaciones
+    { moduleKey: "calificaciones", fieldKey: "alumno", label: "Alumno", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "calificaciones", fieldKey: "asignatura", label: "Asignatura", kind: "text", required: true, placeholder: "Matemáticas, Lengua..." },
+    { moduleKey: "calificaciones", fieldKey: "periodo", label: "Periodo", kind: "status", required: true, placeholder: "1T / 2T / 3T / final", options: [
+      { value: "1T", label: "1er trimestre" }, { value: "2T", label: "2º trimestre" }, { value: "3T", label: "3er trimestre" }, { value: "final", label: "Final" },
+    ] },
+    { moduleKey: "calificaciones", fieldKey: "tipoEvaluacion", label: "Tipo", kind: "status", placeholder: "examen / trabajo / participacion / proyecto", options: [
+      { value: "examen", label: "Examen" }, { value: "trabajo", label: "Trabajo" }, { value: "participacion", label: "Participación" }, { value: "proyecto", label: "Proyecto" },
+    ] },
+    { moduleKey: "calificaciones", fieldKey: "nota", label: "Nota", kind: "number", required: true, placeholder: "0-10" },
+    { moduleKey: "calificaciones", fieldKey: "peso", label: "Peso (%)", kind: "number", placeholder: "10, 20, 40..." },
+    { moduleKey: "calificaciones", fieldKey: "observaciones", label: "Observaciones", kind: "textarea" },
+
+    // Asistencia
+    { moduleKey: "asistencia", fieldKey: "alumno", label: "Alumno", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "asistencia", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+    { moduleKey: "asistencia", fieldKey: "curso", label: "Curso", kind: "relation", relationModuleKey: "proyectos" },
+    { moduleKey: "asistencia", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "presente / ausente / tarde / justificada", options: [
+      { value: "presente", label: "Presente" }, { value: "ausente", label: "Ausente" }, { value: "tarde", label: "Tarde" }, { value: "justificada", label: "Falta justificada" },
+    ] },
+    { moduleKey: "asistencia", fieldKey: "motivo", label: "Motivo / justificación", kind: "textarea" },
+
+    // Docentes
+    { moduleKey: "docentes", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
+    { moduleKey: "docentes", fieldKey: "email", label: "Email", kind: "email" },
+    { moduleKey: "docentes", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
+    { moduleKey: "docentes", fieldKey: "especialidad", label: "Especialidad", kind: "text", placeholder: "Matemáticas, Inglés, Educación física..." },
+    { moduleKey: "docentes", fieldKey: "etapa", label: "Etapa", kind: "text", placeholder: "Infantil / Primaria / ESO" },
+    { moduleKey: "docentes", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "activo", label: "Activo" }, { value: "baja", label: "Baja" }, { value: "sustituto", label: "Sustituto" },
+    ] },
+
+    // Horarios
+    { moduleKey: "horarios", fieldKey: "curso", label: "Curso", kind: "relation", required: true, relationModuleKey: "proyectos" },
+    { moduleKey: "horarios", fieldKey: "diaSemana", label: "Día", kind: "status", required: true, options: [
+      { value: "lunes", label: "Lunes" }, { value: "martes", label: "Martes" }, { value: "miercoles", label: "Miércoles" }, { value: "jueves", label: "Jueves" }, { value: "viernes", label: "Viernes" },
+    ] },
+    { moduleKey: "horarios", fieldKey: "horaInicio", label: "Hora inicio", kind: "text", placeholder: "09:00", required: true },
+    { moduleKey: "horarios", fieldKey: "horaFin", label: "Hora fin", kind: "text", placeholder: "10:00", required: true },
+    { moduleKey: "horarios", fieldKey: "asignatura", label: "Asignatura", kind: "text", required: true },
+    { moduleKey: "horarios", fieldKey: "docente", label: "Docente", kind: "relation", relationModuleKey: "docentes" },
+    { moduleKey: "horarios", fieldKey: "aula", label: "Aula", kind: "text", placeholder: "A-12, B-3..." },
+
+    // Planeaciones
+    { moduleKey: "planeaciones", fieldKey: "asignatura", label: "Asignatura", kind: "text", required: true },
+    { moduleKey: "planeaciones", fieldKey: "curso", label: "Curso", kind: "relation", relationModuleKey: "proyectos" },
+    { moduleKey: "planeaciones", fieldKey: "docente", label: "Docente", kind: "relation", relationModuleKey: "docentes" },
+    { moduleKey: "planeaciones", fieldKey: "periodo", label: "Periodo", kind: "text", placeholder: "1T 2026, Unidad 3..." },
+    { moduleKey: "planeaciones", fieldKey: "objetivos", label: "Objetivos de aprendizaje", kind: "textarea", required: true },
+    { moduleKey: "planeaciones", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "borrador", label: "Borrador" }, { value: "aprobada", label: "Aprobada" }, { value: "en_curso", label: "En curso" }, { value: "completada", label: "Completada" },
+    ] },
+
+    // Convivencia (disciplina)
+    { moduleKey: "disciplina", fieldKey: "alumno", label: "Alumno", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "disciplina", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+    { moduleKey: "disciplina", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
+      { value: "leve", label: "Falta leve" }, { value: "grave", label: "Falta grave" }, { value: "muy_grave", label: "Muy grave" }, { value: "positivo", label: "Reconocimiento positivo" },
+    ] },
+    { moduleKey: "disciplina", fieldKey: "descripcion", label: "Descripción", kind: "textarea", required: true },
+    { moduleKey: "disciplina", fieldKey: "medida", label: "Medida adoptada", kind: "textarea" },
+    { moduleKey: "disciplina", fieldKey: "responsable", label: "Reportado por", kind: "text" },
+
+    // Orientación
+    { moduleKey: "orientacion", fieldKey: "alumno", label: "Alumno", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "orientacion", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+    { moduleKey: "orientacion", fieldKey: "motivo", label: "Motivo", kind: "text", required: true, placeholder: "Dificultades aprendizaje, conducta, familiar..." },
+    { moduleKey: "orientacion", fieldKey: "intervencion", label: "Intervención", kind: "textarea" },
+    { moduleKey: "orientacion", fieldKey: "responsable", label: "Profesional", kind: "text", placeholder: "Orientador / psicólogo" },
+    { moduleKey: "orientacion", fieldKey: "estado", label: "Estado", kind: "status", options: [
+      { value: "abierto", label: "Abierto" }, { value: "seguimiento", label: "En seguimiento" }, { value: "cerrado", label: "Cerrado" },
+    ] },
+
+    // Enfermería
+    { moduleKey: "enfermeria", fieldKey: "alumno", label: "Alumno", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "enfermeria", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+    { moduleKey: "enfermeria", fieldKey: "motivo", label: "Motivo", kind: "text", required: true, placeholder: "Dolor cabeza, caída, fiebre..." },
+    { moduleKey: "enfermeria", fieldKey: "atencion", label: "Atención prestada", kind: "textarea" },
+    { moduleKey: "enfermeria", fieldKey: "medicacion", label: "Medicación administrada", kind: "text" },
+    { moduleKey: "enfermeria", fieldKey: "avisoFamilia", label: "Aviso familia", kind: "status", options: [
+      { value: "si", label: "Sí" }, { value: "no", label: "No" },
+    ] },
+
+    // Comunicaciones
+    { moduleKey: "comunicaciones", fieldKey: "asunto", label: "Asunto", kind: "text", required: true },
+    { moduleKey: "comunicaciones", fieldKey: "destinatarios", label: "Destinatarios", kind: "text", placeholder: "Toda la familia / Primaria / Curso 2ºA..." },
+    { moduleKey: "comunicaciones", fieldKey: "mensaje", label: "Mensaje", kind: "textarea", required: true },
+    { moduleKey: "comunicaciones", fieldKey: "fechaEnvio", label: "Fecha envío", kind: "date" },
+    { moduleKey: "comunicaciones", fieldKey: "canal", label: "Canal", kind: "status", options: [
+      { value: "email", label: "Email" }, { value: "app", label: "App" }, { value: "sms", label: "SMS" }, { value: "papel", label: "Papel" },
+    ] },
+    { moduleKey: "comunicaciones", fieldKey: "estado", label: "Estado", kind: "status", options: [
+      { value: "borrador", label: "Borrador" }, { value: "enviado", label: "Enviado" },
+    ] },
+
+    // Eventos
+    { moduleKey: "eventos", fieldKey: "titulo", label: "Título", kind: "text", required: true },
+    { moduleKey: "eventos", fieldKey: "fechaInicio", label: "Fecha inicio", kind: "date", required: true },
+    { moduleKey: "eventos", fieldKey: "fechaFin", label: "Fecha fin", kind: "date" },
+    { moduleKey: "eventos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
+      { value: "academico", label: "Académico" }, { value: "festivo", label: "Festivo" }, { value: "reunion", label: "Reunión" }, { value: "salida", label: "Salida" }, { value: "evaluacion", label: "Evaluaciones" },
+    ] },
+    { moduleKey: "eventos", fieldKey: "alcance", label: "Alcance", kind: "text", placeholder: "Toda la escuela / Primaria / 3ºA..." },
+    { moduleKey: "eventos", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
+
+    // Transporte
+    { moduleKey: "transporte", fieldKey: "ruta", label: "Ruta", kind: "text", required: true, placeholder: "Ruta Norte, Ruta Centro..." },
+    { moduleKey: "transporte", fieldKey: "alumno", label: "Alumno", kind: "relation", relationModuleKey: "clientes" },
+    { moduleKey: "transporte", fieldKey: "parada", label: "Parada", kind: "text", placeholder: "Plaza Mayor, esquina..." },
+    { moduleKey: "transporte", fieldKey: "horaRecogida", label: "Hora recogida", kind: "text", placeholder: "08:15" },
+    { moduleKey: "transporte", fieldKey: "conductor", label: "Conductor", kind: "text" },
+    { moduleKey: "transporte", fieldKey: "estado", label: "Estado", kind: "status", options: [
+      { value: "activo", label: "Activo" }, { value: "suspendido", label: "Suspendido" }, { value: "baja", label: "Baja" },
+    ] },
+
+    // Comedor
+    { moduleKey: "comedor", fieldKey: "alumno", label: "Alumno", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "comedor", fieldKey: "modalidad", label: "Modalidad", kind: "status", required: true, options: [
+      { value: "diario", label: "Diario" }, { value: "esporadico", label: "Esporádico" }, { value: "alergico", label: "Menú especial" },
+    ] },
+    { moduleKey: "comedor", fieldKey: "alergias", label: "Alergias / restricciones", kind: "textarea" },
+    { moduleKey: "comedor", fieldKey: "fechaInicio", label: "Inicio servicio", kind: "date" },
+    { moduleKey: "comedor", fieldKey: "estado", label: "Estado", kind: "status", options: [
+      { value: "activo", label: "Activo" }, { value: "suspendido", label: "Suspendido" }, { value: "baja", label: "Baja" },
+    ] },
+
+    // Biblioteca
+    { moduleKey: "biblioteca", fieldKey: "titulo", label: "Título", kind: "text", required: true, placeholder: "Don Quijote de la Mancha" },
+    { moduleKey: "biblioteca", fieldKey: "autor", label: "Autor", kind: "text" },
+    { moduleKey: "biblioteca", fieldKey: "isbn", label: "ISBN", kind: "text" },
+    { moduleKey: "biblioteca", fieldKey: "alumno", label: "Prestado a (alumno)", kind: "relation", relationModuleKey: "clientes" },
+    { moduleKey: "biblioteca", fieldKey: "fechaPrestamo", label: "Fecha préstamo", kind: "date" },
+    { moduleKey: "biblioteca", fieldKey: "fechaDevolucion", label: "Fecha devolución prevista", kind: "date" },
+    { moduleKey: "biblioteca", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "disponible", label: "Disponible" }, { value: "prestado", label: "Prestado" }, { value: "atrasado", label: "Atrasado" }, { value: "perdido", label: "Perdido" },
+    ] },
+
+    // Inventario
+    { moduleKey: "inventario", fieldKey: "nombre", label: "Activo", kind: "text", required: true, placeholder: "Proyector aula 12" },
+    { moduleKey: "inventario", fieldKey: "categoria", label: "Categoría", kind: "text", placeholder: "Mobiliario, electrónica, deportivo..." },
+    { moduleKey: "inventario", fieldKey: "ubicacion", label: "Ubicación", kind: "text", placeholder: "Aula A-12, Sala profes..." },
+    { moduleKey: "inventario", fieldKey: "responsable", label: "Responsable", kind: "text" },
+    { moduleKey: "inventario", fieldKey: "fechaCompra", label: "Fecha compra", kind: "date" },
+    { moduleKey: "inventario", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "operativo", label: "Operativo" }, { value: "averiado", label: "Averiado" }, { value: "baja", label: "Baja" },
+    ] },
+
+    // Mantenimiento
+    { moduleKey: "mantenimiento", fieldKey: "asunto", label: "Asunto", kind: "text", required: true, placeholder: "Goteras aula 5" },
+    { moduleKey: "mantenimiento", fieldKey: "ubicacion", label: "Ubicación", kind: "text" },
+    { moduleKey: "mantenimiento", fieldKey: "prioridad", label: "Prioridad", kind: "status", required: true, options: [
+      { value: "baja", label: "Baja" }, { value: "media", label: "Media" }, { value: "alta", label: "Alta" }, { value: "critica", label: "Crítica" },
+    ] },
+    { moduleKey: "mantenimiento", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
+    { moduleKey: "mantenimiento", fieldKey: "responsable", label: "Asignado a", kind: "text" },
+    { moduleKey: "mantenimiento", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "abierta", label: "Abierta" }, { value: "en_curso", label: "En curso" }, { value: "completada", label: "Completada" }, { value: "cancelada", label: "Cancelada" },
+    ] },
+
+    // Personal (RRHH no académico)
+    { moduleKey: "personal", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
+    { moduleKey: "personal", fieldKey: "puesto", label: "Puesto", kind: "text", placeholder: "Secretaría, Limpieza, Conserjería..." },
+    { moduleKey: "personal", fieldKey: "email", label: "Email", kind: "email" },
+    { moduleKey: "personal", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
+    { moduleKey: "personal", fieldKey: "fechaAlta", label: "Fecha alta", kind: "date" },
+    { moduleKey: "personal", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "activo", label: "Activo" }, { value: "baja", label: "Baja" }, { value: "vacaciones", label: "Vacaciones" },
+    ] },
+
+    // Visitantes
+    { moduleKey: "visitantes", fieldKey: "nombre", label: "Visitante", kind: "text", required: true },
+    { moduleKey: "visitantes", fieldKey: "dni", label: "DNI", kind: "text" },
+    { moduleKey: "visitantes", fieldKey: "motivo", label: "Motivo visita", kind: "text", placeholder: "Tutoría con docente, recogida alumno..." },
+    { moduleKey: "visitantes", fieldKey: "horaEntrada", label: "Entrada", kind: "text", placeholder: "10:30" },
+    { moduleKey: "visitantes", fieldKey: "horaSalida", label: "Salida", kind: "text" },
+    { moduleKey: "visitantes", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+
+    // Trámites
+    { moduleKey: "tramites", fieldKey: "asunto", label: "Asunto", kind: "text", required: true, placeholder: "Solicitud certificado escolar" },
+    { moduleKey: "tramites", fieldKey: "solicitante", label: "Solicitante", kind: "relation", relationModuleKey: "clientes" },
+    { moduleKey: "tramites", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
+      { value: "certificado", label: "Certificado" }, { value: "permiso", label: "Permiso" }, { value: "cambio_datos", label: "Cambio de datos" }, { value: "queja", label: "Queja / Sugerencia" },
+    ] },
+    { moduleKey: "tramites", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
+    { moduleKey: "tramites", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "abierto", label: "Abierto" }, { value: "en_curso", label: "En curso" }, { value: "resuelto", label: "Resuelto" }, { value: "rechazado", label: "Rechazado" },
+    ] },
+
+    // Becas
+    { moduleKey: "becas", fieldKey: "alumno", label: "Alumno", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "becas", fieldKey: "tipo", label: "Tipo de beca", kind: "text", placeholder: "Comedor, transporte, total, parcial..." },
+    { moduleKey: "becas", fieldKey: "porcentaje", label: "Porcentaje (%)", kind: "number", placeholder: "10, 50, 100" },
+    { moduleKey: "becas", fieldKey: "vigenciaDesde", label: "Desde", kind: "date" },
+    { moduleKey: "becas", fieldKey: "vigenciaHasta", label: "Hasta", kind: "date" },
+    { moduleKey: "becas", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "solicitada", label: "Solicitada" }, { value: "aprobada", label: "Aprobada" }, { value: "rechazada", label: "Rechazada" }, { value: "vencida", label: "Vencida" },
+    ] },
+
+    // Extracurriculares (actividades)
+    { moduleKey: "actividades", fieldKey: "nombre", label: "Actividad", kind: "text", required: true, placeholder: "Inglés extraescolar, Robótica..." },
+    { moduleKey: "actividades", fieldKey: "responsable", label: "Responsable", kind: "text" },
+    { moduleKey: "actividades", fieldKey: "horario", label: "Horario", kind: "text", placeholder: "L y X 17:00-18:00" },
+    { moduleKey: "actividades", fieldKey: "cupo", label: "Plazas", kind: "number" },
+    { moduleKey: "actividades", fieldKey: "precio", label: "Precio mensual", kind: "money" },
+    { moduleKey: "actividades", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "abierta", label: "Abierta" }, { value: "completa", label: "Completa" }, { value: "cancelada", label: "Cancelada" },
+    ] },
+
+    // Salidas pedagógicas
+    { moduleKey: "salidas", fieldKey: "destino", label: "Destino", kind: "text", required: true, placeholder: "Museo Reina Sofía" },
+    { moduleKey: "salidas", fieldKey: "curso", label: "Curso", kind: "relation", relationModuleKey: "proyectos" },
+    { moduleKey: "salidas", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+    { moduleKey: "salidas", fieldKey: "responsable", label: "Responsable", kind: "text" },
+    { moduleKey: "salidas", fieldKey: "presupuestoFamilia", label: "Coste familia", kind: "money" },
+    { moduleKey: "salidas", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "planificada", label: "Planificada" }, { value: "autorizaciones", label: "Recogiendo autorizaciones" }, { value: "confirmada", label: "Confirmada" }, { value: "realizada", label: "Realizada" }, { value: "cancelada", label: "Cancelada" },
+    ] },
+
+    // Egresados
+    { moduleKey: "egresados", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
+    { moduleKey: "egresados", fieldKey: "anioEgreso", label: "Año de egreso", kind: "number" },
+    { moduleKey: "egresados", fieldKey: "etapaFinal", label: "Etapa final", kind: "text", placeholder: "Bachillerato, ESO..." },
+    { moduleKey: "egresados", fieldKey: "email", label: "Email actual", kind: "email" },
+    { moduleKey: "egresados", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
+    { moduleKey: "egresados", fieldKey: "trayectoria", label: "Trayectoria actual", kind: "textarea", placeholder: "Universidad, profesión..." },
   ],
   tableColumns: [
     { moduleKey: "clientes", fieldKey: "nombre", label: "Familia / Alumno", isPrimary: true },
@@ -1484,6 +1760,137 @@ const COLEGIO_PACK: SectorPackDefinition = {
     { moduleKey: "documentos", fieldKey: "cliente", label: "Familia" },
     { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha" },
     { moduleKey: "documentos", fieldKey: "estado", label: "Estado" },
+
+    // ============================================================
+    // SCHOOL-01 — tableColumns de los 22 módulos extendidos
+    // ============================================================
+    { moduleKey: "calificaciones", fieldKey: "alumno", label: "Alumno", isPrimary: true },
+    { moduleKey: "calificaciones", fieldKey: "asignatura", label: "Asignatura" },
+    { moduleKey: "calificaciones", fieldKey: "periodo", label: "Periodo" },
+    { moduleKey: "calificaciones", fieldKey: "tipoEvaluacion", label: "Tipo" },
+    { moduleKey: "calificaciones", fieldKey: "nota", label: "Nota" },
+
+    { moduleKey: "asistencia", fieldKey: "fecha", label: "Fecha", isPrimary: true },
+    { moduleKey: "asistencia", fieldKey: "alumno", label: "Alumno" },
+    { moduleKey: "asistencia", fieldKey: "curso", label: "Curso" },
+    { moduleKey: "asistencia", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "docentes", fieldKey: "nombre", label: "Docente", isPrimary: true },
+    { moduleKey: "docentes", fieldKey: "especialidad", label: "Especialidad" },
+    { moduleKey: "docentes", fieldKey: "etapa", label: "Etapa" },
+    { moduleKey: "docentes", fieldKey: "email", label: "Email" },
+    { moduleKey: "docentes", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "horarios", fieldKey: "diaSemana", label: "Día", isPrimary: true },
+    { moduleKey: "horarios", fieldKey: "horaInicio", label: "Inicio" },
+    { moduleKey: "horarios", fieldKey: "horaFin", label: "Fin" },
+    { moduleKey: "horarios", fieldKey: "asignatura", label: "Asignatura" },
+    { moduleKey: "horarios", fieldKey: "curso", label: "Curso" },
+    { moduleKey: "horarios", fieldKey: "docente", label: "Docente" },
+    { moduleKey: "horarios", fieldKey: "aula", label: "Aula" },
+
+    { moduleKey: "planeaciones", fieldKey: "asignatura", label: "Asignatura", isPrimary: true },
+    { moduleKey: "planeaciones", fieldKey: "curso", label: "Curso" },
+    { moduleKey: "planeaciones", fieldKey: "docente", label: "Docente" },
+    { moduleKey: "planeaciones", fieldKey: "periodo", label: "Periodo" },
+    { moduleKey: "planeaciones", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "disciplina", fieldKey: "fecha", label: "Fecha", isPrimary: true },
+    { moduleKey: "disciplina", fieldKey: "alumno", label: "Alumno" },
+    { moduleKey: "disciplina", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "disciplina", fieldKey: "descripcion", label: "Descripción" },
+    { moduleKey: "disciplina", fieldKey: "responsable", label: "Reportado por" },
+
+    { moduleKey: "orientacion", fieldKey: "fecha", label: "Fecha", isPrimary: true },
+    { moduleKey: "orientacion", fieldKey: "alumno", label: "Alumno" },
+    { moduleKey: "orientacion", fieldKey: "motivo", label: "Motivo" },
+    { moduleKey: "orientacion", fieldKey: "responsable", label: "Profesional" },
+    { moduleKey: "orientacion", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "enfermeria", fieldKey: "fecha", label: "Fecha", isPrimary: true },
+    { moduleKey: "enfermeria", fieldKey: "alumno", label: "Alumno" },
+    { moduleKey: "enfermeria", fieldKey: "motivo", label: "Motivo" },
+    { moduleKey: "enfermeria", fieldKey: "atencion", label: "Atención" },
+    { moduleKey: "enfermeria", fieldKey: "avisoFamilia", label: "Aviso fam." },
+
+    { moduleKey: "comunicaciones", fieldKey: "asunto", label: "Asunto", isPrimary: true },
+    { moduleKey: "comunicaciones", fieldKey: "destinatarios", label: "Destinatarios" },
+    { moduleKey: "comunicaciones", fieldKey: "fechaEnvio", label: "Enviado" },
+    { moduleKey: "comunicaciones", fieldKey: "canal", label: "Canal" },
+    { moduleKey: "comunicaciones", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "eventos", fieldKey: "titulo", label: "Evento", isPrimary: true },
+    { moduleKey: "eventos", fieldKey: "fechaInicio", label: "Inicio" },
+    { moduleKey: "eventos", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "eventos", fieldKey: "alcance", label: "Alcance" },
+
+    { moduleKey: "transporte", fieldKey: "ruta", label: "Ruta", isPrimary: true },
+    { moduleKey: "transporte", fieldKey: "alumno", label: "Alumno" },
+    { moduleKey: "transporte", fieldKey: "parada", label: "Parada" },
+    { moduleKey: "transporte", fieldKey: "horaRecogida", label: "Recogida" },
+    { moduleKey: "transporte", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "comedor", fieldKey: "alumno", label: "Alumno", isPrimary: true },
+    { moduleKey: "comedor", fieldKey: "modalidad", label: "Modalidad" },
+    { moduleKey: "comedor", fieldKey: "alergias", label: "Alergias" },
+    { moduleKey: "comedor", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "biblioteca", fieldKey: "titulo", label: "Título", isPrimary: true },
+    { moduleKey: "biblioteca", fieldKey: "autor", label: "Autor" },
+    { moduleKey: "biblioteca", fieldKey: "alumno", label: "Prestado a" },
+    { moduleKey: "biblioteca", fieldKey: "fechaDevolucion", label: "Devolución" },
+    { moduleKey: "biblioteca", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "inventario", fieldKey: "nombre", label: "Activo", isPrimary: true },
+    { moduleKey: "inventario", fieldKey: "categoria", label: "Categoría" },
+    { moduleKey: "inventario", fieldKey: "ubicacion", label: "Ubicación" },
+    { moduleKey: "inventario", fieldKey: "responsable", label: "Responsable" },
+    { moduleKey: "inventario", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "mantenimiento", fieldKey: "asunto", label: "Asunto", isPrimary: true },
+    { moduleKey: "mantenimiento", fieldKey: "ubicacion", label: "Ubicación" },
+    { moduleKey: "mantenimiento", fieldKey: "prioridad", label: "Prioridad" },
+    { moduleKey: "mantenimiento", fieldKey: "responsable", label: "Asignado" },
+    { moduleKey: "mantenimiento", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "personal", fieldKey: "nombre", label: "Nombre", isPrimary: true },
+    { moduleKey: "personal", fieldKey: "puesto", label: "Puesto" },
+    { moduleKey: "personal", fieldKey: "email", label: "Email" },
+    { moduleKey: "personal", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "visitantes", fieldKey: "fecha", label: "Fecha", isPrimary: true },
+    { moduleKey: "visitantes", fieldKey: "nombre", label: "Visitante" },
+    { moduleKey: "visitantes", fieldKey: "motivo", label: "Motivo" },
+    { moduleKey: "visitantes", fieldKey: "horaEntrada", label: "Entrada" },
+    { moduleKey: "visitantes", fieldKey: "horaSalida", label: "Salida" },
+
+    { moduleKey: "tramites", fieldKey: "asunto", label: "Asunto", isPrimary: true },
+    { moduleKey: "tramites", fieldKey: "solicitante", label: "Solicitante" },
+    { moduleKey: "tramites", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "tramites", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "becas", fieldKey: "alumno", label: "Alumno", isPrimary: true },
+    { moduleKey: "becas", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "becas", fieldKey: "porcentaje", label: "%" },
+    { moduleKey: "becas", fieldKey: "vigenciaHasta", label: "Hasta" },
+    { moduleKey: "becas", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "actividades", fieldKey: "nombre", label: "Actividad", isPrimary: true },
+    { moduleKey: "actividades", fieldKey: "responsable", label: "Responsable" },
+    { moduleKey: "actividades", fieldKey: "horario", label: "Horario" },
+    { moduleKey: "actividades", fieldKey: "cupo", label: "Plazas" },
+    { moduleKey: "actividades", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "salidas", fieldKey: "destino", label: "Destino", isPrimary: true },
+    { moduleKey: "salidas", fieldKey: "curso", label: "Curso" },
+    { moduleKey: "salidas", fieldKey: "fecha", label: "Fecha" },
+    { moduleKey: "salidas", fieldKey: "responsable", label: "Responsable" },
+    { moduleKey: "salidas", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "egresados", fieldKey: "nombre", label: "Egresado", isPrimary: true },
+    { moduleKey: "egresados", fieldKey: "anioEgreso", label: "Año" },
+    { moduleKey: "egresados", fieldKey: "etapaFinal", label: "Etapa" },
+    { moduleKey: "egresados", fieldKey: "trayectoria", label: "Trayectoria" },
   ],
   dashboardPriorities: [
     { key: "clientes", label: "Familias matriculadas", description: "Familias activas en el centro.", order: 1 },
@@ -1536,6 +1943,125 @@ const COLEGIO_PACK: SectorPackDefinition = {
       { nombre: "Autorización imagen Diego Iglesias", tipo: "autorizacion", cliente: "Familia Iglesias", estado: "vigente" },
       { nombre: "Autorización imagen Sofía Iglesias", tipo: "autorizacion", cliente: "Familia Iglesias", estado: "vigente" },
       { nombre: "Solicitud admisión Familia Cabrera", tipo: "admision", cliente: "Familia Cabrera", estado: "en_revision" },
+    ]},
+    { moduleKey: "calificaciones", records: [
+      { alumno: "Lucía Romero", asignatura: "Matemáticas", periodo: "2T", tipoEvaluacion: "examen", nota: "8.5", peso: "40" },
+      { alumno: "Lucía Romero", asignatura: "Lengua", periodo: "2T", tipoEvaluacion: "trabajo", nota: "9", peso: "30" },
+      { alumno: "Mateo Pérez", asignatura: "Plástica", periodo: "2T", tipoEvaluacion: "proyecto", nota: "10", peso: "50", observaciones: "Trabajo creativo y bien presentado." },
+      { alumno: "Diego Iglesias", asignatura: "Inglés", periodo: "2T", tipoEvaluacion: "examen", nota: "6.5", peso: "40" },
+      { alumno: "Hugo Vázquez", asignatura: "Matemáticas", periodo: "2T", tipoEvaluacion: "examen", nota: "7", peso: "40" },
+    ]},
+    { moduleKey: "asistencia", records: [
+      { alumno: "Lucía Romero", curso: "Primaria 2º A", fecha: "2026-05-04", estado: "presente" },
+      { alumno: "Mateo Pérez", curso: "Infantil 5 años", fecha: "2026-05-04", estado: "ausente", motivo: "Sin justificar" },
+      { alumno: "Diego Iglesias", curso: "Primaria 4º A", fecha: "2026-05-04", estado: "tarde" },
+      { alumno: "Sofía Iglesias", curso: "Infantil 4 años", fecha: "2026-05-04", estado: "justificada", motivo: "Cita médica (justificante adjunto)" },
+    ]},
+    { moduleKey: "docentes", records: [
+      { nombre: "Lara Méndez", email: "lara.mendez@colegio.es", telefono: "+34 600 777 001", especialidad: "Infantil", etapa: "Infantil", estado: "activo" },
+      { nombre: "Pablo Solano", email: "pablo.solano@colegio.es", telefono: "+34 600 777 002", especialidad: "Tutor 1ºA", etapa: "Primaria", estado: "activo" },
+      { nombre: "Sara Beltrán", email: "sara.beltran@colegio.es", telefono: "+34 600 777 003", especialidad: "Tutor 2ºA / Lengua", etapa: "Primaria", estado: "activo" },
+      { nombre: "Diego Lago", email: "diego.lago@colegio.es", telefono: "+34 600 777 004", especialidad: "Tutor 4ºA / Mat", etapa: "Primaria", estado: "activo" },
+      { nombre: "Marina Costa", email: "marina.costa@colegio.es", telefono: "+34 600 777 005", especialidad: "Inglés", etapa: "Primaria", estado: "sustituto" },
+    ]},
+    { moduleKey: "horarios", records: [
+      { curso: "Primaria 2º A", diaSemana: "lunes", horaInicio: "09:00", horaFin: "10:00", asignatura: "Matemáticas", docente: "Sara Beltrán", aula: "A-12" },
+      { curso: "Primaria 2º A", diaSemana: "lunes", horaInicio: "10:00", horaFin: "11:00", asignatura: "Lengua", docente: "Sara Beltrán", aula: "A-12" },
+      { curso: "Primaria 2º A", diaSemana: "martes", horaInicio: "09:00", horaFin: "10:00", asignatura: "Inglés", docente: "Marina Costa", aula: "A-12" },
+      { curso: "Infantil 5 años", diaSemana: "lunes", horaInicio: "09:30", horaFin: "10:30", asignatura: "Lectoescritura", docente: "Lara Méndez", aula: "I-5" },
+    ]},
+    { moduleKey: "planeaciones", records: [
+      { asignatura: "Matemáticas — Multiplicación", curso: "Primaria 2º A", docente: "Sara Beltrán", periodo: "2T 2026", objetivos: "Tabla del 2 al 10. Resolución de problemas con multiplicación.", estado: "en_curso" },
+      { asignatura: "Lengua — Comprensión lectora", curso: "Primaria 2º A", docente: "Sara Beltrán", periodo: "2T 2026", objetivos: "Lectura de cuentos clásicos. Identificar idea principal.", estado: "en_curso" },
+      { asignatura: "Plástica — Color y forma", curso: "Primaria 4º A", docente: "Diego Lago", periodo: "2T 2026", objetivos: "Composición con colores primarios y secundarios. Proyecto de mural.", estado: "completada" },
+    ]},
+    { moduleKey: "disciplina", records: [
+      { alumno: "Diego Iglesias", fecha: "2026-04-22", tipo: "leve", descripcion: "Conversación durante examen", medida: "Llamada de atención y observación al tutor", responsable: "Diego Lago" },
+      { alumno: "Hugo Vázquez", fecha: "2026-04-25", tipo: "positivo", descripcion: "Ayudó a un compañero nuevo durante toda la mañana", medida: "Reconocimiento ante la clase", responsable: "Pablo Solano" },
+    ]},
+    { moduleKey: "orientacion", records: [
+      { alumno: "Mateo Pérez", fecha: "2026-04-20", motivo: "Adaptación al cambio de etapa", intervencion: "Sesión inicial. Plan de seguimiento mensual.", responsable: "Orientadora Carmen Ríos", estado: "seguimiento" },
+      { alumno: "Diego Iglesias", fecha: "2026-04-28", motivo: "Bajada en rendimiento académico 2T", intervencion: "Tutoría con familia. Plan de refuerzo en Mat e Inglés.", responsable: "Orientadora Carmen Ríos", estado: "abierto" },
+    ]},
+    { moduleKey: "enfermeria", records: [
+      { alumno: "Lucía Romero", fecha: "2026-04-15", motivo: "Dolor de cabeza tras recreo", atencion: "Reposo 30 min. Sin medicación.", medicacion: "—", avisoFamilia: "no" },
+      { alumno: "Sofía Iglesias", fecha: "2026-04-22", motivo: "Caída leve en patio", atencion: "Curación rasguño rodilla con antiséptico y tirita.", medicacion: "—", avisoFamilia: "si" },
+      { alumno: "Hugo Vázquez", fecha: "2026-04-29", motivo: "Fiebre 38.2", atencion: "Aislamiento + aviso familia inmediato. Recogido por madre.", medicacion: "—", avisoFamilia: "si" },
+    ]},
+    { moduleKey: "comunicaciones", records: [
+      { asunto: "Vacaciones de Semana Santa", destinatarios: "Toda la escuela", mensaje: "Estimadas familias, las vacaciones serán del 27 marzo al 7 abril. Volvemos lunes 8 abril.", fechaEnvio: "2026-03-15", canal: "email", estado: "enviado" },
+      { asunto: "Reunión 2T Primaria 2ºA", destinatarios: "Familias 2ºA", mensaje: "Convocatoria reunión informativa 2T el martes 12 de mayo a las 18:00.", fechaEnvio: "2026-05-02", canal: "app", estado: "enviado" },
+      { asunto: "Recordatorio salida Museo", destinatarios: "Familias 4ºA", mensaje: "Mañana salida Museo Reina Sofía. Almuerzo y agua. 8:30 puntuales.", fechaEnvio: "2026-05-05", canal: "sms", estado: "borrador" },
+    ]},
+    { moduleKey: "eventos", records: [
+      { titulo: "Reunión 2T Primaria 2ºA", fechaInicio: "2026-05-12", fechaFin: "2026-05-12", tipo: "reunion", alcance: "Familias 2ºA", descripcion: "Información de avance del 2T y plan del 3T." },
+      { titulo: "Salida Museo Reina Sofía", fechaInicio: "2026-05-06", fechaFin: "2026-05-06", tipo: "salida", alcance: "Primaria 4º A", descripcion: "Visita guiada exposición Picasso." },
+      { titulo: "Festividad escolar 1 mayo", fechaInicio: "2026-05-01", fechaFin: "2026-05-01", tipo: "festivo", alcance: "Toda la escuela", descripcion: "Día festivo no lectivo." },
+      { titulo: "Exámenes 2T primaria", fechaInicio: "2026-05-19", fechaFin: "2026-05-23", tipo: "evaluacion", alcance: "Primaria", descripcion: "Periodo de exámenes finales 2T." },
+    ]},
+    { moduleKey: "transporte", records: [
+      { ruta: "Ruta Norte", alumno: "Lucía Romero", parada: "Plaza San Vicente", horaRecogida: "08:15", conductor: "Antonio López", estado: "activo" },
+      { ruta: "Ruta Norte", alumno: "Hugo Vázquez", parada: "C/ Mayor 12", horaRecogida: "08:20", conductor: "Antonio López", estado: "activo" },
+      { ruta: "Ruta Sur", alumno: "Diego Iglesias", parada: "Av. Constitución 5", horaRecogida: "08:00", conductor: "Marta Vega", estado: "activo" },
+    ]},
+    { moduleKey: "comedor", records: [
+      { alumno: "Lucía Romero", modalidad: "diario", alergias: "—", fechaInicio: "2025-09-01", estado: "activo" },
+      { alumno: "Mateo Pérez", modalidad: "diario", alergias: "Frutos secos", fechaInicio: "2025-09-01", estado: "activo" },
+      { alumno: "Diego Iglesias", modalidad: "alergico", alergias: "Lactosa, huevo", fechaInicio: "2025-09-01", estado: "activo" },
+      { alumno: "Hugo Vázquez", modalidad: "esporadico", alergias: "—", fechaInicio: "2026-02-01", estado: "activo" },
+    ]},
+    { moduleKey: "biblioteca", records: [
+      { titulo: "El Principito", autor: "Antoine de Saint-Exupéry", isbn: "978-84-204-9023-3", alumno: "Lucía Romero", fechaPrestamo: "2026-04-20", fechaDevolucion: "2026-05-04", estado: "prestado" },
+      { titulo: "Charlie y la fábrica de chocolate", autor: "Roald Dahl", isbn: "978-84-204-7891-0", alumno: "Diego Iglesias", fechaPrestamo: "2026-04-15", fechaDevolucion: "2026-04-29", estado: "atrasado" },
+      { titulo: "Manolito Gafotas", autor: "Elvira Lindo", isbn: "978-84-204-8888-9", estado: "disponible" },
+      { titulo: "Matilda", autor: "Roald Dahl", isbn: "978-84-204-7777-7", estado: "disponible" },
+    ]},
+    { moduleKey: "inventario", records: [
+      { nombre: "Proyector aula A-12", categoria: "electrónica", ubicacion: "Aula A-12", responsable: "Sara Beltrán", fechaCompra: "2024-09-10", estado: "operativo" },
+      { nombre: "Pizarra digital infantil 5", categoria: "electrónica", ubicacion: "Aula I-5", responsable: "Lara Méndez", fechaCompra: "2023-11-15", estado: "averiado" },
+      { nombre: "Set de balones EF", categoria: "deportivo", ubicacion: "Almacén polideportivo", responsable: "Educación física", estado: "operativo" },
+      { nombre: "Mesa profesor sala A-12", categoria: "mobiliario", ubicacion: "Aula A-12", responsable: "Sara Beltrán", estado: "operativo" },
+    ]},
+    { moduleKey: "mantenimiento", records: [
+      { asunto: "Pizarra digital aula I-5 no enciende", ubicacion: "Aula I-5", prioridad: "alta", descripcion: "La pizarra digital no se enciende desde el lunes. Lara reportó.", responsable: "Mantenimiento centro", estado: "en_curso" },
+      { asunto: "Goteras pasillo planta 1", ubicacion: "Pasillo P1", prioridad: "media", descripcion: "Manchas de humedad tras lluvias intensas.", responsable: "Mantenimiento centro", estado: "abierta" },
+      { asunto: "Cerradura puerta secretaría", ubicacion: "Secretaría", prioridad: "baja", descripcion: "Cerradura cuesta girar la llave.", responsable: "Conserje", estado: "completada" },
+    ]},
+    { moduleKey: "personal", records: [
+      { nombre: "Marina Estévez", puesto: "Secretaría", email: "marina.estevez@colegio.es", telefono: "+34 600 888 001", fechaAlta: "2020-09-01", estado: "activo" },
+      { nombre: "Carlos Roca", puesto: "Conserjería", email: "carlos.roca@colegio.es", telefono: "+34 600 888 002", fechaAlta: "2018-09-01", estado: "activo" },
+      { nombre: "Beatriz Lago", puesto: "Limpieza coordinadora", email: "beatriz.lago@colegio.es", telefono: "+34 600 888 003", fechaAlta: "2022-09-01", estado: "vacaciones" },
+    ]},
+    { moduleKey: "visitantes", records: [
+      { fecha: "2026-05-04", nombre: "Luis Romero (padre Lucía)", dni: "12345678A", motivo: "Tutoría con Sara Beltrán", horaEntrada: "10:30", horaSalida: "11:00" },
+      { fecha: "2026-05-04", nombre: "Comercial editorial Anaya", dni: "87654321B", motivo: "Reunión jefa de estudios", horaEntrada: "12:00", horaSalida: "12:45" },
+      { fecha: "2026-05-05", nombre: "Inspector educativo", dni: "11223344C", motivo: "Visita ordinaria", horaEntrada: "09:00", horaSalida: "11:30" },
+    ]},
+    { moduleKey: "tramites", records: [
+      { asunto: "Solicitud certificado escolar Diego Iglesias", solicitante: "Familia Iglesias", tipo: "certificado", descripcion: "Certificado de estudios para presentación beca municipal.", estado: "en_curso" },
+      { asunto: "Cambio teléfono contacto", solicitante: "Familia Pérez", tipo: "cambio_datos", descripcion: "Nuevo teléfono móvil de Andrés.", estado: "resuelto" },
+      { asunto: "Queja menú comedor", solicitante: "Familia Vázquez", tipo: "queja", descripcion: "Considera que falta variedad en el menú vegetariano.", estado: "abierto" },
+    ]},
+    { moduleKey: "becas", records: [
+      { alumno: "Hugo Vázquez", tipo: "Comedor parcial", porcentaje: "50", vigenciaDesde: "2025-09-01", vigenciaHasta: "2026-06-30", estado: "aprobada" },
+      { alumno: "Mateo Pérez", tipo: "Transporte", porcentaje: "100", vigenciaDesde: "2025-09-01", vigenciaHasta: "2026-06-30", estado: "aprobada" },
+      { alumno: "Diego Iglesias", tipo: "Cuota parcial", porcentaje: "20", vigenciaDesde: "2026-01-01", vigenciaHasta: "2026-06-30", estado: "solicitada" },
+    ]},
+    { moduleKey: "actividades", records: [
+      { nombre: "Inglés extraescolar", responsable: "Marina Costa", horario: "L y X 17:00-18:00", cupo: "20", precio: "30 EUR", estado: "abierta" },
+      { nombre: "Robótica educativa", responsable: "Diego Lago", horario: "M y J 17:00-18:30", cupo: "15", precio: "45 EUR", estado: "completa" },
+      { nombre: "Coro escolar", responsable: "Lara Méndez", horario: "V 17:00-18:00", cupo: "25", precio: "20 EUR", estado: "abierta" },
+      { nombre: "Ajedrez", responsable: "Pablo Solano", horario: "X 17:00-18:00", cupo: "12", precio: "25 EUR", estado: "abierta" },
+    ]},
+    { moduleKey: "salidas", records: [
+      { destino: "Museo Reina Sofía", curso: "Primaria 4º A", fecha: "2026-05-06", responsable: "Diego Lago", presupuestoFamilia: "8 EUR", estado: "confirmada" },
+      { destino: "Granja escuela El Encinar", curso: "Infantil 5 años", fecha: "2026-05-22", responsable: "Lara Méndez", presupuestoFamilia: "18 EUR", estado: "autorizaciones" },
+      { destino: "Teatro Real (función infantil)", curso: "Primaria 1º A", fecha: "2026-06-04", responsable: "Pablo Solano", presupuestoFamilia: "12 EUR", estado: "planificada" },
+    ]},
+    { moduleKey: "egresados", records: [
+      { nombre: "Marta Sánchez", anioEgreso: "2024", etapaFinal: "Primaria 6º", email: "marta.sanchez@instituto.es", telefono: "+34 600 999 001", trayectoria: "ESO en IES Las Lomas, sigue en contacto." },
+      { nombre: "Javier Costa", anioEgreso: "2023", etapaFinal: "Primaria 6º", email: "javier.costa@email.com", telefono: "+34 600 999 002", trayectoria: "ESO + Bachillerato científico previsto." },
+      { nombre: "Lucía Vega", anioEgreso: "2022", etapaFinal: "Primaria 6º", email: "lucia.vega@email.com", telefono: "+34 600 999 003", trayectoria: "ESO completa, premios al rendimiento académico." },
     ]},
   ],
   landing: {

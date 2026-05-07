@@ -8,6 +8,7 @@ import { getTenantRuntimeConfigFromRequest } from "@/lib/saas/tenant-runtime-con
 import { buildOperationalAlerts } from "@/lib/erp/operational-alerts";
 import { buildSoftwareFactoryAlertsAsync } from "@/lib/verticals/software-factory/alerts";
 import { getSoftwareFactoryKpisAsync } from "@/lib/verticals/software-factory/dashboard-kpis";
+import { getColegioKpisAsync } from "@/lib/verticals/colegio/dashboard-kpis";
 import { getOrCreateTrialState } from "@/lib/saas/trial-store";
 import { checkTenantSubscriptionAsync } from "@/lib/saas/subscription-guard";
 
@@ -97,10 +98,19 @@ export async function GET(request: NextRequest) {
     )
       .trim()
       .toLowerCase();
-    let kpisVertical: Awaited<ReturnType<typeof getSoftwareFactoryKpisAsync>> | null = null;
+    let kpisVertical:
+      | Awaited<ReturnType<typeof getSoftwareFactoryKpisAsync>>
+      | Awaited<ReturnType<typeof getColegioKpisAsync>>
+      | null = null;
     if (businessType === "software-factory") {
       try {
         kpisVertical = await getSoftwareFactoryKpisAsync(session.clientId);
+      } catch {
+        kpisVertical = null;
+      }
+    } else if (businessType === "colegio") {
+      try {
+        kpisVertical = await getColegioKpisAsync(session.clientId);
       } catch {
         kpisVertical = null;
       }

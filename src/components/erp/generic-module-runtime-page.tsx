@@ -8,6 +8,7 @@ import ErpRecordModal from "@/components/erp/erp-record-modal";
 import ErpDeleteButton from "@/components/erp/erp-delete-button";
 import TenantShell from "@/components/erp/tenant-shell";
 import SlideOverPanel from "@/components/erp/slide-over-panel";
+import ModuleExportButton from "@/components/erp/module-export-button";
 
 /**
  * Página genérica de un módulo del runtime del tenant.
@@ -290,6 +291,8 @@ export default function GenericModuleRuntimePage({
             </div>
             <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
               {extraActions ? extraActions : null}
+              {/* SCHOOL-04: export CSV genérico, disponible siempre. */}
+              <ModuleExportButton modulo={moduleKey} />
               <button
                 type="button"
                 onClick={() => {

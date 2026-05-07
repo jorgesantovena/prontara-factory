@@ -2,18 +2,23 @@
  * Roles soportados por las cuentas del runtime del tenant.
  *
  * - owner / admin / manager / staff: roles operativos internos del tenant.
- * - clienteFinal (SF-11): rol restringido pensado para que un cliente del
- *   tenant (no el operador) entre a un portal limitado a ver SUS propios
- *   justificantes. El filtrado se hace por match entre `fullName` de la
- *   cuenta y el campo `cliente` del registro. Sin acceso a clientes,
- *   proyectos, facturación ni catálogo.
+ * - clienteFinal (SF-11): rol restringido — cliente del tenant ve SOLO
+ *   sus propios justificantes. Filtrado por match `fullName == cliente`.
+ * - docente / familia / estudiante (SCHOOL-07): roles del vertical
+ *   colegio para portales diferenciados. Filtrado:
+ *     - docente: ve clases/calificaciones/horarios donde `docente == fullName`
+ *     - familia: ve alumnos/recibos/comunicaciones donde `cliente|familia == fullName`
+ *     - estudiante: ve sus propias calificaciones/asistencia donde `alumno == fullName`
  */
 export type TenantAccountRole =
   | "owner"
   | "admin"
   | "manager"
   | "staff"
-  | "clienteFinal";
+  | "clienteFinal"
+  | "docente"
+  | "familia"
+  | "estudiante";
 export type TenantAccountStatus = "pending" | "active" | "disabled";
 
 export type TenantAccountRecord = {
