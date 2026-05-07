@@ -136,7 +136,15 @@ function rebuildConfigForTenant(tenant: TenantDefinition): TenantRuntimeConfig {
     for (const field of pack.fields) {
       if (!fieldsByModule[field.moduleKey])
         fieldsByModule[field.moduleKey] = [];
-      fieldsByModule[field.moduleKey].push(field);
+      // SF-16: el frontend (ErpRecordModal, generic-module-runtime-page) lee
+      // field.key (UiFieldDefinition), pero el sector pack los define con
+      // field.fieldKey (SectorPackField). Sin este alias todos los inputs
+      // del modal comparten state (key undefined) y se sobrescriben unos a
+      // otros al teclear. Mantenemos fieldKey por compatibilidad sync legacy.
+      fieldsByModule[field.moduleKey].push({
+        ...field,
+        key: field.fieldKey,
+      } as typeof field);
     }
   }
 
