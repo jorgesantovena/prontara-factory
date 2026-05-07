@@ -29,6 +29,7 @@ import {
 } from "@/lib/saas/tenant-resolver";
 import { resolveActiveTenant as fsResolveActiveTenant } from "@/lib/saas/tenant-registry";
 import { getPersistenceBackend, withPrisma } from "@/lib/persistence/db";
+import { requireTenantSession } from "@/lib/saas/auth-session";
 import {
   getTenantArtifactsRoot,
   getTenantDataRoot,
@@ -325,7 +326,27 @@ export async function resolveTenantFromRequestAsync(
     };
   }
 
-  // En Postgres no hay active-fallback.
+  // SF-13: si no hay slug en query ni header, intentamos resolver por la
+  // cookie de sesión firmada. Sin esto, cuando el usuario navega su runtime
+  // (ej. app.prontara.com/facturacion) sin ?tenant=... explícito, no hay
+  // forma de identificar su tenant en modo Postgres y todos los modales
+  // del ERP salen sin campos. La cookie es trusted (HMAC firmado) — el
+  // tenant que indique es el dueño de la sesión.
+  if (request) {
+    const session = requireTenantSession(request);
+    if (session?.clientId) {
+      const tenant = await resolveTenantByClientIdAsync(session.clientId);
+      if (tenant) {
+        return {
+          ok: true,
+          source: "active-fallback" as TenantResolutionSource,
+          requestedSlug: tenant.slug,
+          tenant,
+        };
+      }
+    }
+  }
+
   return {
     ok: false,
     source: "not-found" as TenantResolutionSource,
