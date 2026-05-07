@@ -213,6 +213,47 @@ export async function readBillingSubscriptionAsync(
   return fsRead(clientId);
 }
 
+/**
+ * Construye un BillingSubscriptionRecord por defecto (plan trial, 14 días)
+ * SIN tocar filesystem. Es el equivalente puro del default que monta
+ * `getOrCreateBillingSubscription` en billing-store.ts pero sin el
+ * `mkdirSync + writeFileSync` que rompe en Vercel serverless (SF-15).
+ */
+function buildDefaultSubscriptionRecord(input: {
+  tenantId: string;
+  clientId: string;
+  slug: string;
+  displayName: string;
+}): BillingSubscriptionRecord {
+  const safeSlug = String(input.slug || "tenant")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.+|\.+$/g, "");
+  const billingEmail = "billing@" + safeSlug + ".local";
+  const now = new Date();
+  const renewsAt = new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  return {
+    tenantId: input.tenantId,
+    clientId: input.clientId,
+    slug: input.slug,
+    displayName: input.displayName,
+    billingEmail,
+    currentPlanKey: "trial",
+    status: "trialing",
+    autoRenew: true,
+    seats: 2,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    renewsAt: renewsAt.toISOString(),
+    invoices: [],
+    lastCheckoutIntent: null,
+    setupFeePaidCents: 0,
+    concurrentUsersBilled: 1,
+    supportActive: false,
+  };
+}
+
 export async function getOrCreateBillingSubscriptionAsync(input: {
   tenantId: string;
   clientId: string;
@@ -222,9 +263,9 @@ export async function getOrCreateBillingSubscriptionAsync(input: {
   if (getPersistenceBackend() === "postgres") {
     const existing = await readSubscriptionPg(input.clientId);
     if (existing) return existing;
-    // Reusamos el constructor del fs path para tener el mismo default,
-    // luego persistimos en postgres.
-    const created = fsGetOrCreate(input);
+    // SF-15: NO usar fsGetOrCreate en serverless — toca filesystem read-only.
+    // Construimos los defaults inline y persistimos solo a Postgres.
+    const created = buildDefaultSubscriptionRecord(input);
     await writeSubscriptionPg(created);
     return created;
   }
