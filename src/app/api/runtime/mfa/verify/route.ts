@@ -2,23 +2,51 @@ import { NextResponse, type NextRequest } from "next/server";
 import { requireTenantSession } from "@/lib/saas/auth-session";
 import { withPrisma } from "@/lib/persistence/db";
 import { verifyTotpCode } from "@/lib/saas/totp";
+import { decryptString } from "@/lib/saas/crypto-vault";
+import { consumeRateLimit, clearRateLimit, getClientIp } from "@/lib/saas/rate-limiter";
+import { captureError } from "@/lib/observability/error-capture";
 
 /**
- * POST /api/runtime/mfa/verify (DEV-MFA)
+ * POST /api/runtime/mfa/verify (DEV-MFA + H1-SEC-01 + H1-SEC-03)
  * Body: { code: "123456" }
  *
  * Verifica el código TOTP. Si coincide y el MFA aún estaba en setup
  * (enabled=false), lo activa (enabled=true). Si ya estaba activo, solo
  * confirma que el código es válido.
+ *
+ * H1-SEC-01: el secret se descifra del vault antes de validar el código.
+ * H1-SEC-03: rate limit 5 intentos / 15 min por IP+accountId — protege
+ * contra fuerza bruta del código de 6 dígitos.
  */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+const MFA_WINDOW_MS = 15 * 60 * 1000;
+const MFA_ATTEMPTS = 5;
 
 export async function POST(request: NextRequest) {
   try {
     const session = requireTenantSession(request);
     if (!session) {
       return NextResponse.json({ ok: false, error: "Sesión inválida." }, { status: 401 });
+    }
+
+    const ip = getClientIp(request.headers);
+    const gateKey = "mfa:verify:" + ip + ":" + session.accountId;
+    const gate = consumeRateLimit({
+      key: gateKey,
+      limit: MFA_ATTEMPTS,
+      windowMs: MFA_WINDOW_MS,
+    });
+    if (!gate.allowed) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "Demasiados intentos de verificar el código. Espera unos minutos.",
+          retryAfterSeconds: gate.retryAfterSeconds,
+        },
+        { status: 429, headers: { "Retry-After": String(gate.retryAfterSeconds) } },
+      );
     }
 
     let body: { code?: string } = {};
@@ -51,7 +79,9 @@ export async function POST(request: NextRequest) {
         where: { accountId: session.accountId },
       });
       if (!mfa) return { ok: false as const, reason: "no_mfa_setup" };
-      const valid = verifyTotpCode(mfa.secret, code);
+      // H1-SEC-01: descifrar secret antes de validar (compat con datos legacy plaintext).
+      const secretPlain = decryptString(mfa.secret);
+      const valid = verifyTotpCode(secretPlain, code);
       if (!valid) return { ok: false as const, reason: "invalid_code" };
       if (!mfa.enabled) {
         await c.tenantAccountMfa.update({
@@ -72,6 +102,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: msg, reason }, { status: 400 });
     }
 
+    // Éxito → liberar bucket para no penalizar al usuario tras unos errores previos
+    clearRateLimit(gateKey);
+
     return NextResponse.json({
       ok: true,
       activated: result.activated,
@@ -80,6 +113,7 @@ export async function POST(request: NextRequest) {
         : "Código válido.",
     });
   } catch (error) {
+    captureError(error, { scope: "/api/runtime/mfa/verify" });
     return NextResponse.json(
       {
         ok: false,

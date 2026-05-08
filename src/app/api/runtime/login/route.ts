@@ -10,6 +10,8 @@ import {
 } from "@/lib/saas/rate-limiter";
 import { withPrisma } from "@/lib/persistence/db";
 import { verifyTotpCode } from "@/lib/saas/totp";
+import { decryptString } from "@/lib/saas/crypto-vault";
+import { captureError } from "@/lib/observability/error-capture";
 
 const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 const LOGIN_ATTEMPTS_PER_IP_TENANT = 10;
@@ -132,7 +134,9 @@ export async function POST(request: NextRequest) {
           { status: 401 },
         );
       }
-      if (!verifyTotpCode(mfa.secret, mfaCode)) {
+      // H1-SEC-01: descifrar secret del vault (compat con plaintext legacy).
+      const mfaSecretPlain = decryptString(mfa.secret);
+      if (!verifyTotpCode(mfaSecretPlain, mfaCode)) {
         return NextResponse.json(
           {
             ok: false,
@@ -175,6 +179,7 @@ export async function POST(request: NextRequest) {
     attachSessionCookie(response, sessionUser);
     return response;
   } catch (error) {
+    captureError(error, { scope: "/api/runtime/login" });
     return NextResponse.json(
       {
         ok: false,

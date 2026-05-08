@@ -11,6 +11,8 @@ import {
   extractImporteFromFactura,
   type ReceptorData,
 } from "@/lib/verticals/software-factory/verifactu-payload";
+import { encryptString } from "@/lib/saas/crypto-vault";
+import { captureError } from "@/lib/observability/error-capture";
 
 /**
  * POST /api/erp/verifactu-emit (SF-12 / AUDIT-07, stub)
@@ -124,10 +126,20 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
+      // H1-SEC-02: no devolvemos xmlPayload ni csvHuella al frontend (datos
+      // fiscales sensibles). Solo metadata pública.
+      const meta = existing as Record<string, unknown>;
       return NextResponse.json({
         ok: true,
         existing: true,
-        submission: existing,
+        submission: {
+          id: meta.id,
+          status: meta.status,
+          facturaNumero: meta.facturaNumero,
+          createdAt: meta.createdAt,
+          sentAt: meta.sentAt,
+          errorMsg: meta.errorMsg,
+        },
         message:
           "Ya existe un envío Verifactu para esta factura. No se creó uno nuevo.",
       });
@@ -184,12 +196,13 @@ export async function POST(request: NextRequest) {
       receptor,
     );
 
-    // 5. Persistir como prepared
+    // 5. Persistir como prepared. H1-SEC-02: cifrar XML antes de guardar
+    // — el contenido fiscal queda ilegible aunque alguien lea la BD.
     const id = randomUUID();
     const created = await withPrisma(async (prisma) => {
       const c = prisma as unknown as {
         verifactuSubmission: {
-          create: (a: { data: Record<string, unknown> }) => Promise<unknown>;
+          create: (a: { data: Record<string, unknown> }) => Promise<Record<string, unknown>>;
         };
       };
       return await c.verifactuSubmission.create({
@@ -200,19 +213,27 @@ export async function POST(request: NextRequest) {
           facturaModuleRecordId: facturaId,
           facturaNumero,
           status: "prepared",
-          xmlPayload: xml,
+          xmlPayload: encryptString(xml),
         },
       });
     });
 
+    // H1-SEC-02: no devolvemos xmlPayload al cliente — solo metadata.
+    const meta = (created || {}) as Record<string, unknown>;
     return NextResponse.json({
       ok: true,
       existing: false,
-      submission: created,
+      submission: {
+        id: meta.id,
+        status: meta.status,
+        facturaNumero: meta.facturaNumero,
+        createdAt: meta.createdAt,
+      },
       message:
         "Payload Verifactu preparado. Falta firma XML-DSig + envío a AEAT (ver docs/verifactu-pendientes.md).",
     });
   } catch (error) {
+    captureError(error, { scope: "/api/erp/verifactu-emit" });
     return NextResponse.json(
       {
         ok: false,

@@ -13,6 +13,7 @@ import {
 } from "@/lib/saas/plan-limits";
 import { checkTenantSubscriptionAsync } from "@/lib/saas/subscription-guard";
 import { canPerform, type PermissionAction } from "@/lib/saas/permission-checker";
+import { captureError } from "@/lib/observability/error-capture";
 
 async function ensurePermission(
   clientId: string,
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
       rows,
     });
   } catch (error) {
+    captureError(error, { scope: "/api/erp/module GET" });
     return NextResponse.json(
       {
         ok: false,
@@ -188,6 +190,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
+    captureError(error, { scope: "/api/erp/module POST" });
     return NextResponse.json(
       {
         ok: false,

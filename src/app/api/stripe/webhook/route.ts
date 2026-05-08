@@ -16,6 +16,7 @@ import {
 import { emitDomainEventAsync } from "@/lib/persistence/domain-events";
 import type { TenantActivationFailedPayload } from "@/lib/saas/domain-event-handlers";
 import { createLogger } from "@/lib/observability/logger";
+import { captureError } from "@/lib/observability/error-capture";
 
 const log = createLogger("stripe-webhook");
 
@@ -128,6 +129,10 @@ export async function POST(request: NextRequest) {
     // 5xx for ~3 days. Keep visible logs to debug.
     const errMsg = error instanceof Error ? error.message : String(error);
     log.error("handler failed", { id: event.id, type: event.type, error: errMsg });
+    captureError(error, {
+      scope: "/api/stripe/webhook",
+      tags: { eventId: String(event.id || ""), eventType: String(event.type || "") },
+    });
     // IMPORTANTE: NO marcar el evento como procesado aquí.
     // Si lo marcáramos con outcome="error", Stripe reintentaría y el dedupe
     // devolvería 200 sin re-ejecutar el handler → un fallo transitorio
