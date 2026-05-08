@@ -2090,6 +2090,226 @@ const COLEGIO_PACK: SectorPackDefinition = {
  * Si necesitas acceder al pack sin overrides (para diffs, chat read-only
  * en modo "base", etc.) usa listSectorPacksBase / getSectorPackBaseByKey.
  */
+/**
+ * Vertical veterinaria (H3-VERT-01).
+ *
+ * Pack para clínicas veterinarias pequeñas: pacientes (mascotas),
+ * propietarios, citas, vacunas, historial clínico, presupuestos y
+ * facturas. Color #16a34a verde (asociado a fauna / vida / naturaleza).
+ *
+ * Renombres: cliente→paciente (mascota), proyecto→tratamiento.
+ * Documento → "historia clínica veterinaria".
+ */
+const VETERINARIA_PACK: SectorPackDefinition = {
+  key: "veterinaria",
+  label: "Clínica veterinaria",
+  sector: "salud-animal",
+  businessType: "clinica-veterinaria",
+  description: "ERP sectorial para clínicas veterinarias: pacientes (mascotas) con propietario, calendario de citas, vacunas y desparasitaciones, historial clínico, presupuestos y facturación.",
+  branding: {
+    displayName: "Prontara Veterinaria",
+    shortName: "PV",
+    accentColor: "#16a34a",
+    logoHint: "veterinaria, mascotas, cuidado, naturaleza",
+    tone: "sectorial",
+  },
+  labels: {
+    clientes: "Mascotas",
+    crm: "Captación",
+    proyectos: "Tratamientos y citas",
+    presupuestos: "Presupuestos",
+    facturacion: "Facturas",
+    documentos: "Historial clínico",
+    ajustes: "Ajustes",
+    asistente: "Asistente",
+  },
+  renameMap: {
+    cliente: "paciente",
+    clientes: "pacientes",
+    proyecto: "tratamiento",
+    proyectos: "tratamientos",
+  },
+  modules: [
+    { moduleKey: "clientes", enabled: true, label: "Mascotas", navigationLabel: "Mascotas", emptyState: "Sin mascotas registradas." },
+    { moduleKey: "crm", enabled: true, label: "Captación", navigationLabel: "Captación", emptyState: "Sin leads en captación." },
+    { moduleKey: "proyectos", enabled: true, label: "Tratamientos y citas", navigationLabel: "Tratamientos", emptyState: "Sin tratamientos activos." },
+    { moduleKey: "presupuestos", enabled: true, label: "Presupuestos", navigationLabel: "Presupuestos", emptyState: "Sin presupuestos abiertos." },
+    { moduleKey: "facturacion", enabled: true, label: "Facturas", navigationLabel: "Facturas", emptyState: "Sin facturas emitidas." },
+    { moduleKey: "documentos", enabled: true, label: "Historial clínico", navigationLabel: "Historial", emptyState: "Sin documentos en historial." },
+    { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu clínica veterinaria." },
+    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente sobre la agenda." },
+  ],
+  entities: [
+    { key: "mascota", label: "Mascota", description: "Paciente de la clínica veterinaria.", moduleKey: "clientes", primaryFields: ["nombre", "especie", "raza", "edad", "propietario"], relatedTo: ["cita", "vacuna", "tratamiento", "factura"] },
+    { key: "propietario", label: "Propietario", description: "Dueño/a de la mascota.", moduleKey: "clientes", primaryFields: ["nombre", "telefono", "email"], relatedTo: ["mascota", "factura"] },
+    { key: "cita", label: "Cita", description: "Visita programada.", moduleKey: "proyectos", primaryFields: ["fecha", "mascota", "veterinario", "motivo"], relatedTo: ["mascota", "veterinario"] },
+    { key: "tratamiento", label: "Tratamiento", description: "Tratamiento clínico.", moduleKey: "proyectos", primaryFields: ["nombre", "mascota", "estado"], relatedTo: ["mascota", "factura"] },
+    { key: "vacuna", label: "Vacuna / desparasitación", description: "Pauta vacunal o antiparasitario.", moduleKey: "documentos", primaryFields: ["mascota", "vacuna", "fecha", "proxima"], relatedTo: ["mascota"] },
+    { key: "presupuesto", label: "Presupuesto", description: "Presupuesto de tratamiento o cirugía.", moduleKey: "presupuestos", primaryFields: ["numero", "mascota", "concepto", "importe"], relatedTo: ["mascota", "factura"] },
+    { key: "factura", label: "Factura", description: "Factura emitida al propietario.", moduleKey: "facturacion", primaryFields: ["numero", "propietario", "importe", "estado"], relatedTo: ["propietario", "mascota"] },
+  ],
+  fields: [
+    // Mascotas (clientes)
+    { moduleKey: "clientes", fieldKey: "nombre", label: "Mascota", kind: "text", required: true, placeholder: "Nombre de la mascota" },
+    { moduleKey: "clientes", fieldKey: "especie", label: "Especie", kind: "status", required: true, options: [
+      { value: "perro", label: "Perro" }, { value: "gato", label: "Gato" }, { value: "ave", label: "Ave" }, { value: "reptil", label: "Reptil" }, { value: "roedor", label: "Roedor" }, { value: "exotico", label: "Exótico" }, { value: "otro", label: "Otro" },
+    ] },
+    { moduleKey: "clientes", fieldKey: "raza", label: "Raza", kind: "text", placeholder: "Labrador, Persa, Cobaya..." },
+    { moduleKey: "clientes", fieldKey: "edad", label: "Edad", kind: "text", placeholder: "3 años / 6 meses" },
+    { moduleKey: "clientes", fieldKey: "peso", label: "Peso", kind: "text", placeholder: "kg" },
+    { moduleKey: "clientes", fieldKey: "chip", label: "Microchip", kind: "text", placeholder: "Nº identificación" },
+    { moduleKey: "clientes", fieldKey: "propietario", label: "Propietario", kind: "text", required: true, placeholder: "Nombre del dueño" },
+    { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono propietario", kind: "tel", placeholder: "+34 ..." },
+    { moduleKey: "clientes", fieldKey: "email", label: "Email propietario", kind: "email" },
+    { moduleKey: "clientes", fieldKey: "alergias", label: "Alergias / observaciones", kind: "textarea" },
+    { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "activo", label: "Activo" }, { value: "fallecido", label: "Fallecido" }, { value: "perdido", label: "Perdido" }, { value: "inactivo", label: "Inactivo" },
+    ] },
+
+    // Tratamientos / citas (proyectos)
+    { moduleKey: "proyectos", fieldKey: "nombre", label: "Tratamiento o cita", kind: "text", required: true, placeholder: "Castración, vacunación anual..." },
+    { moduleKey: "proyectos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
+      { value: "cita", label: "Cita" }, { value: "tratamiento", label: "Tratamiento" }, { value: "cirugia", label: "Cirugía" }, { value: "urgencia", label: "Urgencia" },
+    ] },
+    { moduleKey: "proyectos", fieldKey: "fecha", label: "Fecha y hora", kind: "text", placeholder: "2026-05-15 10:30" },
+    { moduleKey: "proyectos", fieldKey: "cliente", label: "Mascota", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "proyectos", fieldKey: "veterinario", label: "Veterinario/a", kind: "text", placeholder: "Quién atiende" },
+    { moduleKey: "proyectos", fieldKey: "motivo", label: "Motivo / diagnóstico", kind: "textarea" },
+    { moduleKey: "proyectos", fieldKey: "duracion", label: "Duración", kind: "text", placeholder: "30 min" },
+    { moduleKey: "proyectos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "planificado", label: "Planificado" }, { value: "en_curso", label: "En curso" }, { value: "completado", label: "Completado" }, { value: "cancelado", label: "Cancelado" },
+    ] },
+
+    // Presupuestos
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Número", kind: "text", required: true, placeholder: "PRE-VET-001" },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Mascota", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "presupuestos", fieldKey: "concepto", label: "Tratamiento propuesto", kind: "textarea", required: true },
+    { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe", kind: "money", required: true },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "borrador", label: "Borrador" }, { value: "enviado", label: "Enviado" }, { value: "firmado", label: "Firmado" }, { value: "rechazado", label: "Rechazado" },
+    ] },
+    { moduleKey: "presupuestos", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
+
+    // Facturas
+    { moduleKey: "facturacion", fieldKey: "numero", label: "Nº factura", kind: "text", required: true, placeholder: "FAC-VET-2026-001" },
+    { moduleKey: "facturacion", fieldKey: "cliente", label: "Propietario", kind: "text", required: true },
+    { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text" },
+    { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true },
+    { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }, { value: "anulada", label: "Anulada" },
+    ] },
+
+    // CRM
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", kind: "text", required: true },
+    { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
+    { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email" },
+    { moduleKey: "crm", fieldKey: "mascotaInteres", label: "Mascota / motivo", kind: "text", placeholder: "Perro / vacuna anual" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen", kind: "text", placeholder: "Google, Recomendación..." },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "lead", label: "Lead" }, { value: "contactado", label: "Contactado" }, { value: "cliente", label: "Cliente" }, { value: "perdido", label: "Perdido" },
+    ] },
+    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso", kind: "text" },
+
+    // Documentos / historial
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", kind: "text", required: true, placeholder: "Cartilla vacunas, RX..." },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
+      { value: "vacuna", label: "Vacuna" }, { value: "desparasitacion", label: "Desparasitación" }, { value: "rx", label: "Radiografía" }, { value: "analitica", label: "Analítica" }, { value: "informe", label: "Informe clínico" }, { value: "consentimiento", label: "Consentimiento" }, { value: "otro", label: "Otro" },
+    ] },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Mascota", kind: "relation", relationModuleKey: "clientes" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha", kind: "date" },
+    { moduleKey: "documentos", fieldKey: "proximaFecha", label: "Próxima dosis / revisión", kind: "date" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "vigente", label: "Vigente" }, { value: "caducado", label: "Caducado" }, { value: "archivado", label: "Archivado" },
+    ] },
+  ],
+  tableColumns: [
+    { moduleKey: "clientes", fieldKey: "nombre", label: "Mascota", isPrimary: true },
+    { moduleKey: "clientes", fieldKey: "especie", label: "Especie" },
+    { moduleKey: "clientes", fieldKey: "raza", label: "Raza" },
+    { moduleKey: "clientes", fieldKey: "propietario", label: "Propietario" },
+    { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono" },
+    { moduleKey: "clientes", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "proyectos", fieldKey: "fecha", label: "Cuándo", isPrimary: true },
+    { moduleKey: "proyectos", fieldKey: "cliente", label: "Mascota" },
+    { moduleKey: "proyectos", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "proyectos", fieldKey: "veterinario", label: "Vet." },
+    { moduleKey: "proyectos", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº", isPrimary: true },
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Mascota" },
+    { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe" },
+    { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "facturacion", fieldKey: "numero", label: "Nº", isPrimary: true },
+    { moduleKey: "facturacion", fieldKey: "cliente", label: "Propietario" },
+    { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "mascotaInteres", label: "Motivo" },
+    { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
+    { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
+
+    { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", isPrimary: true },
+    { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
+    { moduleKey: "documentos", fieldKey: "cliente", label: "Mascota" },
+    { moduleKey: "documentos", fieldKey: "fecha", label: "Fecha" },
+    { moduleKey: "documentos", fieldKey: "proximaFecha", label: "Próxima" },
+    { moduleKey: "documentos", fieldKey: "estado", label: "Estado" },
+  ],
+  dashboardPriorities: [
+    { key: "proyectos", label: "Citas de hoy", description: "Citas y tratamientos programados hoy.", order: 1 },
+    { key: "documentos", label: "Vacunas próximas", description: "Pautas vacunales próximas a vencer.", order: 2 },
+    { key: "facturas", label: "Facturas vencidas", description: "Cobros pendientes de propietarios.", order: 3 },
+    { key: "clientes", label: "Mascotas activas", description: "Pacientes en seguimiento.", order: 4 },
+    { key: "actividad", label: "Actividad reciente", description: "Últimos movimientos en la clínica.", order: 5 },
+  ],
+  demoData: [
+    { moduleKey: "clientes", records: [
+      { nombre: "Luna", especie: "perro", raza: "Labrador", edad: "4 años", peso: "28 kg", chip: "ES12345", propietario: "María García", telefono: "+34 600 333 001", email: "maria@email.com", alergias: "Ninguna conocida", estado: "activo" },
+      { nombre: "Tigre", especie: "gato", raza: "Persa", edad: "7 años", peso: "5 kg", chip: "ES67890", propietario: "Pedro Sanz", telefono: "+34 600 333 002", email: "pedro@email.com", alergias: "Ninguna", estado: "activo" },
+      { nombre: "Coco", especie: "ave", raza: "Periquito australiano", edad: "2 años", peso: "30 g", chip: "", propietario: "Lucía Pérez", telefono: "+34 600 333 003", email: "lucia@email.com", alergias: "", estado: "activo" },
+    ]},
+    { moduleKey: "proyectos", records: [
+      { nombre: "Vacunación anual Luna", tipo: "cita", fecha: "2026-05-12 10:00", cliente: "Luna", veterinario: "Dra. Méndez", motivo: "Recordatorio vacuna polivalente", duracion: "20 min", estado: "planificado" },
+      { nombre: "Castración Tigre", tipo: "cirugia", fecha: "2026-05-15 09:00", cliente: "Tigre", veterinario: "Dr. Rivas", motivo: "Castración programada", duracion: "1h", estado: "planificado" },
+      { nombre: "Revisión Coco", tipo: "cita", fecha: "2026-05-20 17:00", cliente: "Coco", veterinario: "Dra. Méndez", motivo: "Revisión rutinaria + corte uñas", duracion: "30 min", estado: "planificado" },
+    ]},
+    { moduleKey: "presupuestos", records: [
+      { numero: "PRE-VET-2026-001", cliente: "Tigre", concepto: "Castración + analítica preoperatoria", importe: "180 EUR", fechaEmision: "2026-05-08", estado: "firmado" },
+    ]},
+    { moduleKey: "facturacion", records: [
+      { numero: "FAC-VET-2026-001", cliente: "María García", concepto: "Revisión Luna + vacuna multipropósito", importe: "65 EUR", fechaEmision: "2026-05-01", estado: "cobrada" },
+      { numero: "FAC-VET-2026-002", cliente: "Pedro Sanz", concepto: "Consulta + analítica Tigre", importe: "85 EUR", fechaEmision: "2026-05-05", estado: "emitida" },
+    ]},
+    { moduleKey: "crm", records: [
+      { nombre: "Familia Romero (perro nuevo cachorro)", telefono: "+34 600 444 001", email: "romero@email.com", mascotaInteres: "Cachorro labrador 2m", origen: "Recomendación", estado: "lead", proximoPaso: "Llamar para agendar primera revisión" },
+    ]},
+    { moduleKey: "documentos", records: [
+      { nombre: "Cartilla vacunación Luna", tipo: "vacuna", cliente: "Luna", fecha: "2025-05-12", proximaFecha: "2026-05-12", estado: "vigente" },
+      { nombre: "Desparasitación Tigre Q1", tipo: "desparasitacion", cliente: "Tigre", fecha: "2026-03-01", proximaFecha: "2026-06-01", estado: "vigente" },
+      { nombre: "Consentimiento castración Tigre", tipo: "consentimiento", cliente: "Tigre", fecha: "2026-05-08", estado: "vigente" },
+    ]},
+  ],
+  landing: {
+    headline: "La clínica veterinaria, organizada al detalle.",
+    subheadline: "ERP para clínicas veterinarias: agenda, vacunas con recordatorio, historial clínico de cada mascota y facturación al propietario.",
+    bullets: [
+      "Mascotas con propietario, especie, raza, edad y microchip",
+      "Calendario de citas, cirugías y urgencias",
+      "Pauta vacunal con recordatorio automático",
+      "Presupuestos y facturas al propietario",
+    ],
+    cta: "Activa tu clínica veterinaria",
+  },
+  assistantCopy: {
+    welcome: "Te ayudo con la agenda, vacunas próximas, presupuestos y facturas de la clínica veterinaria. Pregúntame qué citas hay hoy o qué mascotas tienen vacunas próximas a caducar.",
+    suggestion: "¿Qué vacunas vencen este mes?",
+  },
+};
+
 export const SECTOR_PACKS: SectorPackDefinition[] = [
   CLINICA_DENTAL_PACK,
   SOFTWARE_FACTORY_PACK,
@@ -2097,6 +2317,7 @@ export const SECTOR_PACKS: SectorPackDefinition[] = [
   PELUQUERIA_PACK,
   TALLER_PACK,
   COLEGIO_PACK,
+  VETERINARIA_PACK,
 ];
 
 function resolvePackMerged(base: SectorPackDefinition): SectorPackDefinition {

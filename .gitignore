@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+# H3-ARQ-04: Playwright reports
+/playwright-report
+/test-results
+/.playwright
 
 # next.js
 /.next/

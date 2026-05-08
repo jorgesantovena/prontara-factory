@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "node scripts/seed-from-json.mjs",
@@ -27,6 +28,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.48.0",
     "@tauri-apps/cli": "^2.10.1",
     "@types/node": "^20",
     "@types/pdfkit": "^0.13.5",

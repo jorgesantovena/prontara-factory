@@ -41,6 +41,10 @@ export const CORE_MODULES: SectorPackModule[] = [
   { moduleKey: "encuestas", enabled: true, label: "Encuestas", navigationLabel: "Encuestas", emptyState: "Sin encuestas creadas." },
   { moduleKey: "etiquetas", enabled: true, label: "Etiquetas", navigationLabel: "Etiquetas", emptyState: "Sin etiquetas configuradas." },
   { moduleKey: "plantillas", enabled: true, label: "Plantillas", navigationLabel: "Plantillas", emptyState: "Sin plantillas guardadas." },
+  // H3-FUNC-01 + H3-FUNC-02 — Caja/POS, Bodegas y Kardex.
+  { moduleKey: "caja", enabled: true, label: "Caja", navigationLabel: "Caja", emptyState: "Sin movimientos de caja hoy." },
+  { moduleKey: "bodegas", enabled: true, label: "Bodegas", navigationLabel: "Bodegas", emptyState: "Sin bodegas configuradas." },
+  { moduleKey: "kardex", enabled: true, label: "Kardex", navigationLabel: "Kardex", emptyState: "Sin movimientos de stock." },
 ];
 
 export const CORE_FIELDS: SectorPackField[] = [
@@ -136,6 +140,48 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "plantillas", fieldKey: "estado", label: "Estado", kind: "status", options: [
     { value: "activa", label: "Activa" }, { value: "borrador", label: "Borrador" }, { value: "archivada", label: "Archivada" },
   ] },
+
+  // Caja / POS (H3-FUNC-01)
+  { moduleKey: "caja", fieldKey: "ticket", label: "Nº ticket", kind: "text", placeholder: "T-2026-001" },
+  { moduleKey: "caja", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Producto / servicio cobrado" },
+  { moduleKey: "caja", fieldKey: "importe", label: "Importe", kind: "money", required: true },
+  { moduleKey: "caja", fieldKey: "metodoPago", label: "Método de pago", kind: "status", required: true, options: [
+    { value: "efectivo", label: "Efectivo" }, { value: "tarjeta", label: "Tarjeta" }, { value: "bizum", label: "Bizum" }, { value: "transferencia", label: "Transferencia" }, { value: "otro", label: "Otro" },
+  ] },
+  { moduleKey: "caja", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
+  { moduleKey: "caja", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+  { moduleKey: "caja", fieldKey: "cajero", label: "Cajero", kind: "text", placeholder: "Quién cobró" },
+  { moduleKey: "caja", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "cobrado", label: "Cobrado" }, { value: "pendiente", label: "Pendiente" }, { value: "anulado", label: "Anulado" }, { value: "devuelto", label: "Devuelto" },
+  ] },
+  { moduleKey: "caja", fieldKey: "notas", label: "Notas", kind: "textarea" },
+
+  // Bodegas (H3-FUNC-02)
+  { moduleKey: "bodegas", fieldKey: "nombre", label: "Bodega", kind: "text", required: true, placeholder: "Almacén central" },
+  { moduleKey: "bodegas", fieldKey: "ubicacion", label: "Ubicación", kind: "text", placeholder: "Calle / ciudad" },
+  { moduleKey: "bodegas", fieldKey: "responsable", label: "Responsable", kind: "text" },
+  { moduleKey: "bodegas", fieldKey: "tipo", label: "Tipo", kind: "status", options: [
+    { value: "central", label: "Central" }, { value: "tienda", label: "Tienda" }, { value: "transito", label: "En tránsito" }, { value: "consignacion", label: "Consignación" },
+  ] },
+  { moduleKey: "bodegas", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "activa", label: "Activa" }, { value: "inactiva", label: "Inactiva" },
+  ] },
+  { moduleKey: "bodegas", fieldKey: "notas", label: "Notas", kind: "textarea" },
+
+  // Kardex — movimientos de stock (H3-FUNC-02)
+  { moduleKey: "kardex", fieldKey: "producto", label: "Producto", kind: "relation", relationModuleKey: "productos", required: true },
+  { moduleKey: "kardex", fieldKey: "bodega", label: "Bodega", kind: "relation", relationModuleKey: "bodegas", required: true },
+  { moduleKey: "kardex", fieldKey: "tipo", label: "Tipo movimiento", kind: "status", required: true, options: [
+    { value: "entrada", label: "Entrada" }, { value: "salida", label: "Salida" }, { value: "traspaso", label: "Traspaso" }, { value: "ajuste", label: "Ajuste" },
+  ] },
+  { moduleKey: "kardex", fieldKey: "cantidad", label: "Cantidad", kind: "number", required: true },
+  { moduleKey: "kardex", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+  { moduleKey: "kardex", fieldKey: "motivo", label: "Motivo", kind: "text", placeholder: "Compra, venta, devolución, inventario..." },
+  { moduleKey: "kardex", fieldKey: "documentoRef", label: "Doc referencia", kind: "text", placeholder: "OC-001 / FAC-001..." },
+  { moduleKey: "kardex", fieldKey: "responsable", label: "Responsable", kind: "text" },
+  { moduleKey: "kardex", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "registrado", label: "Registrado" }, { value: "anulado", label: "Anulado" },
+  ] },
 ];
 
 export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
@@ -187,6 +233,26 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "plantillas", fieldKey: "asunto", label: "Asunto" },
   { moduleKey: "plantillas", fieldKey: "idioma", label: "Idioma" },
   { moduleKey: "plantillas", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "caja", fieldKey: "ticket", label: "Ticket", isPrimary: true },
+  { moduleKey: "caja", fieldKey: "concepto", label: "Concepto" },
+  { moduleKey: "caja", fieldKey: "importe", label: "Importe" },
+  { moduleKey: "caja", fieldKey: "metodoPago", label: "Pago" },
+  { moduleKey: "caja", fieldKey: "fecha", label: "Fecha" },
+  { moduleKey: "caja", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "bodegas", fieldKey: "nombre", label: "Bodega", isPrimary: true },
+  { moduleKey: "bodegas", fieldKey: "ubicacion", label: "Ubicación" },
+  { moduleKey: "bodegas", fieldKey: "responsable", label: "Responsable" },
+  { moduleKey: "bodegas", fieldKey: "tipo", label: "Tipo" },
+  { moduleKey: "bodegas", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "kardex", fieldKey: "producto", label: "Producto", isPrimary: true },
+  { moduleKey: "kardex", fieldKey: "bodega", label: "Bodega" },
+  { moduleKey: "kardex", fieldKey: "tipo", label: "Movimiento" },
+  { moduleKey: "kardex", fieldKey: "cantidad", label: "Cantidad" },
+  { moduleKey: "kardex", fieldKey: "fecha", label: "Fecha" },
+  { moduleKey: "kardex", fieldKey: "estado", label: "Estado" },
 ];
 
 /**
@@ -224,6 +290,15 @@ export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<st
   { moduleKey: "plantillas", records: [
     { nombre: "Bienvenida nuevo cliente", tipo: "email", asunto: "Bienvenido a {{empresa}}", contenido: "Hola {{cliente}},\n\nGracias por confiar en nosotros. Aquí tienes la información para empezar...", idioma: "es", estado: "activa" },
     { nombre: "Recordatorio cita", tipo: "sms", asunto: "", contenido: "Hola {{nombre}}, te recordamos tu cita el {{fecha}} a las {{hora}}. {{empresa}}", idioma: "es", estado: "activa" },
+  ]},
+  { moduleKey: "caja", records: [
+    { ticket: "T-2026-001", concepto: "Servicio profesional", importe: "75.00 EUR", metodoPago: "tarjeta", cliente: "", fecha: "2026-05-08", cajero: "Operador", estado: "cobrado", notas: "" },
+  ]},
+  { moduleKey: "bodegas", records: [
+    { nombre: "Almacén central", ubicacion: "Sede principal", responsable: "Operador", tipo: "central", estado: "activa", notas: "Bodega principal del tenant." },
+  ]},
+  { moduleKey: "kardex", records: [
+    { producto: "", bodega: "Almacén central", tipo: "entrada", cantidad: "10", fecha: "2026-05-01", motivo: "Stock inicial", documentoRef: "OC-2026-001", responsable: "Operador", estado: "registrado" },
   ]},
 ];
 

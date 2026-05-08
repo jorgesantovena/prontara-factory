@@ -233,6 +233,8 @@ model TenantModuleRecord {
 
   @@index([clientId, moduleKey, updatedAt])
   @@index([clientId, moduleKey, id])
+  // H3-ARQ-03: índice compuesto para búsquedas por createdAt
+  @@index([clientId, moduleKey, createdAt])
 }
 
 // ===========================================================================
@@ -483,6 +485,8 @@ model AuditEvent {
   @@index([tool, createdAt])
   @@index([actorEmail, createdAt])
   @@index([conversationId])
+  // H3-ARQ-03: índice por tenant + createdAt para limpieza por retención.
+  @@index([tenantId, createdAt])
 }
 
 // =====================================================================
@@ -603,4 +607,78 @@ model FactoryNotification {
 
   @@index([readAt, createdAt])
   @@index([type, createdAt])
+}
+
+// =====================================================================
+// HORIZONTE 3 — modelos de plataforma
+// =====================================================================
+
+/// H3-ARQ-01 — Background jobs queue en Postgres.
+/// Procesa: emails diferidos, recálculo de KPIs, retry envíos AEAT.
+/// Worker: /api/cron/tick (Vercel Cron cada minuto).
+model BackgroundJob {
+  id          String   @id @default(cuid())
+  tenantId    String?
+  clientId    String?
+  /// kind: email | recalc-kpis | verifactu-resend | gdpr-export | custom
+  kind        String
+  payloadJson Json
+  /// status: pending | running | done | failed
+  status      String   @default("pending")
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(5)
+  /// Earliest time the job can be processed (delays / backoff).
+  runAfter    DateTime @default(now())
+  startedAt   DateTime?
+  finishedAt  DateTime?
+  errorMsg    String?
+  createdAt   DateTime @default(now())
+
+  @@index([status, runAfter])
+  @@index([clientId, kind, status])
+}
+
+/// H3-GDPR-02 — Política de retención por tenant.
+/// Aplica a AuditEvent y FactoryNotification. Default: 365 días.
+model TenantLogPolicy {
+  id            String   @id @default(cuid())
+  tenantId      String   @unique
+  clientId      String   @unique
+  retentionDays Int      @default(365)
+  updatedAt     DateTime @updatedAt
+}
+
+/// H3-FUNC-04 — Mensajería interna en tiempo real (SSE).
+model InternalMessage {
+  id        String   @id @default(cuid())
+  tenantId  String
+  clientId  String
+  fromEmail String
+  toEmail   String?  // null = broadcast a todo el tenant
+  subject   String?
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([clientId, toEmail, createdAt])
+  @@index([clientId, fromEmail, createdAt])
+}
+
+/// H3-FUNC-05 — Estado de integraciones por tenant.
+model TenantIntegration {
+  id           String   @id @default(cuid())
+  tenantId     String
+  clientId     String
+  /// provider: stripe | google-calendar | whatsapp | mailchimp | slack | zapier
+  provider     String
+  enabled      Boolean  @default(false)
+  /// Datos de configuración (api keys, webhook urls, etc.). Cifrar antes de
+  /// guardar usando crypto-vault si contiene secretos.
+  configJson   Json     @default("{}")
+  lastSyncAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([clientId, provider])
+  @@index([clientId, enabled])
 }
