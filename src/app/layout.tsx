@@ -13,6 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 import { getPublicBaseUrl } from "@/lib/saas/runtime-env";
+import PwaRegister from "@/components/pwa-register";
 
 const SITE_URL = getPublicBaseUrl();
 
@@ -93,6 +94,8 @@ export const metadata: Metadata = {
   alternates: {
     canonical: SITE_URL,
   },
+  manifest: "/manifest.json",
+  themeColor: "#1d4ed8",
 };
 
 export default function RootLayout({
@@ -112,6 +115,7 @@ export default function RootLayout({
     >
       <body style={{ minHeight: "100%", display: "flex", flexDirection: "column", margin: 0 }}>
         {children}
+        <PwaRegister />
       </body>
     </html>
   );

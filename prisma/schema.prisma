@@ -648,6 +648,29 @@ model TenantLogPolicy {
   updatedAt     DateTime @updatedAt
 }
 
+/// H4-WF-PRO — Aprobaciones de pasos de workflow multi-paso.
+/// Cada fila representa una decisión (approve/reject) sobre un step
+/// concreto de una regla.
+model WorkflowApproval {
+  id        String   @id @default(cuid())
+  ruleId    String
+  tenantId  String
+  clientId  String
+  /// id del registro disparador (TenantModuleRecord.id)
+  triggerRecordId String
+  /// índice del step dentro de actionPayload.steps[]
+  stepIndex Int
+  /// email del aprobador, o "auto" si fue automático
+  decidedBy String
+  /// approve | reject
+  decision  String
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([ruleId, triggerRecordId, stepIndex])
+  @@index([clientId, createdAt])
+}
+
 /// H3-FUNC-04 — Mensajería interna en tiempo real (SSE).
 model InternalMessage {
   id        String   @id @default(cuid())
