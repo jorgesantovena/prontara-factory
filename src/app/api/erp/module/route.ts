@@ -12,6 +12,27 @@ import {
   PlanLimitError,
 } from "@/lib/saas/plan-limits";
 import { checkTenantSubscriptionAsync } from "@/lib/saas/subscription-guard";
+import { canPerform, type PermissionAction } from "@/lib/saas/permission-checker";
+
+async function ensurePermission(
+  clientId: string,
+  role: string,
+  moduleKey: string,
+  action: PermissionAction,
+): Promise<NextResponse | null> {
+  const allowed = await canPerform(clientId, role, moduleKey, action);
+  if (!allowed) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Tu rol no tiene permiso para " + action + " en " + moduleKey + ".",
+        code: "PERMISSION_DENIED",
+      },
+      { status: 403 },
+    );
+  }
+  return null;
+}
 
 function unauthorized() {
   return NextResponse.json(
@@ -35,6 +56,10 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // H2-PERM: verificar permiso de view
+    const permError = await ensurePermission(session.clientId, session.role, moduleKey, "view");
+    if (permError) return permError;
 
     const rows = await listModuleRecordsAsync(moduleKey, session.clientId);
 
@@ -70,6 +95,18 @@ export async function POST(request: NextRequest) {
         { ok: false, error: "Falta module." },
         { status: 400 }
       );
+    }
+
+    // H2-PERM: verificar permiso correspondiente al modo
+    const actionByMode: Record<string, PermissionAction> = {
+      create: "create",
+      edit: "edit",
+      delete: "delete",
+    };
+    const requiredAction = actionByMode[mode];
+    if (requiredAction) {
+      const permError = await ensurePermission(session.clientId, session.role, moduleKey, requiredAction);
+      if (permError) return permError;
     }
 
     // Bloqueo de escritura si la suscripción no está activa. Aplica a

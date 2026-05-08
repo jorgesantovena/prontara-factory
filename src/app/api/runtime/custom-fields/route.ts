@@ -3,9 +3,10 @@ import { requireTenantSession } from "@/lib/saas/auth-session";
 import { withPrisma, getPersistenceBackend } from "@/lib/persistence/db";
 
 /**
- * CRUD de campos personalizados del tenant (DEV-CF).
+ * CRUD de campos personalizados del tenant (DEV-CF + H2-FBD).
  * GET    /api/runtime/custom-fields                lista
- * POST   /api/runtime/custom-fields                crea
+ * POST   /api/runtime/custom-fields                crea/upsert
+ * PATCH  /api/runtime/custom-fields                reorden masivo
  * DELETE /api/runtime/custom-fields?id=X           borra
  */
 export const dynamic = "force-dynamic";
@@ -122,6 +123,43 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ ok: true, field });
+  } catch (e) {
+    return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Error" }, { status: 500 });
+  }
+}
+
+/**
+ * PATCH /api/runtime/custom-fields
+ * Body: { reorder: [{ id, position }, ...] }
+ *   - Reordena posiciones de varios campos custom de golpe (H2-FBD).
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = requireTenantSession(request);
+    if (!session) return NextResponse.json({ ok: false, error: "Sesión inválida." }, { status: 401 });
+    if (getPersistenceBackend() !== "postgres") {
+      return NextResponse.json({ ok: false, error: "Solo Postgres." }, { status: 400 });
+    }
+    const body = await request.json();
+    const reorder: Array<{ id: string; position: number }> = Array.isArray(body?.reorder) ? body.reorder : [];
+    if (reorder.length === 0) {
+      return NextResponse.json({ ok: false, error: "Falta reorder[]." }, { status: 400 });
+    }
+    await withPrisma(async (prisma) => {
+      const c = prisma as unknown as {
+        tenantCustomField: {
+          updateMany: (a: { where: { id: string; clientId: string }; data: { position: number } }) => Promise<unknown>;
+        };
+      };
+      for (const item of reorder) {
+        if (!item || !item.id) continue;
+        await c.tenantCustomField.updateMany({
+          where: { id: String(item.id), clientId: session.clientId },
+          data: { position: Number(item.position) || 0 },
+        });
+      }
+    });
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ ok: false, error: e instanceof Error ? e.message : "Error" }, { status: 500 });
   }

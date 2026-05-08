@@ -24,6 +24,63 @@ export type WorkflowAction =
   | { type: "createTask"; titulo: string; asignado?: string; prioridad?: string }
   | { type: "setEstado"; estado: string };
 
+/**
+ * Condición sobre un campo del payload del registro disparador.
+ * Operadores: eq / neq / contains / gt / lt / notEmpty / empty.
+ *
+ * Cuando una regla tiene `conditions[]`, TODAS deben cumplirse (AND
+ * lógico) para que la regla se dispare. OR se modela con varias reglas
+ * independientes.
+ */
+export type WorkflowCondition = {
+  field: string;
+  operator: "eq" | "neq" | "contains" | "gt" | "lt" | "notEmpty" | "empty";
+  value?: string;
+};
+
+/**
+ * Forma extendida (H2-WF2): la regla puede definir varias acciones y
+ * condiciones. Si actionPayload es de la forma legacy
+ * (un único action object), se trata como una sola acción sin condiciones.
+ */
+export type ExtendedActionPayload = {
+  actions: WorkflowAction[];
+  conditions?: WorkflowCondition[];
+};
+
+function isExtendedPayload(p: unknown): p is ExtendedActionPayload {
+  return !!p && typeof p === "object" && Array.isArray((p as { actions?: unknown }).actions);
+}
+
+function evalCondition(record: Record<string, unknown>, c: WorkflowCondition): boolean {
+  const value = String(record[c.field] ?? "");
+  const target = String(c.value ?? "").trim();
+  switch (c.operator) {
+    case "eq":
+      return value.trim().toLowerCase() === target.toLowerCase();
+    case "neq":
+      return value.trim().toLowerCase() !== target.toLowerCase();
+    case "contains":
+      return value.toLowerCase().includes(target.toLowerCase());
+    case "gt": {
+      const v = parseFloat(value.replace(",", "."));
+      const t = parseFloat(target.replace(",", "."));
+      return Number.isFinite(v) && Number.isFinite(t) && v > t;
+    }
+    case "lt": {
+      const v = parseFloat(value.replace(",", "."));
+      const t = parseFloat(target.replace(",", "."));
+      return Number.isFinite(v) && Number.isFinite(t) && v < t;
+    }
+    case "notEmpty":
+      return value.trim().length > 0;
+    case "empty":
+      return value.trim().length === 0;
+    default:
+      return true;
+  }
+}
+
 export type WorkflowRule = {
   id: string;
   tenantId: string;
@@ -116,17 +173,37 @@ export async function processWorkflowRules(input: {
     }
     if (!dispara) continue;
 
-    try {
-      await executeAction(rule, input.clientId);
-      accionesEjecutadas.push(rule.actionType + ":" + rule.id);
-      // Si la acción fue setEstado, mutamos el payload para que el
-      // caller lo persista con el nuevo estado en el mismo write.
-      if (rule.actionType === "setEstado") {
-        const a = rule.actionPayload as Extract<WorkflowAction, { type: "setEstado" }>;
-        if (a.estado) payloadActualizado.estado = a.estado;
+    // H2-WF2: si el actionPayload es extendido, evalúa condiciones y
+    // ejecuta múltiples acciones. Si es legacy (un único action),
+    // mantiene comportamiento original.
+    const payload = rule.actionPayload as unknown;
+    if (isExtendedPayload(payload)) {
+      const conditions = payload.conditions || [];
+      const conditionsOk = conditions.every((c) => evalCondition(payloadActualizado, c));
+      if (!conditionsOk) continue;
+      for (const action of payload.actions) {
+        try {
+          await executeSingleAction(rule, action, input.clientId);
+          accionesEjecutadas.push(action.type + ":" + rule.id);
+          if (action.type === "setEstado" && action.estado) {
+            payloadActualizado.estado = action.estado;
+          }
+        } catch {
+          // ignore individual failures
+        }
       }
-    } catch {
-      // No bloqueamos el flujo si falla la acción.
+    } else {
+      // Modo legacy
+      try {
+        await executeAction(rule, input.clientId);
+        accionesEjecutadas.push(rule.actionType + ":" + rule.id);
+        if (rule.actionType === "setEstado") {
+          const a = rule.actionPayload as Extract<WorkflowAction, { type: "setEstado" }>;
+          if (a.estado) payloadActualizado.estado = a.estado;
+        }
+      } catch {
+        // No bloqueamos el flujo si falla la acción.
+      }
     }
   }
 
@@ -134,7 +211,14 @@ export async function processWorkflowRules(input: {
 }
 
 async function executeAction(rule: WorkflowRule, clientId: string): Promise<void> {
-  const a = rule.actionPayload;
+  await executeSingleAction(rule, rule.actionPayload, clientId);
+}
+
+async function executeSingleAction(
+  rule: WorkflowRule,
+  a: WorkflowAction,
+  clientId: string,
+): Promise<void> {
   if (a.type === "notify") {
     await withPrisma(async (prisma) => {
       const c = prisma as unknown as {

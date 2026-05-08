@@ -236,6 +236,46 @@ model TenantModuleRecord {
 }
 
 // ===========================================================================
+// Permisos granulares por rol + módulo + acción (H2-PERM).
+//
+// Cada fila representa una restricción/permiso explícito. Si no existe
+// fila para (clientId, role, moduleKey), se aplica el default global
+// del helper. Las filas customizan el default.
+// ===========================================================================
+
+model TenantPermissionPolicy {
+  id          String   @id @default(cuid())
+  tenantId    String
+  clientId    String
+  role        String   /// owner | admin | manager | staff | clienteFinal | docente | familia | estudiante
+  moduleKey   String
+  /// CSV de acciones permitidas: view,create,edit,delete,approve,export
+  actionsCsv  String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([clientId, role, moduleKey])
+  @@index([clientId, role])
+}
+
+// ===========================================================================
+// SSO — vínculos OAuth de cuentas con proveedores externos (H2-SSO).
+// ===========================================================================
+
+model TenantAccountSSO {
+  id           String   @id @default(cuid())
+  accountId    String
+  provider     String   /// google | microsoft
+  providerSub  String   /// "sub" del id_token (identificador único del usuario en el proveedor)
+  email        String   /// email tal como llegó del proveedor (auditoría)
+  createdAt    DateTime @default(now())
+  lastLoginAt  DateTime?
+
+  @@unique([provider, providerSub])
+  @@index([accountId])
+}
+
+// ===========================================================================
 // MFA TOTP (DEV-MFA) — segundo factor de autenticación por cuenta.
 //
 // Cuando una cuenta activa MFA, en cada login se le pide código TOTP de

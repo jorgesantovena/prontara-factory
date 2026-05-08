@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ReportChart from "@/components/erp/report-chart";
 
 /**
  * Página de reportes (DEV-REP).
@@ -14,7 +15,7 @@ type Report = {
   name: string;
   description: string | null;
   moduleKey: string;
-  chartType: string;
+  chartType: "none" | "bar" | "line" | "pie";
 };
 
 type ReportResult = {
@@ -57,6 +58,7 @@ export default function ReportesPage() {
   const [filterOperator, setFilterOperator] = useState<string>("eq");
   const [filterValue, setFilterValue] = useState("");
   const [groupBy, setGroupBy] = useState("");
+  const [chartType, setChartType] = useState<"none" | "bar" | "line" | "pie">("none");
 
   async function load() {
     setLoading(true);
@@ -104,7 +106,7 @@ export default function ReportesPage() {
         body: JSON.stringify({
           name, description, moduleKey, columns, filters,
           groupBy: groupBy || null,
-          chartType: "none",
+          chartType,
         }),
       });
       const data = await r.json();
@@ -181,6 +183,14 @@ export default function ReportesPage() {
             </Field>
             <Field label="Filtro: valor"><input value={filterValue} onChange={(e) => setFilterValue(e.target.value)} placeholder="activo" style={ipt} /></Field>
             <Field label="Agrupar por (opcional)"><input value={groupBy} onChange={(e) => setGroupBy(e.target.value)} placeholder="estado" style={ipt} /></Field>
+            <Field label="Tipo de gráfico">
+              <select value={chartType} onChange={(e) => setChartType(e.target.value as "none" | "bar" | "line" | "pie")} style={ipt}>
+                <option value="none">Sin gráfico (solo tabla)</option>
+                <option value="bar">Barras</option>
+                <option value="line">Líneas</option>
+                <option value="pie">Tarta</option>
+              </select>
+            </Field>
           </div>
           <button
             type="button"
@@ -243,6 +253,15 @@ export default function ReportesPage() {
             <div>
               <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px 0" }}>{activeReport.name}</h2>
               <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 16px 0" }}>{activeResult.total} registro(s)</p>
+
+              {/* H2-CHART: gráfico cuando el reporte lo pida */}
+              {activeReport.chartType !== "none" && activeResult.groups && activeResult.groups.length > 0 ? (
+                <ReportChart
+                  chartType={activeReport.chartType}
+                  groups={activeResult.groups.map((g) => ({ key: g.key, count: g.count }))}
+                  title={activeReport.name}
+                />
+              ) : null}
 
               {activeResult.groups && activeResult.groups.length > 0 ? (
                 <section style={{ marginBottom: 24 }}>
