@@ -648,6 +648,82 @@ model TenantLogPolicy {
   updatedAt     DateTime @updatedAt
 }
 
+/// H6-PSD2 — Movimiento bancario importado vía agregador PSD2.
+/// Idempotente por (clientId, externalId) para no duplicar al refrescar.
+model BankMovement {
+  id          String   @id @default(cuid())
+  tenantId    String
+  clientId    String
+  /// id externo del agregador (ej. Fintecture transactionId)
+  externalId  String
+  account     String?  // IBAN o ID interno de cuenta
+  date        DateTime
+  amountEur   Float
+  description String
+  /// "credit" (entrada) | "debit" (salida)
+  direction   String
+  matchedFacturaId String?
+  matchedAt   DateTime?
+  rawJson     Json?
+  createdAt   DateTime @default(now())
+
+  @@unique([clientId, externalId])
+  @@index([clientId, date])
+  @@index([clientId, matchedFacturaId])
+}
+
+/// H6-VERIFACTU-SIGN — Certificado digital del tenant para firmar XML
+/// Verifactu. Cifrado con crypto-vault (AES-GCM) antes de persistir.
+model TenantCertificate {
+  id           String   @id @default(cuid())
+  tenantId     String
+  clientId     String   @unique
+  /// "fnmt" | "ac-camerfirma" | "izenpe" | "otro"
+  issuer       String?
+  /// PEM concatenado: cert + intermediate (cifrado)
+  certPem      String
+  /// Clave privada PEM (cifrado)
+  keyPem       String
+  /// Para mostrar al usuario sin descifrar
+  subject      String?
+  validFrom    DateTime?
+  validUntil   DateTime?
+  uploadedAt   DateTime @default(now())
+}
+
+/// H6-PDF-EDITOR — Plantilla PDF personalizada del tenant.
+model TenantPdfTemplate {
+  id            String   @id @default(cuid())
+  tenantId      String
+  clientId      String   @unique
+  logoUrl       String?
+  primaryColor  String   @default("#1d4ed8")
+  pieFactura    String?
+  mensajePie    String?
+  mostrarBancos Boolean  @default(true)
+  iban          String?
+  updatedAt     DateTime @updatedAt
+}
+
+/// H6-PAY-LINK — Sesiones de Stripe Checkout creadas para cobrar a
+/// clientes finales (independiente de la suscripción del tenant).
+model TenantPayLink {
+  id          String   @id @default(cuid())
+  tenantId    String
+  clientId    String
+  facturaId   String?
+  amountEur   Float
+  concept     String
+  email       String?
+  stripeSession String   @unique
+  url         String
+  status      String   @default("pending") // pending | paid | expired
+  paidAt      DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([clientId, status, createdAt])
+}
+
 /// H5-UX-02 — Widgets configurables del dashboard del tenant.
 model TenantDashboardWidget {
   id        String   @id @default(cuid())
