@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "Sin vencimientos seleccionados." }, { status: 400 });
     }
 
-    // Resolver emisor
+    // Resolver emisor + IBAN/BIC del propio tenant (vienen del módulo
+    // ajustes con claves "iban" / "bic", igual que CIF).
     const runtime = await resolveRequestTenantRuntimeAsync(request);
     const emisor = await resolveTenantEmisorAsync({
       clientId: session.clientId,
@@ -65,16 +66,25 @@ export async function POST(request: NextRequest) {
     if (!emisor.cif || emisor.cif === "—") {
       return NextResponse.json({ ok: false, error: "Falta CIF del emisor en /ajustes." }, { status: 400 });
     }
-    if (!emisor.iban) {
-      return NextResponse.json({ ok: false, error: "Falta IBAN del emisor en /ajustes (clave 'iban')." }, { status: 400 });
-    }
 
-    // Cargar vencimientos + facturas + cuentas bancarias del tenant
-    const [vencimientos, facturas, cuentas] = await Promise.all([
+    // Cargar vencimientos + facturas + cuentas bancarias + ajustes del tenant
+    const [vencimientos, facturas, cuentas, ajustes] = await Promise.all([
       listModuleRecordsAsync("vencimientos-factura", session.clientId),
       listModuleRecordsAsync("facturacion", session.clientId),
       listModuleRecordsAsync("cuentas-bancarias", session.clientId),
+      listModuleRecordsAsync("ajustes", session.clientId).catch(() => []),
     ]);
+
+    // IBAN/BIC del emisor: del módulo ajustes (key=iban / key=bic)
+    function findAjuste(key: string): string {
+      const row = ajustes.find((a) => String(a.clave || a.key || "").toLowerCase() === key.toLowerCase());
+      return row ? String(row.valor || row.value || "").trim() : "";
+    }
+    const emisorIban = findAjuste("iban");
+    const emisorBic = findAjuste("bic");
+    if (!emisorIban) {
+      return NextResponse.json({ ok: false, error: "Falta IBAN del emisor en /ajustes (clave 'iban')." }, { status: 400 });
+    }
 
     const facturasMap = new Map(facturas.map((f) => [String(f.id), f]));
     // Para cada cuenta bancaria, indexamos por cliente y esPrincipal
@@ -129,16 +139,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    if (!isValidIban(emisor.iban)) {
-      return NextResponse.json({ ok: false, error: "IBAN del emisor inválido: " + emisor.iban }, { status: 400 });
+    if (!isValidIban(emisorIban)) {
+      return NextResponse.json({ ok: false, error: "IBAN del emisor inválido: " + emisorIban }, { status: 400 });
     }
 
     const xml = buildSepaDirectDebit({
       emisor: {
         nombre: emisor.razonSocial || "Emisor",
         nif: emisor.cif,
-        iban: emisor.iban,
-        bic: emisor.bic || undefined,
+        iban: emisorIban,
+        bic: emisorBic || undefined,
       },
       remesaId,
       fechaCobro,
