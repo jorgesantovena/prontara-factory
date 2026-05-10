@@ -1,5 +1,5 @@
 /**
- * Core modules — módulos transversales universales del ERP (CORE-02).
+ * Core modules — módulos transversales universales del ERP (CORE-02 + H7).
  *
  * Estos módulos están disponibles en TODOS los verticales sin necesidad
  * de duplicar fields/tableColumns/demoData en cada sector pack. El
@@ -11,15 +11,10 @@
  * "fábrica de ERPs": módulos que cualquier organización necesita
  * independientemente del sector.
  *
- * 8 módulos definidos:
- *   - tareas: gestión de productividad
- *   - tickets: atención al cliente / soporte
- *   - compras: solicitudes y órdenes de compra
- *   - productos: catálogo maestro de productos/servicios
- *   - reservas: reserva de recursos (salas, equipos, vehículos…)
- *   - encuestas: encuestas/NPS internas o externas
- *   - etiquetas: sistema de tags transversal
- *   - plantillas: plantillas de email/documentos
+ * Módulos:
+ *   - tareas, tickets, compras, productos, reservas, encuestas, etiquetas, plantillas (CORE-02)
+ *   - caja, bodegas, kardex (H3)
+ *   - tipos-servicio, actividades-catalogo, empleados, actividades, gastos (H7)
  */
 
 import type {
@@ -28,8 +23,6 @@ import type {
   SectorPackTableColumn,
 } from "@/lib/factory/sector-pack-definition";
 
-// El tipo de un módulo del pack está declarado inline dentro de
-// SectorPackDefinition. Lo extraemos aquí para reutilizarlo.
 type SectorPackModule = SectorPackDefinition["modules"][number];
 
 export const CORE_MODULES: SectorPackModule[] = [
@@ -41,10 +34,16 @@ export const CORE_MODULES: SectorPackModule[] = [
   { moduleKey: "encuestas", enabled: true, label: "Encuestas", navigationLabel: "Encuestas", emptyState: "Sin encuestas creadas." },
   { moduleKey: "etiquetas", enabled: true, label: "Etiquetas", navigationLabel: "Etiquetas", emptyState: "Sin etiquetas configuradas." },
   { moduleKey: "plantillas", enabled: true, label: "Plantillas", navigationLabel: "Plantillas", emptyState: "Sin plantillas guardadas." },
-  // H3-FUNC-01 + H3-FUNC-02 — Caja/POS, Bodegas y Kardex.
+  // H3 — Caja/POS, Bodegas y Kardex.
   { moduleKey: "caja", enabled: true, label: "Caja", navigationLabel: "Caja", emptyState: "Sin movimientos de caja hoy." },
   { moduleKey: "bodegas", enabled: true, label: "Bodegas", navigationLabel: "Bodegas", emptyState: "Sin bodegas configuradas." },
   { moduleKey: "kardex", enabled: true, label: "Kardex", navigationLabel: "Kardex", emptyState: "Sin movimientos de stock." },
+  // H7 — Catálogos de actividades + empleados + actividades-tarea + gastos.
+  { moduleKey: "tipos-servicio", enabled: true, label: "Tipos de servicio", navigationLabel: "Tipos servicio", emptyState: "Define las categorías de servicio." },
+  { moduleKey: "actividades-catalogo", enabled: true, label: "Catálogo actividades", navigationLabel: "Catálogo actividades", emptyState: "Define qué actividades realizas." },
+  { moduleKey: "empleados", enabled: true, label: "Empleados", navigationLabel: "Empleados", emptyState: "Sin empleados registrados." },
+  { moduleKey: "actividades", enabled: true, label: "Actividades", navigationLabel: "Actividades", emptyState: "Sin actividades imputadas." },
+  { moduleKey: "gastos", enabled: true, label: "Gastos", navigationLabel: "Gastos", emptyState: "Sin gastos imputados." },
 ];
 
 export const CORE_FIELDS: SectorPackField[] = [
@@ -141,7 +140,7 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "activa", label: "Activa" }, { value: "borrador", label: "Borrador" }, { value: "archivada", label: "Archivada" },
   ] },
 
-  // Caja / POS (H3-FUNC-01)
+  // Caja / POS (H3)
   { moduleKey: "caja", fieldKey: "ticket", label: "Nº ticket", kind: "text", placeholder: "T-2026-001" },
   { moduleKey: "caja", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Producto / servicio cobrado" },
   { moduleKey: "caja", fieldKey: "importe", label: "Importe", kind: "money", required: true },
@@ -156,7 +155,7 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
   { moduleKey: "caja", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
-  // Bodegas (H3-FUNC-02)
+  // Bodegas (H3)
   { moduleKey: "bodegas", fieldKey: "nombre", label: "Bodega", kind: "text", required: true, placeholder: "Almacén central" },
   { moduleKey: "bodegas", fieldKey: "ubicacion", label: "Ubicación", kind: "text", placeholder: "Calle / ciudad" },
   { moduleKey: "bodegas", fieldKey: "responsable", label: "Responsable", kind: "text" },
@@ -168,7 +167,7 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
   { moduleKey: "bodegas", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
-  // Kardex — movimientos de stock (H3-FUNC-02)
+  // Kardex (H3)
   { moduleKey: "kardex", fieldKey: "producto", label: "Producto", kind: "relation", relationModuleKey: "productos", required: true },
   { moduleKey: "kardex", fieldKey: "bodega", label: "Bodega", kind: "relation", relationModuleKey: "bodegas", required: true },
   { moduleKey: "kardex", fieldKey: "tipo", label: "Tipo movimiento", kind: "status", required: true, options: [
@@ -181,6 +180,81 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "kardex", fieldKey: "responsable", label: "Responsable", kind: "text" },
   { moduleKey: "kardex", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "registrado", label: "Registrado" }, { value: "anulado", label: "Anulado" },
+  ] },
+
+  // H7-C1 — Tipos de servicio (catálogo agrupador)
+  { moduleKey: "tipos-servicio", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "1, 2, 3..." },
+  { moduleKey: "tipos-servicio", fieldKey: "nombre", label: "Nombre", kind: "text", required: true, placeholder: "Análisis, Programación, Soporte..." },
+  { moduleKey: "tipos-servicio", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
+  { moduleKey: "tipos-servicio", fieldKey: "esFacturable", label: "¿Facturable por defecto?", kind: "status", required: true, options: [
+    { value: "si", label: "Sí" }, { value: "no", label: "No" },
+  ] },
+
+  // H7-C1 — Catálogo de actividades (agrupadas por tipo de servicio)
+  { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "00, 22, 37..." },
+  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad", kind: "text", required: true, placeholder: "Codificación y pruebas, Demostraciones..." },
+  { moduleKey: "actividades-catalogo", fieldKey: "tipoServicio", label: "Tipo servicio", kind: "relation", relationModuleKey: "tipos-servicio", required: true },
+  { moduleKey: "actividades-catalogo", fieldKey: "tarifaHora", label: "Tarifa hora (opcional)", kind: "money", placeholder: "55 EUR" },
+  { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "activa", label: "Activa" }, { value: "archivada", label: "Archivada" },
+  ] },
+
+  // H7-C2 — Empleados con código corto + flag baja (CORE)
+  { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Código", kind: "text", required: true, placeholder: "J, JJ, MRU..." },
+  { moduleKey: "empleados", fieldKey: "nombre", label: "Nombre completo", kind: "text", required: true },
+  { moduleKey: "empleados", fieldKey: "email", label: "Email", kind: "email" },
+  { moduleKey: "empleados", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
+  { moduleKey: "empleados", fieldKey: "rol", label: "Rol / puesto", kind: "text", placeholder: "Programador, Consultor, Comercial..." },
+  { moduleKey: "empleados", fieldKey: "fechaAlta", label: "Fecha alta", kind: "date" },
+  { moduleKey: "empleados", fieldKey: "fechaBaja", label: "Fecha baja", kind: "date" },
+  { moduleKey: "empleados", fieldKey: "esBaja", label: "¿Es baja?", kind: "status", required: true, options: [
+    { value: "no", label: "Activo" }, { value: "si", label: "Baja" },
+  ] },
+  { moduleKey: "empleados", fieldKey: "tarifaHora", label: "Tarifa hora interna", kind: "money" },
+  { moduleKey: "empleados", fieldKey: "notas", label: "Notas", kind: "textarea" },
+
+  // H7-C3 — Actividades imputadas (Desde/Hasta + lugar + tipoFacturacion)
+  { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+  { moduleKey: "actividades", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
+  { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
+  { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto", kind: "relation", relationModuleKey: "proyectos" },
+  { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad", kind: "relation", required: true, relationModuleKey: "actividades-catalogo" },
+  { moduleKey: "actividades", fieldKey: "horaDesde", label: "Hora desde", kind: "text", placeholder: "08:30", required: true },
+  { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hora hasta", kind: "text", placeholder: "10:30", required: true },
+  { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "Tiempo (h)", kind: "number", placeholder: "Auto-calculado de las horas" },
+  { moduleKey: "actividades", fieldKey: "lugar", label: "Lugar", kind: "status", required: true, options: [
+    { value: "oficina", label: "Oficina" }, { value: "teletrabajo", label: "Teletrabajo" }, { value: "cliente", label: "Casa cliente" }, { value: "otro", label: "Otro" },
+  ] },
+  { moduleKey: "actividades", fieldKey: "descripcion", label: "Descripción", kind: "textarea", required: true },
+  { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Facturación", kind: "status", required: true, options: [
+    { value: "contra-bolsa", label: "Contra bolsa de horas" },
+    { value: "fuera-bolsa", label: "Fuera de bolsa (factura aparte)" },
+    { value: "no-facturable", label: "No facturable" },
+  ] },
+  { moduleKey: "actividades", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "borrador", label: "Borrador" }, { value: "validada", label: "Validada" }, { value: "facturada", label: "Facturada" },
+  ] },
+
+  // H7-C5 — Hojas de Gastos
+  { moduleKey: "gastos", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+  { moduleKey: "gastos", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
+  { moduleKey: "gastos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
+    { value: "kilometraje", label: "Kilometraje" },
+    { value: "dietas", label: "Dietas" },
+    { value: "aparcamiento", label: "Aparcamiento / peaje" },
+    { value: "alojamiento", label: "Alojamiento" },
+    { value: "transporte", label: "Transporte público" },
+    { value: "suplido", label: "Suplido cliente" },
+    { value: "material", label: "Material" },
+    { value: "otro", label: "Otro" },
+  ] },
+  { moduleKey: "gastos", fieldKey: "descripcion", label: "Descripción", kind: "text", required: true },
+  { moduleKey: "gastos", fieldKey: "kilometros", label: "Km (si aplica)", kind: "number" },
+  { moduleKey: "gastos", fieldKey: "importe", label: "Importe", kind: "money", required: true },
+  { moduleKey: "gastos", fieldKey: "justificante", label: "Justificante (URL)", kind: "text", placeholder: "URL ticket / factura" },
+  { moduleKey: "gastos", fieldKey: "repercutibleA", label: "Repercutir a cliente", kind: "relation", relationModuleKey: "clientes" },
+  { moduleKey: "gastos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "pendiente", label: "Pendiente" }, { value: "aprobado", label: "Aprobado" }, { value: "rechazado", label: "Rechazado" }, { value: "pagado", label: "Pagado" }, { value: "facturado", label: "Facturado al cliente" },
   ] },
 ];
 
@@ -253,13 +327,48 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "kardex", fieldKey: "cantidad", label: "Cantidad" },
   { moduleKey: "kardex", fieldKey: "fecha", label: "Fecha" },
   { moduleKey: "kardex", fieldKey: "estado", label: "Estado" },
+
+  // H7-C1
+  { moduleKey: "tipos-servicio", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "tipos-servicio", fieldKey: "nombre", label: "Nombre" },
+  { moduleKey: "tipos-servicio", fieldKey: "esFacturable", label: "Facturable" },
+
+  { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad" },
+  { moduleKey: "actividades-catalogo", fieldKey: "tipoServicio", label: "Tipo servicio" },
+  { moduleKey: "actividades-catalogo", fieldKey: "tarifaHora", label: "€/h" },
+  { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado" },
+
+  // H7-C2
+  { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Cód.", isPrimary: true },
+  { moduleKey: "empleados", fieldKey: "nombre", label: "Nombre" },
+  { moduleKey: "empleados", fieldKey: "rol", label: "Rol" },
+  { moduleKey: "empleados", fieldKey: "email", label: "Email" },
+  { moduleKey: "empleados", fieldKey: "esBaja", label: "Estado" },
+
+  // H7-C3
+  { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", isPrimary: true },
+  { moduleKey: "actividades", fieldKey: "empleado", label: "Empleado" },
+  { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente" },
+  { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad" },
+  { moduleKey: "actividades", fieldKey: "horaDesde", label: "Desde" },
+  { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hasta" },
+  { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "h" },
+  { moduleKey: "actividades", fieldKey: "lugar", label: "Lug." },
+  { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Fact." },
+  { moduleKey: "actividades", fieldKey: "estado", label: "Estado" },
+
+  // H7-C5
+  { moduleKey: "gastos", fieldKey: "fecha", label: "Fecha", isPrimary: true },
+  { moduleKey: "gastos", fieldKey: "empleado", label: "Empleado" },
+  { moduleKey: "gastos", fieldKey: "tipo", label: "Tipo" },
+  { moduleKey: "gastos", fieldKey: "descripcion", label: "Descripción" },
+  { moduleKey: "gastos", fieldKey: "importe", label: "Importe" },
+  { moduleKey: "gastos", fieldKey: "estado", label: "Estado" },
 ];
 
 /**
- * Demo data ligero para los core modules. Uno o dos registros por módulo
- * — suficiente para que el tenant nuevo vea la tabla con contenido y
- * entienda cómo usar el módulo. Los packs específicos pueden añadir más
- * registros a través de su propio demoData.
+ * Demo data ligero para los core modules.
  */
 export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<string, string>> }> = [
   { moduleKey: "tareas", records: [
@@ -300,6 +409,48 @@ export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<st
   { moduleKey: "kardex", records: [
     { producto: "", bodega: "Almacén central", tipo: "entrada", cantidad: "10", fecha: "2026-05-01", motivo: "Stock inicial", documentoRef: "OC-2026-001", responsable: "Operador", estado: "registrado" },
   ]},
+  // H7-C1: 8 tipos de servicio inspirados en SISPYME
+  { moduleKey: "tipos-servicio", records: [
+    { codigo: "1", nombre: "Análisis, Consulting", descripcion: "Análisis funcional, consultoría, diseño.", esFacturable: "si" },
+    { codigo: "2", nombre: "Programación", descripcion: "Codificación, modificaciones, pruebas.", esFacturable: "si" },
+    { codigo: "3", nombre: "Soporte a usuario, explotación", descripcion: "Soporte de incidencias y consultas.", esFacturable: "si" },
+    { codigo: "4", nombre: "Copias de seguridad, reinstalaciones", descripcion: "Backups, reinstalaciones, recovery.", esFacturable: "si" },
+    { codigo: "5", nombre: "Técnica de sistemas", descripcion: "Sistemas, infra, redes.", esFacturable: "si" },
+    { codigo: "6", nombre: "Otros servicios", descripcion: "Servicios diversos no clasificables.", esFacturable: "si" },
+    { codigo: "7", nombre: "Actividad comercial", descripcion: "Ventas, demos, prospección.", esFacturable: "no" },
+    { codigo: "8", nombre: "Gestiones administrativas", descripcion: "Tareas administrativas internas.", esFacturable: "no" },
+  ]},
+  // H7-C1: catálogo de actividades inspirado en SISPYME
+  { moduleKey: "actividades-catalogo", records: [
+    { codigo: "00", nombre: "Juntas, reuniones, etc.", tipoServicio: "Otros servicios", tarifaHora: "0 EUR", estado: "activa" },
+    { codigo: "03", nombre: "Visitas o gestiones con clientes", tipoServicio: "Otros servicios", tarifaHora: "0 EUR", estado: "activa" },
+    { codigo: "07", nombre: "Administración y secretaría", tipoServicio: "Otros servicios", tarifaHora: "0 EUR", estado: "activa" },
+    { codigo: "22", nombre: "Planificación comercial", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
+    { codigo: "23", nombre: "Telemarketing", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
+    { codigo: "24", nombre: "Entrevista prospección", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
+    { codigo: "26", nombre: "Preparación de ofertas", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
+    { codigo: "28", nombre: "Demostraciones", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
+    { codigo: "31", nombre: "Entrevista o charla técnica", tipoServicio: "Análisis, Consulting", tarifaHora: "70 EUR", estado: "activa" },
+    { codigo: "32", nombre: "Gestión de proyecto", tipoServicio: "Análisis, Consulting", tarifaHora: "70 EUR", estado: "activa" },
+    { codigo: "33", nombre: "Análisis de enfoque", tipoServicio: "Análisis, Consulting", tarifaHora: "70 EUR", estado: "activa" },
+    { codigo: "35", nombre: "Análisis detallado y diseño", tipoServicio: "Análisis, Consulting", tarifaHora: "70 EUR", estado: "activa" },
+    { codigo: "37", nombre: "Codificación y pruebas", tipoServicio: "Programación", tarifaHora: "55 EUR", estado: "activa" },
+    { codigo: "38", nombre: "Modificaciones", tipoServicio: "Programación", tarifaHora: "55 EUR", estado: "activa" },
+    { codigo: "39", nombre: "Instalación y enseñanza aplicación", tipoServicio: "Otros servicios", tarifaHora: "60 EUR", estado: "activa" },
+    { codigo: "41", nombre: "Operación", tipoServicio: "Soporte a usuario, explotación", tarifaHora: "55 EUR", estado: "activa" },
+    { codigo: "47", nombre: "Técnica de sistemas", tipoServicio: "Técnica de sistemas", tarifaHora: "65 EUR", estado: "activa" },
+    { codigo: "48", nombre: "Backups, reinstalaciones, etc.", tipoServicio: "Copias de seguridad, reinstalaciones", tarifaHora: "55 EUR", estado: "activa" },
+    { codigo: "49", nombre: "Soporte y consultas de usuario", tipoServicio: "Soporte a usuario, explotación", tarifaHora: "55 EUR", estado: "activa" },
+  ]},
+  { moduleKey: "empleados", records: [
+    { codigoCorto: "OP", nombre: "Operador principal", email: "operador@empresa.com", rol: "Administrador", fechaAlta: "2026-01-01", esBaja: "no", tarifaHora: "55 EUR", notas: "" },
+  ]},
+  { moduleKey: "actividades", records: [
+    { fecha: "2026-05-08", empleado: "OP", cliente: "", actividad: "37", horaDesde: "09:00", horaHasta: "11:30", tiempoHoras: "2.5", lugar: "oficina", descripcion: "Codificación módulo facturación.", tipoFacturacion: "contra-bolsa", estado: "validada" },
+  ]},
+  { moduleKey: "gastos", records: [
+    { fecha: "2026-05-08", empleado: "OP", tipo: "kilometraje", descripcion: "Visita cliente en Madrid", kilometros: "120", importe: "48.00 EUR", estado: "pendiente" },
+  ]},
 ];
 
 /**
@@ -316,7 +467,6 @@ export function applyCoreModulesToConfig<T extends {
   navigationLabelMap: Record<string, string>;
   emptyStateMap: Record<string, string>;
 }>(config: T): T {
-  // 1. Modules — añadir solo si no existen
   const existingModuleKeys = new Set(config.modules.map((m) => m.moduleKey));
   for (const cm of CORE_MODULES) {
     if (!existingModuleKeys.has(cm.moduleKey)) {
@@ -325,9 +475,6 @@ export function applyCoreModulesToConfig<T extends {
       config.emptyStateMap[cm.moduleKey] = cm.emptyState;
     }
   }
-
-  // 2. Fields — añadir solo los que el pack no haya definido para
-  //    (moduleKey, fieldKey).
   for (const f of CORE_FIELDS) {
     const existing = config.fieldsByModule[f.moduleKey] || [];
     const hasIt = existing.some((x) => x.fieldKey === f.fieldKey);
@@ -337,10 +484,6 @@ export function applyCoreModulesToConfig<T extends {
     }
     config.fieldsByModule[f.moduleKey].push(f);
   }
-
-  // 3. TableColumns — añadir solo si el pack no ha definido columnas
-  //    para ese módulo. Así el pack puede customizar el layout entero
-  //    para SU vertical sin que se mezclen.
   for (const c of CORE_TABLE_COLUMNS) {
     const existingCols = config.tableColumnsByModule[c.moduleKey] || [];
     if (existingCols.length > 0) continue;
@@ -349,6 +492,5 @@ export function applyCoreModulesToConfig<T extends {
     }
     config.tableColumnsByModule[c.moduleKey].push(c);
   }
-
   return config;
 }

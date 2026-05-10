@@ -648,6 +648,27 @@ model TenantLogPolicy {
   updatedAt     DateTime @updatedAt
 }
 
+/// H7-C4 — Sociedades del tenant. Un mismo tenant puede tener varias
+/// razones sociales que facturan al mismo cliente desde distintos CIF.
+/// Ejemplo: HSM y SISPYME conviven en el grupo, distinta facturación.
+model TenantCompany {
+  id              String   @id @default(cuid())
+  tenantId        String
+  clientId        String
+  razonSocial     String
+  cif             String
+  iban            String?
+  direccion       String?
+  email           String?
+  telefono        String?
+  esEmisorPorDefecto Boolean @default(false)
+  estado          String   @default("activa") // activa | inactiva
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([clientId, estado])
+}
+
 /// H6-PSD2 — Movimiento bancario importado vía agregador PSD2.
 /// Idempotente por (clientId, externalId) para no duplicar al refrescar.
 model BankMovement {

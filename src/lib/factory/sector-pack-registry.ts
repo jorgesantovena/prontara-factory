@@ -262,6 +262,10 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "descripciones-proyecto", enabled: true, label: "Descripción del proyecto", navigationLabel: "Descripción", emptyState: "Sin descripción técnica del proyecto." },
     // Catálogo de tipos de servicio (líneas estándar contratables: INST, MANT, NUEDES, SOP, FORM, ...)
     { moduleKey: "catalogo-servicios", enabled: true, label: "Catálogo de servicios", navigationLabel: "Catálogo", emptyState: "Aún no hay tipos de servicio definidos." },
+    // H7-S1 — Catálogo de aplicaciones / productos software del tenant
+    { moduleKey: "aplicaciones", enabled: true, label: "Aplicaciones", navigationLabel: "Aplicaciones", emptyState: "Aún no hay aplicaciones definidas." },
+    // H7-S5 — CAU (vista dedicada para soporte aplicación)
+    { moduleKey: "cau", enabled: true, label: "CAU (Soporte)", navigationLabel: "CAU", emptyState: "Sin tickets de soporte de aplicación." },
   ],
   entities: [
     { key: "cliente", label: "Cliente", description: "Cliente de la software factory.", moduleKey: "clientes", primaryFields: ["nombre", "email", "telefono"], relatedTo: ["oportunidad", "proyecto", "propuesta", "factura", "entregable"] },
@@ -423,6 +427,39 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       kind: "text",
       placeholder: "Cuándo aplica, casuísticas, condiciones...",
     },
+
+    // H7-S1 — Catálogo de Aplicaciones del tenant (AXIS, MATRIX, ERP V7...)
+    { moduleKey: "aplicaciones", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "AXIS, MATRIX, ERP V7..." },
+    { moduleKey: "aplicaciones", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
+    { moduleKey: "aplicaciones", fieldKey: "modalidad", label: "Modalidad", kind: "status", required: true, options: [
+      { value: "estandar", label: "Estándar" },
+      { value: "a-medida", label: "A medida" },
+      { value: "en-edicion", label: "En edición" },
+    ] },
+    { moduleKey: "aplicaciones", fieldKey: "tarifaHora", label: "Tarifa €/h", kind: "money" },
+    { moduleKey: "aplicaciones", fieldKey: "version", label: "Versión actual", kind: "text", placeholder: "v6.2 / v7.0..." },
+    { moduleKey: "aplicaciones", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
+    { moduleKey: "aplicaciones", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "activa", label: "Activa" }, { value: "obsoleta", label: "Obsoleta" }, { value: "retirada", label: "Retirada" },
+    ] },
+
+    // H7-S5 — CAU: tickets de soporte sobre una aplicación
+    { moduleKey: "cau", fieldKey: "asunto", label: "Asunto", kind: "text", required: true },
+    { moduleKey: "cau", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
+    { moduleKey: "cau", fieldKey: "aplicacion", label: "Aplicación", kind: "relation", relationModuleKey: "aplicaciones" },
+    { moduleKey: "cau", fieldKey: "version", label: "Versión", kind: "text", placeholder: "v0.3.2" },
+    { moduleKey: "cau", fieldKey: "severidad", label: "Severidad", kind: "status", required: true, options: [
+      { value: "baja", label: "Baja" }, { value: "media", label: "Media" }, { value: "alta", label: "Alta" }, { value: "critica", label: "Crítica" },
+    ] },
+    { moduleKey: "cau", fieldKey: "urgencia", label: "Urgencia", kind: "status", required: true, options: [
+      { value: "diferida", label: "Diferida" }, { value: "normal", label: "Normal" }, { value: "urgente", label: "Urgente" },
+    ] },
+    { moduleKey: "cau", fieldKey: "asignado", label: "Asignado a", kind: "relation", relationModuleKey: "empleados" },
+    { moduleKey: "cau", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "nuevo", label: "Nuevo" }, { value: "en_curso", label: "En curso" }, { value: "esperando", label: "Esperando cliente" }, { value: "resuelto", label: "Resuelto" }, { value: "cerrado", label: "Cerrado" },
+    ] },
+    { moduleKey: "cau", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
+    { moduleKey: "cau", fieldKey: "solucion", label: "Solución aplicada", kind: "textarea" },
   ],
   tableColumns: [
     // CRM (oportunidades) — SF-21.
@@ -448,6 +485,23 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "catalogo-servicios", fieldKey: "facturablePorDefecto", label: "Facturable" },
     { moduleKey: "catalogo-servicios", fieldKey: "vigenciaMesesPorDefecto", label: "Vigencia (meses)" },
     { moduleKey: "catalogo-servicios", fieldKey: "tarifaHoraDefault", label: "€/h" },
+
+    // H7-S1
+    { moduleKey: "aplicaciones", fieldKey: "codigo", label: "Código", isPrimary: true },
+    { moduleKey: "aplicaciones", fieldKey: "nombre", label: "Aplicación" },
+    { moduleKey: "aplicaciones", fieldKey: "modalidad", label: "Modalidad" },
+    { moduleKey: "aplicaciones", fieldKey: "tarifaHora", label: "€/h" },
+    { moduleKey: "aplicaciones", fieldKey: "version", label: "Versión" },
+    { moduleKey: "aplicaciones", fieldKey: "estado", label: "Estado" },
+
+    // H7-S5 CAU
+    { moduleKey: "cau", fieldKey: "asunto", label: "Asunto", isPrimary: true },
+    { moduleKey: "cau", fieldKey: "cliente", label: "Cliente" },
+    { moduleKey: "cau", fieldKey: "aplicacion", label: "Aplicación" },
+    { moduleKey: "cau", fieldKey: "severidad", label: "Severidad" },
+    { moduleKey: "cau", fieldKey: "urgencia", label: "Urgencia" },
+    { moduleKey: "cau", fieldKey: "asignado", label: "Asignado" },
+    { moduleKey: "cau", fieldKey: "estado", label: "Estado" },
 
     { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", isPrimary: true },
     { moduleKey: "actividades", fieldKey: "persona", label: "Persona" },
@@ -489,6 +543,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { nombre: "Talleres López", email: "admin@tallereslopez.com", telefono: "+34 600 111 104", estado: "activo", segmento: "Automoción" },
       { nombre: "Clínica Ardor", email: "direccion@clinicaardor.com", telefono: "+34 600 111 105", estado: "seguimiento", segmento: "Salud" },
       { nombre: "Polígono Demo SL", email: "admin@poligonodemo.es", telefono: "+34 600 111 106", estado: "activo", segmento: "Industrial" },
+      // H7-S6 — Cliente real referencia (escenario Delca)
+      { nombre: "Almacenes Delca SA", email: "info@delca.es", telefono: "+34 985 000 001", estado: "activo", segmento: "Distribución" },
     ]},
     { moduleKey: "crm", records: [
       { empresa: "Acme Labs", contacto: "Laura Martín", email: "laura@acme.com", telefono: "+34 600 111 101", fase: "propuesta", valorEstimado: "14500 EUR", proximoPaso: "Revisar hitos de fase 2" },
@@ -497,6 +553,10 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { empresa: "Clínica Ardor", contacto: "Nuria Santos", email: "nuria@clinicaardor.com", telefono: "+34 600 111 105", fase: "lead", valorEstimado: "6500 EUR", proximoPaso: "Envío de caso de uso" }
     ]},
     { moduleKey: "proyectos", records: [
+      // ===== H7-S6 Demo escenario Delca (réplica del PDF de SISPYME) =====
+      { nombre: "Mant. Nivel 1 Delca", cliente: "Almacenes Delca SA", codigoTipo: "MANT", responsable: "JJ", estado: "activo", facturable: "no", fechaInicio: "2026-01-01", fechaCaducidad: "2026-12-31", kilometros: "0", tarifaHoraOverride: "55", bolsaContratadaHoras: "10", notas: "Bolsa anual 10h. Cuando se supere, sobreconsumo a 55€/h." },
+      { nombre: "Movilidad almacén (Kit digital)", cliente: "Almacenes Delca SA", codigoTipo: "FASE_I", responsable: "MAR", estado: "activo", facturable: "si", fechaInicio: "2026-01-01", fechaCaducidad: "2026-06-30", kilometros: "0", tarifaHoraOverride: "60", notas: "Proyecto Kit digital — fuera de bolsa, facturable por horas." },
+
       // ===== Acme Labs — iniciativa grande + servicios recurrentes =====
       { nombre: "ERP comercial Acme — Fase 2", cliente: "Acme Labs", codigoTipo: "FASE_I", responsable: "Laura", estado: "activo", facturable: "no", fechaInicio: "2026-04-01", fechaCaducidad: "2026-09-30", kilometros: "240", tarifaHoraOverride: "60", notas: "Presupuesto cerrado 14.500€. Hitos por fase. Migración Navision pendiente." },
       { nombre: "Mantenimiento anual Acme", cliente: "Acme Labs", codigoTipo: "MANT", responsable: "Pablo", estado: "activo", facturable: "no", fechaInicio: "2026-01-01", fechaCaducidad: "2026-12-31", kilometros: "0", tarifaHoraOverride: "", notas: "Cubierto por cuota mensual. Bugs propios sin cargo." },
@@ -578,6 +638,18 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { codigo: "INC-2026-008", titulo: "Error 500 al intentar borrar línea de pedido", proyecto: "ERP comercial Acme — Fase 2", reportadoPor: "Usuario admin Acme", asignado: "Pablo", severidad: "media", tipo: "bug", estado: "abierta", version: "v1.2.0", fechaApertura: "2026-04-26", descripcion: "Al intentar borrar la última línea de un pedido, el servidor devuelve 500.", solucion: "" },
     ]},
     { moduleKey: "actividades", records: [
+      // ===== H7-S6 Demo escenario Delca (réplica del PDF de SISPYME) =====
+      // Bolsa Mant. Nivel 1: 10h/año contratadas
+      { fecha: "2026-03-09", empleado: "MRU", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "33", actividadCodigo: "33", horaDesde: "08:30", horaHasta: "09:30", tiempoHoras: "1.00", lugar: "oficina", descripcion: "Pedidos compra EDI. Ajustar formatos EDIVERSA - Proveedor EDE", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Mario", horas: "1.00", facturable: "no", tarifaHora: "55" },
+      { fecha: "2026-01-09", empleado: "JJ", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "11:10", horaHasta: "15:00", tiempoHoras: "3.83", lugar: "oficina", descripcion: "Cierre mensual. Cálculo de compras varios servidas", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Julio", horas: "3.83", facturable: "no", tarifaHora: "55" },
+      { fecha: "2026-01-12", empleado: "JJ", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "15:00", horaHasta: "16:45", tiempoHoras: "1.75", lugar: "oficina", descripcion: "Cierre mensual. Cálculo de compras varios servidas", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Julio", horas: "1.75", facturable: "no", tarifaHora: "55" },
+      { fecha: "2026-02-23", empleado: "JJ", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "15:15", horaHasta: "17:15", tiempoHoras: "2.00", lugar: "teletrabajo", descripcion: "Adaptación V7 para facturación electrónica con Indra (IndraFE)", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Julio", horas: "2.00", facturable: "no", tarifaHora: "55" },
+      { fecha: "2026-03-06", empleado: "MRU", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "11:30", horaHasta: "15:30", tiempoHoras: "4.00", lugar: "oficina", descripcion: "Pedidos compra EDI. Ajustar formatos EDIVERSA - Proveedor EDE", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Mario", horas: "4.00", facturable: "no", tarifaHora: "55" },
+      { fecha: "2026-01-02", empleado: "JJ", cliente: "Almacenes Delca SA", proyecto: "Soporte a usuarios", actividad: "49", actividadCodigo: "49", horaDesde: "10:30", horaHasta: "10:45", tiempoHoras: "0.25", lugar: "teletrabajo", descripcion: "Con Angel Cuesta. Obtener listado de sumas y saldos", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Julio", horas: "0.25", facturable: "no", tarifaHora: "55" },
+      { fecha: "2026-04-08", empleado: "MRU", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "12:00", horaHasta: "17:30", tiempoHoras: "5.50", lugar: "oficina", descripcion: "Proceso inicial de limpieza de LOG's", tipoFacturacion: "fuera-bolsa", estado: "validada", persona: "Mario", horas: "5.50", facturable: "si", tarifaHora: "55", notas: "Fuera de bolsa — facturable aparte" },
+      { fecha: "2026-01-02", empleado: "MAR", cliente: "Almacenes Delca SA", proyecto: "Movilidad almacén (Kit digital)", actividad: "37", actividadCodigo: "37", horaDesde: "07:30", horaHasta: "14:30", tiempoHoras: "7.00", lugar: "cliente", descripcion: "Tablet picking", tipoFacturacion: "fuera-bolsa", estado: "validada", persona: "Marcos", horas: "7.00", facturable: "si", tarifaHora: "60" },
+      { fecha: "2026-01-05", empleado: "MAR", cliente: "Almacenes Delca SA", proyecto: "Movilidad almacén (Kit digital)", actividad: "37", actividadCodigo: "37", horaDesde: "09:30", horaHasta: "15:30", tiempoHoras: "6.00", lugar: "cliente", descripcion: "Tablet Picking", tipoFacturacion: "fuera-bolsa", estado: "validada", persona: "Marcos", horas: "6.00", facturable: "si", tarifaHora: "60" },
+
       // ===== Acme Labs — Fase 2 (facturable, presupuesto cerrado: NO se factura por horas, va al hito) =====
       { fecha: "2026-04-21", persona: "Pablo", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Implementar API REST de pedidos", concepto: "Diseño endpoints + validaciones", horas: "6", kilometros: "0", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "Cubierto por presupuesto cerrado de Fase 2." },
       { fecha: "2026-04-22", persona: "Pablo", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Implementar API REST de pedidos", concepto: "Implementación CRUD pedidos", horas: "6", kilometros: "0", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "" },
@@ -639,6 +711,27 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { numero: "JUS-2026-003", proyecto: "Gestión taller López", fecha: "2026-04-08", personaResponsable: "Miguel", personaCliente: "Talleres López — Roberto López", horas: "32", trabajos: "Implementación del portal cliente con nuevo logo y mejora del módulo de órdenes de trabajo. Formación de 2h a mecánicos. Entrega v2.1.0.", version: "v2.1.0", estado: "firmado", notas: "" },
       { numero: "JUS-2026-004", proyecto: "Plataforma soporte Binary", fecha: "2026-04-25", personaResponsable: "Ana", personaCliente: "Binary Forge — Diego Peña", horas: "26", trabajos: "Análisis y diagnóstico del memory leak del worker de embeddings. Documentación de arquitectura. Pendiente publicar hotfix v0.3.2.", version: "", estado: "enviado", notas: "Pendiente firma del cliente." },
     ]},
+    // H7-S1 — Catálogo de Aplicaciones (estilo SISPYME)
+    { moduleKey: "aplicaciones", records: [
+      { codigo: "AXIS", nombre: "AXIS", modalidad: "estandar", tarifaHora: "55 EUR", version: "v6.2", descripcion: "Aplicación estándar AXIS.", estado: "activa" },
+      { codigo: "MATRIX", nombre: "MATRIX", modalidad: "estandar", tarifaHora: "55 EUR", version: "v3.1", descripcion: "MATRIX, motor de business intelligence.", estado: "activa" },
+      { codigo: "CLIENS", nombre: "CLIENS", modalidad: "estandar", tarifaHora: "55 EUR", version: "v2.0", descripcion: "Gestión clientes CLIENS.", estado: "activa" },
+      { codigo: "PAPIRO", nombre: "PAPIRO", modalidad: "estandar", tarifaHora: "55 EUR", version: "v4.5", descripcion: "Gestión documental PAPIRO.", estado: "activa" },
+      { codigo: "VCONTA", nombre: "vConta", modalidad: "estandar", tarifaHora: "55 EUR", version: "v7.0", descripcion: "Módulo de contabilidad vConta.", estado: "activa" },
+      { codigo: "MULTINOMINA", nombre: "Multinómina", modalidad: "estandar", tarifaHora: "55 EUR", version: "v9.0", descripcion: "Cálculo de nóminas multiconvenio.", estado: "activa" },
+      { codigo: "ERP_V7_AMED", nombre: "ERP V7 a medida", modalidad: "a-medida", tarifaHora: "60 EUR", version: "v7.0", descripcion: "ERP V7 personalizado por cliente.", estado: "activa" },
+      { codigo: "ERP_V7_TR", nombre: "ERP V7 Transportes", modalidad: "a-medida", tarifaHora: "60 EUR", version: "v7.0", descripcion: "ERP V7 vertical de transportes.", estado: "activa" },
+      { codigo: "ERP_V7_CONST", nombre: "ERP V7 Construcción", modalidad: "a-medida", tarifaHora: "60 EUR", version: "v7.0", descripcion: "ERP V7 vertical construcción.", estado: "activa" },
+      { codigo: "FICHAJES", nombre: "Fichajes", modalidad: "estandar", tarifaHora: "55 EUR", version: "v1.5", descripcion: "Sistema de fichaje horario.", estado: "activa" },
+      { codigo: "WEB_AMED", nombre: "WEB a medida", modalidad: "a-medida", tarifaHora: "65 EUR", version: "—", descripcion: "Webs corporativas y aplicaciones web personalizadas.", estado: "activa" },
+    ]},
+
+    // H7-S5 — Demo CAU
+    { moduleKey: "cau", records: [
+      { asunto: "Error al imprimir facturas en lote", cliente: "Almacenes Delca SA", aplicacion: "ERP V7 a medida", version: "v7.0.3", severidad: "alta", urgencia: "urgente", asignado: "Julio", estado: "en_curso", descripcion: "Al imprimir más de 50 facturas seguidas, se cuelga el módulo.", solucion: "" },
+      { asunto: "Consulta sobre exportación contabilidad", cliente: "Almacenes Delca SA", aplicacion: "vConta", version: "v7.0", severidad: "baja", urgencia: "normal", asignado: "Julio", estado: "resuelto", descripcion: "Cliente quiere saber cómo exportar a Sage.", solucion: "Documentación enviada por email + sesión de 15 min." },
+    ]},
+
     { moduleKey: "catalogo-servicios", records: [
       { codigo: "INST", descripcion: "Servicios de Actualización e Instalación de Software", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Onboarding inicial incluido en el contrato. Versiones puntuales puntuales por petición." },
       { codigo: "MANT", descripcion: "Servicios de Mantenimiento contra errores de programación", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Cubierto por la cuota mensual. Bugs introducidos por nosotros. NO cubre nuevos desarrollos ni cambios de alcance." },
