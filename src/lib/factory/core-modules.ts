@@ -40,6 +40,9 @@ export const CORE_MODULES: SectorPackModule[] = [
   { moduleKey: "avisos-programados", enabled: true, label: "Plan de avisos", navigationLabel: "Avisos", emptyState: "Sin plan de avisos configurado." },
   { moduleKey: "tipos-urgencia", enabled: true, label: "Tipos de urgencia", navigationLabel: "Urgencias", emptyState: "Define tipos de urgencia." },
   { moduleKey: "desplazamientos", enabled: true, label: "Desplazamientos", navigationLabel: "Desplazamientos", emptyState: "Sin desplazamientos imputados." },
+  // H8.5 — Formas de pago configurables + cuentas bancarias
+  { moduleKey: "formas-pago", enabled: true, label: "Formas de pago", navigationLabel: "Formas pago", emptyState: "Define tus formas de pago." },
+  { moduleKey: "cuentas-bancarias", enabled: true, label: "Cuentas bancarias", navigationLabel: "Cuentas bancarias", emptyState: "Sin cuentas bancarias registradas." },
 ];
 
 export const CORE_FIELDS: SectorPackField[] = [
@@ -375,6 +378,49 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "desplazamientos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "borrador", label: "Borrador" }, { value: "validado", label: "Validado" }, { value: "facturado", label: "Facturado" },
   ] },
+
+  // H8.5 — Formas de pago
+  { moduleKey: "formas-pago", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "CONT, 30D, 60D, DOM5..." },
+  { moduleKey: "formas-pago", fieldKey: "nombre", label: "Nombre", kind: "text", required: true, placeholder: "Contado, 30 días f.f., Domiciliación día 5..." },
+  { moduleKey: "formas-pago", fieldKey: "diasAplazamiento", label: "Días aplazamiento", kind: "number", placeholder: "0, 30, 60, 90..." },
+  { moduleKey: "formas-pago", fieldKey: "numVencimientos", label: "Nº vencimientos", kind: "number", placeholder: "1, 2, 3..." },
+  { moduleKey: "formas-pago", fieldKey: "diaPagoTipo", label: "Día de pago", kind: "status", options: [
+    { value: "fecha-factura", label: "Día desde fecha factura" },
+    { value: "fin-mes", label: "Fin de mes" },
+    { value: "dia-concreto", label: "Día concreto del mes" },
+  ] },
+  { moduleKey: "formas-pago", fieldKey: "diaConcreto", label: "Día concreto (1-31)", kind: "number", placeholder: "Solo si tipo=día concreto" },
+  { moduleKey: "formas-pago", fieldKey: "generaGiroSepa", label: "¿Genera giro SEPA?", kind: "status", required: true, options: [
+    { value: "no", label: "No" }, { value: "si", label: "Sí" },
+  ] },
+  { moduleKey: "formas-pago", fieldKey: "tipoGiroSepa", label: "Tipo giro SEPA", kind: "status", options: [
+    { value: "core", label: "SEPA CORE (B2C — particulares)" },
+    { value: "b2b", label: "SEPA B2B (empresas)" },
+  ] },
+  { moduleKey: "formas-pago", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
+  { moduleKey: "formas-pago", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "activa", label: "Activa" }, { value: "obsoleta", label: "Obsoleta" },
+  ] },
+
+  // H8.5 — Cuentas bancarias de clientes / proveedores
+  { moduleKey: "cuentas-bancarias", fieldKey: "titular", label: "Titular", kind: "text", required: true, placeholder: "Razón social del titular" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "proveedor", label: "Proveedor (alternativa)", kind: "text", placeholder: "Razón social proveedor" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "iban", label: "IBAN", kind: "text", required: true, placeholder: "ES12 3456 7890 1234 5678 9012" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "bic", label: "BIC / SWIFT", kind: "text", placeholder: "BBVAESMM" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "banco", label: "Banco", kind: "text", placeholder: "BBVA, Santander, CaixaBank..." },
+  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaRef", label: "Ref. mandato SEPA", kind: "text", placeholder: "MAN-2026-001 (auto si vacío)" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaFecha", label: "Fecha firma mandato", kind: "date" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaTipo", label: "Tipo mandato", kind: "status", options: [
+    { value: "recurrente", label: "Recurrente (RCUR/RCUR)" }, { value: "unico", label: "Único (OOFF)" }, { value: "primera", label: "Primera (FRST)" },
+  ] },
+  { moduleKey: "cuentas-bancarias", fieldKey: "esPrincipal", label: "Cuenta principal", kind: "status", required: true, options: [
+    { value: "si", label: "Sí" }, { value: "no", label: "No" },
+  ] },
+  { moduleKey: "cuentas-bancarias", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "activa", label: "Activa" }, { value: "inactiva", label: "Inactiva" }, { value: "rechazada", label: "Rechazada" },
+  ] },
+  { moduleKey: "cuentas-bancarias", fieldKey: "notas", label: "Notas", kind: "textarea" },
 ];
 
 export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
@@ -540,6 +586,22 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total" },
   { moduleKey: "desplazamientos", fieldKey: "facturable", label: "Fact." },
   { moduleKey: "desplazamientos", fieldKey: "estado", label: "Estado" },
+
+  // H8.5
+  { moduleKey: "formas-pago", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "formas-pago", fieldKey: "nombre", label: "Forma de pago" },
+  { moduleKey: "formas-pago", fieldKey: "diasAplazamiento", label: "Días" },
+  { moduleKey: "formas-pago", fieldKey: "numVencimientos", label: "Venc." },
+  { moduleKey: "formas-pago", fieldKey: "generaGiroSepa", label: "SEPA" },
+  { moduleKey: "formas-pago", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "cuentas-bancarias", fieldKey: "titular", label: "Titular", isPrimary: true },
+  { moduleKey: "cuentas-bancarias", fieldKey: "cliente", label: "Cliente" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "iban", label: "IBAN" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "banco", label: "Banco" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaRef", label: "Mandato" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "esPrincipal", label: "Princ." },
+  { moduleKey: "cuentas-bancarias", fieldKey: "estado", label: "Estado" },
 ];
 
 export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<string, string>> }> = [
@@ -592,6 +654,23 @@ export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<st
   ]},
   { moduleKey: "empleados", records: [
     { codigoCorto: "OP", nombre: "Operador principal", email: "operador@empresa.com", rol: "Administrador", esBaja: "no", tarifaHora: "55 EUR" },
+  ]},
+  // H8.5 — Formas de pago típicas españolas
+  { moduleKey: "formas-pago", records: [
+    { codigo: "CONT", nombre: "Contado", diasAplazamiento: "0", numVencimientos: "1", diaPagoTipo: "fecha-factura", generaGiroSepa: "no", descripcion: "Pago al recibir la factura.", estado: "activa" },
+    { codigo: "30D", nombre: "30 días fecha factura", diasAplazamiento: "30", numVencimientos: "1", diaPagoTipo: "fecha-factura", generaGiroSepa: "no", descripcion: "Vencimiento a 30 días.", estado: "activa" },
+    { codigo: "60D", nombre: "60 días fecha factura", diasAplazamiento: "60", numVencimientos: "1", diaPagoTipo: "fecha-factura", generaGiroSepa: "no", descripcion: "Vencimiento a 60 días.", estado: "activa" },
+    { codigo: "90D", nombre: "90 días fecha factura", diasAplazamiento: "90", numVencimientos: "1", diaPagoTipo: "fecha-factura", generaGiroSepa: "no", descripcion: "Vencimiento a 90 días.", estado: "activa" },
+    { codigo: "30-60", nombre: "30 / 60 días", diasAplazamiento: "30", numVencimientos: "2", diaPagoTipo: "fecha-factura", generaGiroSepa: "no", descripcion: "2 vencimientos a 30 y 60 días.", estado: "activa" },
+    { codigo: "30-60-90", nombre: "30 / 60 / 90 días", diasAplazamiento: "30", numVencimientos: "3", diaPagoTipo: "fecha-factura", generaGiroSepa: "no", descripcion: "3 vencimientos a 30, 60 y 90 días.", estado: "activa" },
+    { codigo: "DOM5", nombre: "Domiciliación día 5 mes siguiente", diasAplazamiento: "0", numVencimientos: "1", diaPagoTipo: "dia-concreto", diaConcreto: "5", generaGiroSepa: "si", tipoGiroSepa: "core", descripcion: "Recibo bancario al día 5 del mes siguiente.", estado: "activa" },
+    { codigo: "DOM-FIN", nombre: "Domiciliación fin de mes", diasAplazamiento: "0", numVencimientos: "1", diaPagoTipo: "fin-mes", generaGiroSepa: "si", tipoGiroSepa: "core", descripcion: "Recibo bancario el último día del mes.", estado: "activa" },
+    { codigo: "DOM-B2B", nombre: "Domiciliación B2B 30 días", diasAplazamiento: "30", numVencimientos: "1", diaPagoTipo: "fecha-factura", generaGiroSepa: "si", tipoGiroSepa: "b2b", descripcion: "Recibo SEPA B2B (empresa a empresa) a 30 días.", estado: "activa" },
+    { codigo: "PAG60", nombre: "Pagaré 60 días", diasAplazamiento: "60", numVencimientos: "1", diaPagoTipo: "fecha-factura", generaGiroSepa: "no", descripcion: "Pagaré con vencimiento 60 días.", estado: "activa" },
+    { codigo: "CONFIRM", nombre: "Confirming proveedores", diasAplazamiento: "90", numVencimientos: "1", diaPagoTipo: "fecha-factura", generaGiroSepa: "no", descripcion: "Pago vía confirming bancario a 90 días.", estado: "activa" },
+  ]},
+  { moduleKey: "cuentas-bancarias", records: [
+    { titular: "Cliente ejemplo S.L.", cliente: "", iban: "ES7621000418401234567891", bic: "CAIXESBBXXX", banco: "CaixaBank", mandatoSepaRef: "MAN-2026-001", mandatoSepaFecha: "2026-01-15", mandatoSepaTipo: "recurrente", esPrincipal: "si", estado: "activa" },
   ]},
 ];
 
