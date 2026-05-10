@@ -648,6 +648,35 @@ model TenantLogPolicy {
   updatedAt     DateTime @updatedAt
 }
 
+/// H5-UX-02 — Widgets configurables del dashboard del tenant.
+model TenantDashboardWidget {
+  id        String   @id @default(cuid())
+  tenantId  String
+  clientId  String
+  /// kind: kpi | counter | list | chart
+  kind      String
+  /// configuración del widget (moduleKey, label, query, color, etc.)
+  configJson Json
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clientId, position])
+}
+
+/// H5-OPS-01 — Snapshots periódicos del health check para mostrar
+/// uptime histórico en la status page pública.
+model HealthSnapshot {
+  id        String   @id @default(cuid())
+  /// overall: ok | degraded | down
+  overall   String
+  /// detalle por componente (resumido — no guardamos durations)
+  componentsJson Json
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
 /// H4-WF-PRO — Aprobaciones de pasos de workflow multi-paso.
 /// Cada fila representa una decisión (approve/reject) sobre un step
 /// concreto de una regla.
