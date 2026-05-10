@@ -648,6 +648,78 @@ model TenantLogPolicy {
   updatedAt     DateTime @updatedAt
 }
 
+/// H8-C1 — Punto de venta / sede de un cliente. Un cliente puede tener
+/// N puntos (sucursales, almacenes, oficinas). Cada uno con su código,
+/// dirección y tipo. Es el modelo Empresa+Puntos de Cliens.
+model TenantClientLocation {
+  id           String   @id @default(cuid())
+  tenantId     String
+  clientId     String
+  /// id del registro de cliente al que pertenece (TenantModuleRecord.id de moduleKey=clientes)
+  parentClienteId String
+  codigo       String
+  nombre       String
+  direccion    String?
+  ciudad       String?
+  zona         String?
+  tipoCliente  String?  // administracion | distribuidor | gestion | proveedor | final
+  email        String?
+  telefono     String?
+  estado       String   @default("activo") // activo | inactivo
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([clientId, parentClienteId])
+  @@index([clientId, codigo])
+}
+
+/// H8-S1 — Tipos de contrato de mantenimiento (estilo SISPYME Mant.
+/// Nivel 1, 2, 3, 4, Cuota Axis, Mant. a medida X). Cada tipo define
+/// llamadas/mes, exceso, urgencias, recargo nocturno, horas/año,
+/// desplazamiento y tarifa €/h por tipo de servicio.
+model TenantContractType {
+  id                    String   @id @default(cuid())
+  tenantId              String
+  clientId              String
+  codigo                String
+  nombre                String
+  llamadasPermitidasMes Int      @default(0)
+  precioExcesoLlamada   Float    @default(0)
+  cambiosUrgPermitidos  Int      @default(0)
+  precioCambioNorUrg    Float    @default(0)
+  precioCambioUrgMU     Float    @default(0)
+  recargoFueraHorarioPct Float   @default(0)
+  horasContratadas      Float    @default(0)
+  periodicidadHoras     String   @default("ANUAL") // MENSUAL | TRIMESTRAL | ANUAL
+  desplPrecioFijo       Float    @default(0)
+  desplPrecioKm         Float    @default(0)
+  /// JSON: { "Análisis, Consulting": 75, "Programación": 61, "Soporte a usuario, explotación": 55, ... }
+  tarifasPorTipoServicio Json    @default("{}")
+  estado                String   @default("activo") // activo | obsoleto
+  notas                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@unique([clientId, codigo])
+  @@index([clientId, estado])
+}
+
+/// H8-C9 — Periodos cerrados. Una vez cerrado, las actividades y
+/// facturas del periodo no se pueden modificar.
+model TenantClosedPeriod {
+  id         String   @id @default(cuid())
+  tenantId   String
+  clientId   String
+  ejercicio  Int
+  mes        Int      // 1-12
+  cerradoAt  DateTime @default(now())
+  cerradoPor String
+  notas      String?
+
+  @@unique([clientId, ejercicio, mes])
+  @@index([clientId, ejercicio])
+}
+
 /// H7-C4 — Sociedades del tenant. Un mismo tenant puede tener varias
 /// razones sociales que facturan al mismo cliente desde distintos CIF.
 /// Ejemplo: HSM y SISPYME conviven en el grupo, distinta facturación.

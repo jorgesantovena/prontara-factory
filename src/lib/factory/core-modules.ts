@@ -1,20 +1,5 @@
 /**
- * Core modules — módulos transversales universales del ERP (CORE-02 + H7).
- *
- * Estos módulos están disponibles en TODOS los verticales sin necesidad
- * de duplicar fields/tableColumns/demoData en cada sector pack. El
- * resolver `request-tenant-runtime-async.ts` los inyecta en el config
- * del tenant DESPUÉS de aplicar el pack del sector — los módulos del
- * pack tienen prioridad si chocan, pero los core se garantizan presentes.
- *
- * Lo que aporta cada uno cubre las recomendaciones del consultor para
- * "fábrica de ERPs": módulos que cualquier organización necesita
- * independientemente del sector.
- *
- * Módulos:
- *   - tareas, tickets, compras, productos, reservas, encuestas, etiquetas, plantillas (CORE-02)
- *   - caja, bodegas, kardex (H3)
- *   - tipos-servicio, actividades-catalogo, empleados, actividades, gastos (H7)
+ * Core modules — módulos transversales universales del ERP (CORE-02 + H7 + H8).
  */
 
 import type {
@@ -34,35 +19,46 @@ export const CORE_MODULES: SectorPackModule[] = [
   { moduleKey: "encuestas", enabled: true, label: "Encuestas", navigationLabel: "Encuestas", emptyState: "Sin encuestas creadas." },
   { moduleKey: "etiquetas", enabled: true, label: "Etiquetas", navigationLabel: "Etiquetas", emptyState: "Sin etiquetas configuradas." },
   { moduleKey: "plantillas", enabled: true, label: "Plantillas", navigationLabel: "Plantillas", emptyState: "Sin plantillas guardadas." },
-  // H3 — Caja/POS, Bodegas y Kardex.
   { moduleKey: "caja", enabled: true, label: "Caja", navigationLabel: "Caja", emptyState: "Sin movimientos de caja hoy." },
   { moduleKey: "bodegas", enabled: true, label: "Bodegas", navigationLabel: "Bodegas", emptyState: "Sin bodegas configuradas." },
   { moduleKey: "kardex", enabled: true, label: "Kardex", navigationLabel: "Kardex", emptyState: "Sin movimientos de stock." },
-  // H7 — Catálogos de actividades + empleados + actividades-tarea + gastos.
   { moduleKey: "tipos-servicio", enabled: true, label: "Tipos de servicio", navigationLabel: "Tipos servicio", emptyState: "Define las categorías de servicio." },
   { moduleKey: "actividades-catalogo", enabled: true, label: "Catálogo actividades", navigationLabel: "Catálogo actividades", emptyState: "Define qué actividades realizas." },
   { moduleKey: "empleados", enabled: true, label: "Empleados", navigationLabel: "Empleados", emptyState: "Sin empleados registrados." },
   { moduleKey: "actividades", enabled: true, label: "Actividades", navigationLabel: "Actividades", emptyState: "Sin actividades imputadas." },
   { moduleKey: "gastos", enabled: true, label: "Gastos", navigationLabel: "Gastos", emptyState: "Sin gastos imputados." },
+  // H8 — Catálogos comerciales y sistema de tarifas + estructura SISPYME
+  { moduleKey: "tipos-cliente", enabled: true, label: "Tipos de cliente", navigationLabel: "Tipos cliente", emptyState: "Define tipos de cliente." },
+  { moduleKey: "zonas-comerciales", enabled: true, label: "Zonas comerciales", navigationLabel: "Zonas", emptyState: "Sin zonas comerciales definidas." },
+  { moduleKey: "grupos-empresa", enabled: true, label: "Grupos de empresa", navigationLabel: "Grupos", emptyState: "Sin grupos de empresa." },
+  { moduleKey: "puntos-venta", enabled: true, label: "Puntos de venta", navigationLabel: "Puntos venta", emptyState: "Sin puntos de venta registrados." },
+  { moduleKey: "clases-condicion", enabled: true, label: "Clases de condición", navigationLabel: "Clases condición", emptyState: "Define clases de condición de tarifa." },
+  { moduleKey: "tarifas-generales", enabled: true, label: "Tarifas generales", navigationLabel: "Tarifas", emptyState: "Sin tarifas generales definidas." },
+  { moduleKey: "tarifas-especiales", enabled: true, label: "Tarifas especiales", navigationLabel: "Tarifas especiales", emptyState: "Sin tarifas especiales por cliente/grupo." },
+  { moduleKey: "albaranes", enabled: true, label: "Albaranes", navigationLabel: "Albaranes", emptyState: "Sin albaranes pendientes." },
+  { moduleKey: "vencimientos-factura", enabled: true, label: "Vencimientos", navigationLabel: "Vencimientos", emptyState: "Sin vencimientos." },
+  { moduleKey: "avisos-programados", enabled: true, label: "Plan de avisos", navigationLabel: "Avisos", emptyState: "Sin plan de avisos configurado." },
+  { moduleKey: "tipos-urgencia", enabled: true, label: "Tipos de urgencia", navigationLabel: "Urgencias", emptyState: "Define tipos de urgencia." },
+  { moduleKey: "desplazamientos", enabled: true, label: "Desplazamientos", navigationLabel: "Desplazamientos", emptyState: "Sin desplazamientos imputados." },
 ];
 
 export const CORE_FIELDS: SectorPackField[] = [
   // Tareas
   { moduleKey: "tareas", fieldKey: "titulo", label: "Tarea", kind: "text", required: true, placeholder: "Qué hay que hacer" },
   { moduleKey: "tareas", fieldKey: "asignado", label: "Asignado a", kind: "text", placeholder: "Quién la ejecuta" },
-  { moduleKey: "tareas", fieldKey: "prioridad", label: "Prioridad", kind: "status", required: true, placeholder: "baja / media / alta / urgente", options: [
+  { moduleKey: "tareas", fieldKey: "prioridad", label: "Prioridad", kind: "status", required: true, options: [
     { value: "baja", label: "Baja" }, { value: "media", label: "Media" }, { value: "alta", label: "Alta" }, { value: "urgente", label: "Urgente" },
   ] },
   { moduleKey: "tareas", fieldKey: "fechaLimite", label: "Fecha límite", kind: "date" },
-  { moduleKey: "tareas", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "pendiente / en_progreso / en_revision / completada / cancelada", options: [
+  { moduleKey: "tareas", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "pendiente", label: "Pendiente" }, { value: "en_progreso", label: "En progreso" }, { value: "en_revision", label: "En revisión" }, { value: "completada", label: "Completada" }, { value: "cancelada", label: "Cancelada" },
   ] },
   { moduleKey: "tareas", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
 
   // Tickets
-  { moduleKey: "tickets", fieldKey: "asunto", label: "Asunto", kind: "text", required: true, placeholder: "Resumen del ticket" },
+  { moduleKey: "tickets", fieldKey: "asunto", label: "Asunto", kind: "text", required: true },
   { moduleKey: "tickets", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
-  { moduleKey: "tickets", fieldKey: "categoria", label: "Categoría", kind: "text", placeholder: "incidencia / consulta / mejora / queja" },
+  { moduleKey: "tickets", fieldKey: "categoria", label: "Categoría", kind: "text" },
   { moduleKey: "tickets", fieldKey: "prioridad", label: "Prioridad", kind: "status", required: true, options: [
     { value: "baja", label: "Baja" }, { value: "media", label: "Media" }, { value: "alta", label: "Alta" }, { value: "critica", label: "Crítica" },
   ] },
@@ -85,37 +81,37 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "compras", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
   // Productos
-  { moduleKey: "productos", fieldKey: "sku", label: "SKU / código", kind: "text", placeholder: "Código interno único" },
+  { moduleKey: "productos", fieldKey: "sku", label: "SKU / código", kind: "text" },
   { moduleKey: "productos", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
   { moduleKey: "productos", fieldKey: "categoria", label: "Categoría", kind: "text" },
-  { moduleKey: "productos", fieldKey: "tipo", label: "Tipo", kind: "status", placeholder: "producto / servicio / kit / insumo", options: [
+  { moduleKey: "productos", fieldKey: "tipo", label: "Tipo", kind: "status", options: [
     { value: "producto", label: "Producto" }, { value: "servicio", label: "Servicio" }, { value: "kit", label: "Kit" }, { value: "insumo", label: "Insumo" },
   ] },
   { moduleKey: "productos", fieldKey: "precio", label: "Precio (sin IVA)", kind: "money" },
-  { moduleKey: "productos", fieldKey: "unidadMedida", label: "Unidad de medida", kind: "text", placeholder: "ud / kg / hora / mes" },
-  { moduleKey: "productos", fieldKey: "stock", label: "Stock actual", kind: "number" },
+  { moduleKey: "productos", fieldKey: "unidadMedida", label: "Unidad", kind: "text" },
+  { moduleKey: "productos", fieldKey: "stock", label: "Stock", kind: "number" },
   { moduleKey: "productos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }, { value: "discontinuado", label: "Discontinuado" },
   ] },
 
   // Reservas
-  { moduleKey: "reservas", fieldKey: "recurso", label: "Recurso", kind: "text", required: true, placeholder: "Sala A, Vehículo 1, Aula 12..." },
+  { moduleKey: "reservas", fieldKey: "recurso", label: "Recurso", kind: "text", required: true },
   { moduleKey: "reservas", fieldKey: "solicitante", label: "Solicitante", kind: "text", required: true },
   { moduleKey: "reservas", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
-  { moduleKey: "reservas", fieldKey: "horaInicio", label: "Hora inicio", kind: "text", placeholder: "09:00" },
-  { moduleKey: "reservas", fieldKey: "horaFin", label: "Hora fin", kind: "text", placeholder: "10:30" },
-  { moduleKey: "reservas", fieldKey: "motivo", label: "Motivo / uso", kind: "text" },
+  { moduleKey: "reservas", fieldKey: "horaInicio", label: "Hora inicio", kind: "text" },
+  { moduleKey: "reservas", fieldKey: "horaFin", label: "Hora fin", kind: "text" },
+  { moduleKey: "reservas", fieldKey: "motivo", label: "Motivo", kind: "text" },
   { moduleKey: "reservas", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "solicitada", label: "Solicitada" }, { value: "confirmada", label: "Confirmada" }, { value: "en_uso", label: "En uso" }, { value: "completada", label: "Completada" }, { value: "cancelada", label: "Cancelada" },
   ] },
 
   // Encuestas
   { moduleKey: "encuestas", fieldKey: "titulo", label: "Encuesta", kind: "text", required: true },
-  { moduleKey: "encuestas", fieldKey: "tipo", label: "Tipo", kind: "status", placeholder: "satisfaccion / nps / interna / captacion", options: [
+  { moduleKey: "encuestas", fieldKey: "tipo", label: "Tipo", kind: "status", options: [
     { value: "satisfaccion", label: "Satisfacción" }, { value: "nps", label: "NPS" }, { value: "interna", label: "Interna" }, { value: "captacion", label: "Captación" },
   ] },
-  { moduleKey: "encuestas", fieldKey: "publico", label: "Público", kind: "text", placeholder: "Clientes / Empleados / Familias..." },
-  { moduleKey: "encuestas", fieldKey: "preguntas", label: "Preguntas", kind: "textarea", placeholder: "Una pregunta por línea" },
+  { moduleKey: "encuestas", fieldKey: "publico", label: "Público", kind: "text" },
+  { moduleKey: "encuestas", fieldKey: "preguntas", label: "Preguntas", kind: "textarea" },
   { moduleKey: "encuestas", fieldKey: "fechaInicio", label: "Inicio", kind: "date" },
   { moduleKey: "encuestas", fieldKey: "fechaFin", label: "Fin", kind: "date" },
   { moduleKey: "encuestas", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
@@ -123,9 +119,9 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
 
   // Etiquetas
-  { moduleKey: "etiquetas", fieldKey: "nombre", label: "Etiqueta", kind: "text", required: true, placeholder: "VIP, Urgente, Top, Riesgo..." },
-  { moduleKey: "etiquetas", fieldKey: "color", label: "Color", kind: "text", placeholder: "#1d4ed8" },
-  { moduleKey: "etiquetas", fieldKey: "aplicaA", label: "Aplica a", kind: "text", placeholder: "clientes, productos, tareas..." },
+  { moduleKey: "etiquetas", fieldKey: "nombre", label: "Etiqueta", kind: "text", required: true },
+  { moduleKey: "etiquetas", fieldKey: "color", label: "Color", kind: "text" },
+  { moduleKey: "etiquetas", fieldKey: "aplicaA", label: "Aplica a", kind: "text" },
   { moduleKey: "etiquetas", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
 
   // Plantillas
@@ -133,31 +129,31 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "plantillas", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
     { value: "email", label: "Email" }, { value: "sms", label: "SMS" }, { value: "documento", label: "Documento" }, { value: "whatsapp", label: "WhatsApp" },
   ] },
-  { moduleKey: "plantillas", fieldKey: "asunto", label: "Asunto", kind: "text", placeholder: "Solo aplica a email" },
-  { moduleKey: "plantillas", fieldKey: "contenido", label: "Contenido", kind: "textarea", required: true, placeholder: "Texto con {{variables}} dinámicas" },
-  { moduleKey: "plantillas", fieldKey: "idioma", label: "Idioma", kind: "text", placeholder: "es / en / fr" },
+  { moduleKey: "plantillas", fieldKey: "asunto", label: "Asunto", kind: "text" },
+  { moduleKey: "plantillas", fieldKey: "contenido", label: "Contenido", kind: "textarea", required: true },
+  { moduleKey: "plantillas", fieldKey: "idioma", label: "Idioma", kind: "text" },
   { moduleKey: "plantillas", fieldKey: "estado", label: "Estado", kind: "status", options: [
     { value: "activa", label: "Activa" }, { value: "borrador", label: "Borrador" }, { value: "archivada", label: "Archivada" },
   ] },
 
-  // Caja / POS (H3)
-  { moduleKey: "caja", fieldKey: "ticket", label: "Nº ticket", kind: "text", placeholder: "T-2026-001" },
-  { moduleKey: "caja", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Producto / servicio cobrado" },
+  // Caja
+  { moduleKey: "caja", fieldKey: "ticket", label: "Nº ticket", kind: "text" },
+  { moduleKey: "caja", fieldKey: "concepto", label: "Concepto", kind: "text", required: true },
   { moduleKey: "caja", fieldKey: "importe", label: "Importe", kind: "money", required: true },
-  { moduleKey: "caja", fieldKey: "metodoPago", label: "Método de pago", kind: "status", required: true, options: [
+  { moduleKey: "caja", fieldKey: "metodoPago", label: "Pago", kind: "status", required: true, options: [
     { value: "efectivo", label: "Efectivo" }, { value: "tarjeta", label: "Tarjeta" }, { value: "bizum", label: "Bizum" }, { value: "transferencia", label: "Transferencia" }, { value: "otro", label: "Otro" },
   ] },
   { moduleKey: "caja", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
   { moduleKey: "caja", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
-  { moduleKey: "caja", fieldKey: "cajero", label: "Cajero", kind: "text", placeholder: "Quién cobró" },
+  { moduleKey: "caja", fieldKey: "cajero", label: "Cajero", kind: "text" },
   { moduleKey: "caja", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "cobrado", label: "Cobrado" }, { value: "pendiente", label: "Pendiente" }, { value: "anulado", label: "Anulado" }, { value: "devuelto", label: "Devuelto" },
   ] },
   { moduleKey: "caja", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
-  // Bodegas (H3)
-  { moduleKey: "bodegas", fieldKey: "nombre", label: "Bodega", kind: "text", required: true, placeholder: "Almacén central" },
-  { moduleKey: "bodegas", fieldKey: "ubicacion", label: "Ubicación", kind: "text", placeholder: "Calle / ciudad" },
+  // Bodegas
+  { moduleKey: "bodegas", fieldKey: "nombre", label: "Bodega", kind: "text", required: true },
+  { moduleKey: "bodegas", fieldKey: "ubicacion", label: "Ubicación", kind: "text" },
   { moduleKey: "bodegas", fieldKey: "responsable", label: "Responsable", kind: "text" },
   { moduleKey: "bodegas", fieldKey: "tipo", label: "Tipo", kind: "status", options: [
     { value: "central", label: "Central" }, { value: "tienda", label: "Tienda" }, { value: "transito", label: "En tránsito" }, { value: "consignacion", label: "Consignación" },
@@ -167,7 +163,7 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
   { moduleKey: "bodegas", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
-  // Kardex (H3)
+  // Kardex
   { moduleKey: "kardex", fieldKey: "producto", label: "Producto", kind: "relation", relationModuleKey: "productos", required: true },
   { moduleKey: "kardex", fieldKey: "bodega", label: "Bodega", kind: "relation", relationModuleKey: "bodegas", required: true },
   { moduleKey: "kardex", fieldKey: "tipo", label: "Tipo movimiento", kind: "status", required: true, options: [
@@ -175,86 +171,209 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
   { moduleKey: "kardex", fieldKey: "cantidad", label: "Cantidad", kind: "number", required: true },
   { moduleKey: "kardex", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
-  { moduleKey: "kardex", fieldKey: "motivo", label: "Motivo", kind: "text", placeholder: "Compra, venta, devolución, inventario..." },
-  { moduleKey: "kardex", fieldKey: "documentoRef", label: "Doc referencia", kind: "text", placeholder: "OC-001 / FAC-001..." },
+  { moduleKey: "kardex", fieldKey: "motivo", label: "Motivo", kind: "text" },
+  { moduleKey: "kardex", fieldKey: "documentoRef", label: "Doc referencia", kind: "text" },
   { moduleKey: "kardex", fieldKey: "responsable", label: "Responsable", kind: "text" },
   { moduleKey: "kardex", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "registrado", label: "Registrado" }, { value: "anulado", label: "Anulado" },
   ] },
 
-  // H7-C1 — Tipos de servicio (catálogo agrupador)
-  { moduleKey: "tipos-servicio", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "1, 2, 3..." },
-  { moduleKey: "tipos-servicio", fieldKey: "nombre", label: "Nombre", kind: "text", required: true, placeholder: "Análisis, Programación, Soporte..." },
+  // H7-C1 Tipos de servicio
+  { moduleKey: "tipos-servicio", fieldKey: "codigo", label: "Código", kind: "text", required: true },
+  { moduleKey: "tipos-servicio", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
   { moduleKey: "tipos-servicio", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
-  { moduleKey: "tipos-servicio", fieldKey: "esFacturable", label: "¿Facturable por defecto?", kind: "status", required: true, options: [
+  { moduleKey: "tipos-servicio", fieldKey: "esFacturable", label: "¿Facturable?", kind: "status", required: true, options: [
     { value: "si", label: "Sí" }, { value: "no", label: "No" },
   ] },
 
-  // H7-C1 — Catálogo de actividades (agrupadas por tipo de servicio)
-  { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "00, 22, 37..." },
-  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad", kind: "text", required: true, placeholder: "Codificación y pruebas, Demostraciones..." },
+  // H7-C1 Catálogo actividades
+  { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Código", kind: "text", required: true },
+  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad", kind: "text", required: true },
   { moduleKey: "actividades-catalogo", fieldKey: "tipoServicio", label: "Tipo servicio", kind: "relation", relationModuleKey: "tipos-servicio", required: true },
-  { moduleKey: "actividades-catalogo", fieldKey: "tarifaHora", label: "Tarifa hora (opcional)", kind: "money", placeholder: "55 EUR" },
+  { moduleKey: "actividades-catalogo", fieldKey: "tarifaHora", label: "Tarifa hora", kind: "money" },
   { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "activa", label: "Activa" }, { value: "archivada", label: "Archivada" },
   ] },
 
-  // H7-C2 — Empleados con código corto + flag baja (CORE)
-  { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Código", kind: "text", required: true, placeholder: "J, JJ, MRU..." },
+  // H7-C2 Empleados
+  { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Código", kind: "text", required: true },
   { moduleKey: "empleados", fieldKey: "nombre", label: "Nombre completo", kind: "text", required: true },
   { moduleKey: "empleados", fieldKey: "email", label: "Email", kind: "email" },
   { moduleKey: "empleados", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
-  { moduleKey: "empleados", fieldKey: "rol", label: "Rol / puesto", kind: "text", placeholder: "Programador, Consultor, Comercial..." },
+  { moduleKey: "empleados", fieldKey: "rol", label: "Rol", kind: "text" },
   { moduleKey: "empleados", fieldKey: "fechaAlta", label: "Fecha alta", kind: "date" },
   { moduleKey: "empleados", fieldKey: "fechaBaja", label: "Fecha baja", kind: "date" },
-  { moduleKey: "empleados", fieldKey: "esBaja", label: "¿Es baja?", kind: "status", required: true, options: [
+  { moduleKey: "empleados", fieldKey: "esBaja", label: "¿Baja?", kind: "status", required: true, options: [
     { value: "no", label: "Activo" }, { value: "si", label: "Baja" },
   ] },
-  { moduleKey: "empleados", fieldKey: "tarifaHora", label: "Tarifa hora interna", kind: "money" },
+  { moduleKey: "empleados", fieldKey: "tarifaHora", label: "Tarifa hora", kind: "money" },
   { moduleKey: "empleados", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
-  // H7-C3 — Actividades imputadas (Desde/Hasta + lugar + tipoFacturacion)
+  // H7-C3 Actividades
   { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
   { moduleKey: "actividades", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
   { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
   { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto", kind: "relation", relationModuleKey: "proyectos" },
   { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad", kind: "relation", required: true, relationModuleKey: "actividades-catalogo" },
-  { moduleKey: "actividades", fieldKey: "horaDesde", label: "Hora desde", kind: "text", placeholder: "08:30", required: true },
-  { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hora hasta", kind: "text", placeholder: "10:30", required: true },
-  { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "Tiempo (h)", kind: "number", placeholder: "Auto-calculado de las horas" },
+  { moduleKey: "actividades", fieldKey: "horaDesde", label: "Hora desde", kind: "text", required: true },
+  { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hora hasta", kind: "text", required: true },
+  { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "Tiempo (h)", kind: "number" },
   { moduleKey: "actividades", fieldKey: "lugar", label: "Lugar", kind: "status", required: true, options: [
     { value: "oficina", label: "Oficina" }, { value: "teletrabajo", label: "Teletrabajo" }, { value: "cliente", label: "Casa cliente" }, { value: "otro", label: "Otro" },
   ] },
   { moduleKey: "actividades", fieldKey: "descripcion", label: "Descripción", kind: "textarea", required: true },
   { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Facturación", kind: "status", required: true, options: [
-    { value: "contra-bolsa", label: "Contra bolsa de horas" },
-    { value: "fuera-bolsa", label: "Fuera de bolsa (factura aparte)" },
-    { value: "no-facturable", label: "No facturable" },
+    { value: "contra-bolsa", label: "Contra bolsa" }, { value: "fuera-bolsa", label: "Fuera de bolsa" }, { value: "no-facturable", label: "No facturable" },
   ] },
+  { moduleKey: "actividades", fieldKey: "urgencia", label: "Urgencia", kind: "relation", relationModuleKey: "tipos-urgencia" },
   { moduleKey: "actividades", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "borrador", label: "Borrador" }, { value: "validada", label: "Validada" }, { value: "facturada", label: "Facturada" },
   ] },
 
-  // H7-C5 — Hojas de Gastos
+  // H7-C5 Gastos
   { moduleKey: "gastos", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
   { moduleKey: "gastos", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
   { moduleKey: "gastos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
-    { value: "kilometraje", label: "Kilometraje" },
-    { value: "dietas", label: "Dietas" },
-    { value: "aparcamiento", label: "Aparcamiento / peaje" },
-    { value: "alojamiento", label: "Alojamiento" },
-    { value: "transporte", label: "Transporte público" },
-    { value: "suplido", label: "Suplido cliente" },
-    { value: "material", label: "Material" },
-    { value: "otro", label: "Otro" },
+    { value: "kilometraje", label: "Kilometraje" }, { value: "dietas", label: "Dietas" }, { value: "aparcamiento", label: "Aparcamiento / peaje" }, { value: "alojamiento", label: "Alojamiento" }, { value: "transporte", label: "Transporte público" }, { value: "suplido", label: "Suplido cliente" }, { value: "material", label: "Material" }, { value: "otro", label: "Otro" },
   ] },
   { moduleKey: "gastos", fieldKey: "descripcion", label: "Descripción", kind: "text", required: true },
-  { moduleKey: "gastos", fieldKey: "kilometros", label: "Km (si aplica)", kind: "number" },
+  { moduleKey: "gastos", fieldKey: "kilometros", label: "Km", kind: "number" },
   { moduleKey: "gastos", fieldKey: "importe", label: "Importe", kind: "money", required: true },
-  { moduleKey: "gastos", fieldKey: "justificante", label: "Justificante (URL)", kind: "text", placeholder: "URL ticket / factura" },
+  { moduleKey: "gastos", fieldKey: "justificante", label: "Justificante (URL)", kind: "text" },
   { moduleKey: "gastos", fieldKey: "repercutibleA", label: "Repercutir a cliente", kind: "relation", relationModuleKey: "clientes" },
   { moduleKey: "gastos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "pendiente", label: "Pendiente" }, { value: "aprobado", label: "Aprobado" }, { value: "rechazado", label: "Rechazado" }, { value: "pagado", label: "Pagado" }, { value: "facturado", label: "Facturado al cliente" },
+  ] },
+
+  // H8-C2 Tipos de cliente
+  { moduleKey: "tipos-cliente", fieldKey: "codigo", label: "Código", kind: "text", required: true },
+  { moduleKey: "tipos-cliente", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
+  { moduleKey: "tipos-cliente", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
+  { moduleKey: "tipos-cliente", fieldKey: "esFacturable", label: "Facturable", kind: "status", required: true, options: [{ value: "si", label: "Sí" }, { value: "no", label: "No" }] },
+
+  // H8-C3 Zonas comerciales
+  { moduleKey: "zonas-comerciales", fieldKey: "codigo", label: "Código", kind: "text", required: true },
+  { moduleKey: "zonas-comerciales", fieldKey: "nombre", label: "Zona", kind: "text", required: true },
+  { moduleKey: "zonas-comerciales", fieldKey: "agenteResponsable", label: "Agente", kind: "relation", relationModuleKey: "empleados" },
+  { moduleKey: "zonas-comerciales", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "activa", label: "Activa" }, { value: "inactiva", label: "Inactiva" }] },
+
+  // H8-C4 Grupos
+  { moduleKey: "grupos-empresa", fieldKey: "codigo", label: "Código", kind: "text", required: true },
+  { moduleKey: "grupos-empresa", fieldKey: "nombre", label: "Grupo", kind: "text", required: true },
+  { moduleKey: "grupos-empresa", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
+  { moduleKey: "grupos-empresa", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }] },
+
+  // H8-C1 Puntos de venta
+  { moduleKey: "puntos-venta", fieldKey: "codigo", label: "Código", kind: "text", required: true },
+  { moduleKey: "puntos-venta", fieldKey: "nombre", label: "Nombre punto", kind: "text", required: true },
+  { moduleKey: "puntos-venta", fieldKey: "empresaPadre", label: "Empresa", kind: "relation", required: true, relationModuleKey: "clientes" },
+  { moduleKey: "puntos-venta", fieldKey: "tipoCliente", label: "Tipo cliente", kind: "relation", relationModuleKey: "tipos-cliente" },
+  { moduleKey: "puntos-venta", fieldKey: "direccion", label: "Dirección", kind: "text" },
+  { moduleKey: "puntos-venta", fieldKey: "ciudad", label: "Ciudad", kind: "text" },
+  { moduleKey: "puntos-venta", fieldKey: "zona", label: "Zona", kind: "relation", relationModuleKey: "zonas-comerciales" },
+  { moduleKey: "puntos-venta", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
+  { moduleKey: "puntos-venta", fieldKey: "email", label: "Email", kind: "email" },
+  { moduleKey: "puntos-venta", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }] },
+
+  // H8-C5 Clases de condición
+  { moduleKey: "clases-condicion", fieldKey: "codigo", label: "Código", kind: "text", required: true },
+  { moduleKey: "clases-condicion", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
+  { moduleKey: "clases-condicion", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
+    { value: "precio", label: "Precio" }, { value: "descuento", label: "Descuento" }, { value: "comision", label: "Comisión" }, { value: "impuesto", label: "Impuesto" }, { value: "promocion", label: "Promoción" },
+  ] },
+  { moduleKey: "clases-condicion", fieldKey: "operador", label: "Operador", kind: "status", options: [
+    { value: "porcentaje", label: "% sobre base" }, { value: "fijo", label: "Importe fijo" }, { value: "cascada", label: "Cascada" },
+  ] },
+
+  // H8-C5 Tarifas generales
+  { moduleKey: "tarifas-generales", fieldKey: "codigo", label: "Código", kind: "text", required: true },
+  { moduleKey: "tarifas-generales", fieldKey: "nombre", label: "Tarifa", kind: "text", required: true },
+  { moduleKey: "tarifas-generales", fieldKey: "claseCondicion", label: "Clase", kind: "relation", required: true, relationModuleKey: "clases-condicion" },
+  { moduleKey: "tarifas-generales", fieldKey: "valor", label: "Valor", kind: "money", required: true },
+  { moduleKey: "tarifas-generales", fieldKey: "fechaInicio", label: "Fecha inicio", kind: "date", required: true },
+  { moduleKey: "tarifas-generales", fieldKey: "fechaFin", label: "Fecha fin", kind: "date" },
+  { moduleKey: "tarifas-generales", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "vigor", label: "En vigor" }, { value: "futura", label: "Futura" }, { value: "obsoleta", label: "Obsoleta" },
+  ] },
+
+  // H8-C5 Tarifas especiales
+  { moduleKey: "tarifas-especiales", fieldKey: "nombre", label: "Tarifa especial", kind: "text", required: true },
+  { moduleKey: "tarifas-especiales", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
+  { moduleKey: "tarifas-especiales", fieldKey: "grupo", label: "Grupo", kind: "relation", relationModuleKey: "grupos-empresa" },
+  { moduleKey: "tarifas-especiales", fieldKey: "claseCondicion", label: "Clase", kind: "relation", required: true, relationModuleKey: "clases-condicion" },
+  { moduleKey: "tarifas-especiales", fieldKey: "valor", label: "Valor", kind: "money", required: true },
+  { moduleKey: "tarifas-especiales", fieldKey: "fechaInicio", label: "Inicio", kind: "date", required: true },
+  { moduleKey: "tarifas-especiales", fieldKey: "fechaFin", label: "Fin", kind: "date" },
+  { moduleKey: "tarifas-especiales", fieldKey: "observaciones", label: "Observaciones", kind: "textarea" },
+  { moduleKey: "tarifas-especiales", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "vigor", label: "En vigor" }, { value: "futura", label: "Futura" }, { value: "obsoleta", label: "Obsoleta" },
+  ] },
+
+  // H8-C6 Albaranes
+  { moduleKey: "albaranes", fieldKey: "numero", label: "Nº albarán", kind: "text", required: true },
+  { moduleKey: "albaranes", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+  { moduleKey: "albaranes", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
+  { moduleKey: "albaranes", fieldKey: "puntoVenta", label: "Punto", kind: "relation", relationModuleKey: "puntos-venta" },
+  { moduleKey: "albaranes", fieldKey: "concepto", label: "Concepto", kind: "textarea" },
+  { moduleKey: "albaranes", fieldKey: "importeBase", label: "Base", kind: "money" },
+  { moduleKey: "albaranes", fieldKey: "iva", label: "IVA", kind: "money" },
+  { moduleKey: "albaranes", fieldKey: "importeTotal", label: "Total", kind: "money", required: true },
+  { moduleKey: "albaranes", fieldKey: "facturaGenerada", label: "Factura", kind: "relation", relationModuleKey: "facturacion" },
+  { moduleKey: "albaranes", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "pendiente", label: "Pendiente facturar" }, { value: "facturado", label: "Facturado" }, { value: "anulado", label: "Anulado" },
+  ] },
+
+  // H8-C7 Vencimientos
+  { moduleKey: "vencimientos-factura", fieldKey: "factura", label: "Factura", kind: "relation", required: true, relationModuleKey: "facturacion" },
+  { moduleKey: "vencimientos-factura", fieldKey: "nVencimiento", label: "Nº vencim.", kind: "number", required: true },
+  { moduleKey: "vencimientos-factura", fieldKey: "fecha", label: "Fecha vencimiento", kind: "date", required: true },
+  { moduleKey: "vencimientos-factura", fieldKey: "importe", label: "Importe", kind: "money", required: true },
+  { moduleKey: "vencimientos-factura", fieldKey: "formaPago", label: "Forma pago", kind: "status", options: [
+    { value: "transferencia", label: "Transferencia" }, { value: "domiciliacion", label: "Domiciliación SEPA" }, { value: "pagare", label: "Pagaré" }, { value: "tarjeta", label: "Tarjeta" }, { value: "efectivo", label: "Efectivo" }, { value: "bizum", label: "Bizum" },
+  ] },
+  { moduleKey: "vencimientos-factura", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "pendiente", label: "Pendiente" }, { value: "cobrado", label: "Cobrado" }, { value: "devuelto", label: "Devuelto" }, { value: "incobrable", label: "Incobrable" },
+  ] },
+  { moduleKey: "vencimientos-factura", fieldKey: "fechaCobro", label: "Fecha cobro", kind: "date" },
+
+  // H8-C10 Plan de avisos
+  { moduleKey: "avisos-programados", fieldKey: "nombre", label: "Aviso", kind: "text", required: true },
+  { moduleKey: "avisos-programados", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
+  { moduleKey: "avisos-programados", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
+    { value: "renovacion", label: "Renovación" }, { value: "vencimiento", label: "Vencimiento" }, { value: "cumpleanos", label: "Cumpleaños" }, { value: "campania", label: "Campaña comercial" }, { value: "encuesta", label: "Encuesta" }, { value: "otro", label: "Otro" },
+  ] },
+  { moduleKey: "avisos-programados", fieldKey: "canal", label: "Canal", kind: "status", required: true, options: [
+    { value: "email", label: "Email" }, { value: "sms", label: "SMS" }, { value: "whatsapp", label: "WhatsApp" }, { value: "llamada", label: "Llamada" },
+  ] },
+  { moduleKey: "avisos-programados", fieldKey: "frecuencia", label: "Frecuencia", kind: "status", required: true, options: [
+    { value: "unica", label: "Única" }, { value: "mensual", label: "Mensual" }, { value: "trimestral", label: "Trimestral" }, { value: "semestral", label: "Semestral" }, { value: "anual", label: "Anual" },
+  ] },
+  { moduleKey: "avisos-programados", fieldKey: "plantilla", label: "Plantilla", kind: "relation", relationModuleKey: "plantillas" },
+  { moduleKey: "avisos-programados", fieldKey: "proximaFecha", label: "Próxima fecha", kind: "date", required: true },
+  { moduleKey: "avisos-programados", fieldKey: "ultimaFecha", label: "Último envío", kind: "date" },
+  { moduleKey: "avisos-programados", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "activo", label: "Activo" }, { value: "pausado", label: "Pausado" }, { value: "completado", label: "Completado" },
+  ] },
+
+  // H8-S3 Tipos de urgencia
+  { moduleKey: "tipos-urgencia", fieldKey: "codigo", label: "Código", kind: "text", required: true },
+  { moduleKey: "tipos-urgencia", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
+  { moduleKey: "tipos-urgencia", fieldKey: "nivel", label: "Nivel", kind: "number", required: true },
+  { moduleKey: "tipos-urgencia", fieldKey: "recargoPct", label: "Recargo (%)", kind: "money" },
+  { moduleKey: "tipos-urgencia", fieldKey: "color", label: "Color", kind: "text" },
+
+  // H8-S5 Desplazamientos
+  { moduleKey: "desplazamientos", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
+  { moduleKey: "desplazamientos", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
+  { moduleKey: "desplazamientos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
+  { moduleKey: "desplazamientos", fieldKey: "puntoVenta", label: "Punto", kind: "relation", relationModuleKey: "puntos-venta" },
+  { moduleKey: "desplazamientos", fieldKey: "kilometros", label: "Km", kind: "number", required: true },
+  { moduleKey: "desplazamientos", fieldKey: "precioFijo", label: "Precio fijo (€)", kind: "money" },
+  { moduleKey: "desplazamientos", fieldKey: "precioKm", label: "Precio €/km", kind: "money" },
+  { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total", kind: "money" },
+  { moduleKey: "desplazamientos", fieldKey: "facturable", label: "Facturable", kind: "status", required: true, options: [{ value: "si", label: "Sí" }, { value: "no", label: "No" }] },
+  { moduleKey: "desplazamientos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "borrador", label: "Borrador" }, { value: "validado", label: "Validado" }, { value: "facturado", label: "Facturado" },
   ] },
 ];
 
@@ -264,89 +383,72 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "tareas", fieldKey: "prioridad", label: "Prioridad" },
   { moduleKey: "tareas", fieldKey: "fechaLimite", label: "Límite" },
   { moduleKey: "tareas", fieldKey: "estado", label: "Estado" },
-
   { moduleKey: "tickets", fieldKey: "asunto", label: "Asunto", isPrimary: true },
   { moduleKey: "tickets", fieldKey: "cliente", label: "Cliente" },
   { moduleKey: "tickets", fieldKey: "categoria", label: "Categoría" },
   { moduleKey: "tickets", fieldKey: "prioridad", label: "Prioridad" },
   { moduleKey: "tickets", fieldKey: "asignado", label: "Asignado" },
   { moduleKey: "tickets", fieldKey: "estado", label: "Estado" },
-
   { moduleKey: "compras", fieldKey: "numero", label: "Nº", isPrimary: true },
   { moduleKey: "compras", fieldKey: "proveedor", label: "Proveedor" },
   { moduleKey: "compras", fieldKey: "concepto", label: "Concepto" },
   { moduleKey: "compras", fieldKey: "importe", label: "Importe" },
   { moduleKey: "compras", fieldKey: "estado", label: "Estado" },
-
   { moduleKey: "productos", fieldKey: "sku", label: "SKU", isPrimary: true },
   { moduleKey: "productos", fieldKey: "nombre", label: "Nombre" },
   { moduleKey: "productos", fieldKey: "categoria", label: "Categoría" },
   { moduleKey: "productos", fieldKey: "precio", label: "Precio" },
   { moduleKey: "productos", fieldKey: "stock", label: "Stock" },
   { moduleKey: "productos", fieldKey: "estado", label: "Estado" },
-
   { moduleKey: "reservas", fieldKey: "recurso", label: "Recurso", isPrimary: true },
   { moduleKey: "reservas", fieldKey: "solicitante", label: "Solicitante" },
   { moduleKey: "reservas", fieldKey: "fecha", label: "Fecha" },
   { moduleKey: "reservas", fieldKey: "horaInicio", label: "Inicio" },
   { moduleKey: "reservas", fieldKey: "horaFin", label: "Fin" },
   { moduleKey: "reservas", fieldKey: "estado", label: "Estado" },
-
   { moduleKey: "encuestas", fieldKey: "titulo", label: "Encuesta", isPrimary: true },
   { moduleKey: "encuestas", fieldKey: "tipo", label: "Tipo" },
   { moduleKey: "encuestas", fieldKey: "publico", label: "Público" },
   { moduleKey: "encuestas", fieldKey: "fechaInicio", label: "Inicio" },
   { moduleKey: "encuestas", fieldKey: "estado", label: "Estado" },
-
   { moduleKey: "etiquetas", fieldKey: "nombre", label: "Etiqueta", isPrimary: true },
   { moduleKey: "etiquetas", fieldKey: "color", label: "Color" },
   { moduleKey: "etiquetas", fieldKey: "aplicaA", label: "Aplica a" },
-
   { moduleKey: "plantillas", fieldKey: "nombre", label: "Plantilla", isPrimary: true },
   { moduleKey: "plantillas", fieldKey: "tipo", label: "Tipo" },
   { moduleKey: "plantillas", fieldKey: "asunto", label: "Asunto" },
   { moduleKey: "plantillas", fieldKey: "idioma", label: "Idioma" },
   { moduleKey: "plantillas", fieldKey: "estado", label: "Estado" },
-
   { moduleKey: "caja", fieldKey: "ticket", label: "Ticket", isPrimary: true },
   { moduleKey: "caja", fieldKey: "concepto", label: "Concepto" },
   { moduleKey: "caja", fieldKey: "importe", label: "Importe" },
   { moduleKey: "caja", fieldKey: "metodoPago", label: "Pago" },
   { moduleKey: "caja", fieldKey: "fecha", label: "Fecha" },
   { moduleKey: "caja", fieldKey: "estado", label: "Estado" },
-
   { moduleKey: "bodegas", fieldKey: "nombre", label: "Bodega", isPrimary: true },
   { moduleKey: "bodegas", fieldKey: "ubicacion", label: "Ubicación" },
   { moduleKey: "bodegas", fieldKey: "responsable", label: "Responsable" },
   { moduleKey: "bodegas", fieldKey: "tipo", label: "Tipo" },
   { moduleKey: "bodegas", fieldKey: "estado", label: "Estado" },
-
   { moduleKey: "kardex", fieldKey: "producto", label: "Producto", isPrimary: true },
   { moduleKey: "kardex", fieldKey: "bodega", label: "Bodega" },
   { moduleKey: "kardex", fieldKey: "tipo", label: "Movimiento" },
   { moduleKey: "kardex", fieldKey: "cantidad", label: "Cantidad" },
   { moduleKey: "kardex", fieldKey: "fecha", label: "Fecha" },
   { moduleKey: "kardex", fieldKey: "estado", label: "Estado" },
-
-  // H7-C1
   { moduleKey: "tipos-servicio", fieldKey: "codigo", label: "Cód.", isPrimary: true },
   { moduleKey: "tipos-servicio", fieldKey: "nombre", label: "Nombre" },
   { moduleKey: "tipos-servicio", fieldKey: "esFacturable", label: "Facturable" },
-
   { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Cód.", isPrimary: true },
   { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad" },
-  { moduleKey: "actividades-catalogo", fieldKey: "tipoServicio", label: "Tipo servicio" },
+  { moduleKey: "actividades-catalogo", fieldKey: "tipoServicio", label: "Tipo" },
   { moduleKey: "actividades-catalogo", fieldKey: "tarifaHora", label: "€/h" },
   { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado" },
-
-  // H7-C2
   { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Cód.", isPrimary: true },
   { moduleKey: "empleados", fieldKey: "nombre", label: "Nombre" },
   { moduleKey: "empleados", fieldKey: "rol", label: "Rol" },
   { moduleKey: "empleados", fieldKey: "email", label: "Email" },
   { moduleKey: "empleados", fieldKey: "esBaja", label: "Estado" },
-
-  // H7-C3
   { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", isPrimary: true },
   { moduleKey: "actividades", fieldKey: "empleado", label: "Empleado" },
   { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente" },
@@ -357,108 +459,145 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "actividades", fieldKey: "lugar", label: "Lug." },
   { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Fact." },
   { moduleKey: "actividades", fieldKey: "estado", label: "Estado" },
-
-  // H7-C5
   { moduleKey: "gastos", fieldKey: "fecha", label: "Fecha", isPrimary: true },
   { moduleKey: "gastos", fieldKey: "empleado", label: "Empleado" },
   { moduleKey: "gastos", fieldKey: "tipo", label: "Tipo" },
   { moduleKey: "gastos", fieldKey: "descripcion", label: "Descripción" },
   { moduleKey: "gastos", fieldKey: "importe", label: "Importe" },
   { moduleKey: "gastos", fieldKey: "estado", label: "Estado" },
+
+  // H8 columns
+  { moduleKey: "tipos-cliente", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "tipos-cliente", fieldKey: "nombre", label: "Tipo cliente" },
+  { moduleKey: "tipos-cliente", fieldKey: "esFacturable", label: "Facturable" },
+
+  { moduleKey: "zonas-comerciales", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "zonas-comerciales", fieldKey: "nombre", label: "Zona" },
+  { moduleKey: "zonas-comerciales", fieldKey: "agenteResponsable", label: "Agente" },
+  { moduleKey: "zonas-comerciales", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "grupos-empresa", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "grupos-empresa", fieldKey: "nombre", label: "Grupo" },
+  { moduleKey: "grupos-empresa", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "puntos-venta", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "puntos-venta", fieldKey: "nombre", label: "Punto" },
+  { moduleKey: "puntos-venta", fieldKey: "empresaPadre", label: "Empresa" },
+  { moduleKey: "puntos-venta", fieldKey: "tipoCliente", label: "Tipo" },
+  { moduleKey: "puntos-venta", fieldKey: "zona", label: "Zona" },
+  { moduleKey: "puntos-venta", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "clases-condicion", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "clases-condicion", fieldKey: "nombre", label: "Clase" },
+  { moduleKey: "clases-condicion", fieldKey: "tipo", label: "Tipo" },
+  { moduleKey: "clases-condicion", fieldKey: "operador", label: "Operador" },
+
+  { moduleKey: "tarifas-generales", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "tarifas-generales", fieldKey: "nombre", label: "Tarifa" },
+  { moduleKey: "tarifas-generales", fieldKey: "claseCondicion", label: "Clase" },
+  { moduleKey: "tarifas-generales", fieldKey: "valor", label: "Valor" },
+  { moduleKey: "tarifas-generales", fieldKey: "fechaInicio", label: "Inicio" },
+  { moduleKey: "tarifas-generales", fieldKey: "fechaFin", label: "Fin" },
+  { moduleKey: "tarifas-generales", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "tarifas-especiales", fieldKey: "nombre", label: "Tarifa especial", isPrimary: true },
+  { moduleKey: "tarifas-especiales", fieldKey: "cliente", label: "Cliente" },
+  { moduleKey: "tarifas-especiales", fieldKey: "grupo", label: "Grupo" },
+  { moduleKey: "tarifas-especiales", fieldKey: "claseCondicion", label: "Clase" },
+  { moduleKey: "tarifas-especiales", fieldKey: "valor", label: "Valor" },
+  { moduleKey: "tarifas-especiales", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "albaranes", fieldKey: "numero", label: "Nº", isPrimary: true },
+  { moduleKey: "albaranes", fieldKey: "fecha", label: "Fecha" },
+  { moduleKey: "albaranes", fieldKey: "cliente", label: "Cliente" },
+  { moduleKey: "albaranes", fieldKey: "importeTotal", label: "Total" },
+  { moduleKey: "albaranes", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "vencimientos-factura", fieldKey: "factura", label: "Factura", isPrimary: true },
+  { moduleKey: "vencimientos-factura", fieldKey: "nVencimiento", label: "Nº" },
+  { moduleKey: "vencimientos-factura", fieldKey: "fecha", label: "Fecha" },
+  { moduleKey: "vencimientos-factura", fieldKey: "importe", label: "Importe" },
+  { moduleKey: "vencimientos-factura", fieldKey: "formaPago", label: "Forma" },
+  { moduleKey: "vencimientos-factura", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "avisos-programados", fieldKey: "nombre", label: "Aviso", isPrimary: true },
+  { moduleKey: "avisos-programados", fieldKey: "cliente", label: "Cliente" },
+  { moduleKey: "avisos-programados", fieldKey: "tipo", label: "Tipo" },
+  { moduleKey: "avisos-programados", fieldKey: "canal", label: "Canal" },
+  { moduleKey: "avisos-programados", fieldKey: "frecuencia", label: "Frec." },
+  { moduleKey: "avisos-programados", fieldKey: "proximaFecha", label: "Próxima" },
+  { moduleKey: "avisos-programados", fieldKey: "estado", label: "Estado" },
+
+  { moduleKey: "tipos-urgencia", fieldKey: "codigo", label: "Cód.", isPrimary: true },
+  { moduleKey: "tipos-urgencia", fieldKey: "nombre", label: "Urgencia" },
+  { moduleKey: "tipos-urgencia", fieldKey: "nivel", label: "Nivel" },
+  { moduleKey: "tipos-urgencia", fieldKey: "recargoPct", label: "Recargo %" },
+
+  { moduleKey: "desplazamientos", fieldKey: "fecha", label: "Fecha", isPrimary: true },
+  { moduleKey: "desplazamientos", fieldKey: "empleado", label: "Empleado" },
+  { moduleKey: "desplazamientos", fieldKey: "cliente", label: "Cliente" },
+  { moduleKey: "desplazamientos", fieldKey: "kilometros", label: "Km" },
+  { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total" },
+  { moduleKey: "desplazamientos", fieldKey: "facturable", label: "Fact." },
+  { moduleKey: "desplazamientos", fieldKey: "estado", label: "Estado" },
 ];
 
-/**
- * Demo data ligero para los core modules.
- */
 export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<string, string>> }> = [
   { moduleKey: "tareas", records: [
-    { titulo: "Revisar contratos pendientes", asignado: "Operador", prioridad: "media", fechaLimite: "2026-05-15", estado: "pendiente", descripcion: "Repaso mensual de contratos próximos a vencer." },
-    { titulo: "Preparar reunión semanal", asignado: "Operador", prioridad: "alta", fechaLimite: "2026-05-12", estado: "en_progreso", descripcion: "Agenda + agenda compartida con el equipo." },
+    { titulo: "Revisar contratos pendientes", asignado: "Operador", prioridad: "media", fechaLimite: "2026-05-15", estado: "pendiente", descripcion: "Repaso mensual." },
   ]},
-  { moduleKey: "tickets", records: [
-    { asunto: "Cliente reporta error en login", cliente: "", categoria: "incidencia", prioridad: "alta", asignado: "Soporte L1", estado: "en_curso", descripcion: "Cliente no puede acceder. Logs revisándose." },
-    { asunto: "Solicitud de mejora", cliente: "", categoria: "mejora", prioridad: "baja", asignado: "Producto", estado: "nuevo", descripcion: "Pide opción de exportar listado." },
-  ]},
-  { moduleKey: "compras", records: [
-    { numero: "OC-2026-001", proveedor: "Material de oficina S.L.", concepto: "Folios A4 + tóner", importe: "180 EUR", fechaSolicitud: "2026-05-02", estado: "aprobada", notas: "Pedido mensual estándar." },
-  ]},
-  { moduleKey: "productos", records: [
-    { sku: "PROD-001", nombre: "Producto/servicio ejemplo", categoria: "General", tipo: "producto", precio: "100 EUR", unidadMedida: "ud", stock: "0", estado: "activo" },
-  ]},
-  { moduleKey: "reservas", records: [
-    { recurso: "Sala de reuniones principal", solicitante: "Operador", fecha: "2026-05-12", horaInicio: "10:00", horaFin: "11:30", motivo: "Reunión semanal de equipo", estado: "confirmada" },
-  ]},
-  { moduleKey: "encuestas", records: [
-    { titulo: "Encuesta de satisfacción Q2", tipo: "satisfaccion", publico: "Clientes", preguntas: "¿Cómo valorarías nuestro servicio?\n¿Recomendarías Prontara?", fechaInicio: "2026-05-01", fechaFin: "2026-06-30", estado: "activa" },
-  ]},
-  { moduleKey: "etiquetas", records: [
-    { nombre: "VIP", color: "#7c3aed", aplicaA: "clientes", descripcion: "Cliente de alta prioridad." },
-    { nombre: "Urgente", color: "#dc2626", aplicaA: "tareas, tickets", descripcion: "Requiere atención inmediata." },
-    { nombre: "Renovación", color: "#0891b2", aplicaA: "clientes, contratos", descripcion: "Cliente próximo a renovar." },
-  ]},
-  { moduleKey: "plantillas", records: [
-    { nombre: "Bienvenida nuevo cliente", tipo: "email", asunto: "Bienvenido a {{empresa}}", contenido: "Hola {{cliente}},\n\nGracias por confiar en nosotros. Aquí tienes la información para empezar...", idioma: "es", estado: "activa" },
-    { nombre: "Recordatorio cita", tipo: "sms", asunto: "", contenido: "Hola {{nombre}}, te recordamos tu cita el {{fecha}} a las {{hora}}. {{empresa}}", idioma: "es", estado: "activa" },
-  ]},
-  { moduleKey: "caja", records: [
-    { ticket: "T-2026-001", concepto: "Servicio profesional", importe: "75.00 EUR", metodoPago: "tarjeta", cliente: "", fecha: "2026-05-08", cajero: "Operador", estado: "cobrado", notas: "" },
-  ]},
-  { moduleKey: "bodegas", records: [
-    { nombre: "Almacén central", ubicacion: "Sede principal", responsable: "Operador", tipo: "central", estado: "activa", notas: "Bodega principal del tenant." },
-  ]},
-  { moduleKey: "kardex", records: [
-    { producto: "", bodega: "Almacén central", tipo: "entrada", cantidad: "10", fecha: "2026-05-01", motivo: "Stock inicial", documentoRef: "OC-2026-001", responsable: "Operador", estado: "registrado" },
-  ]},
-  // H7-C1: 8 tipos de servicio inspirados en SISPYME
   { moduleKey: "tipos-servicio", records: [
-    { codigo: "1", nombre: "Análisis, Consulting", descripcion: "Análisis funcional, consultoría, diseño.", esFacturable: "si" },
-    { codigo: "2", nombre: "Programación", descripcion: "Codificación, modificaciones, pruebas.", esFacturable: "si" },
-    { codigo: "3", nombre: "Soporte a usuario, explotación", descripcion: "Soporte de incidencias y consultas.", esFacturable: "si" },
-    { codigo: "4", nombre: "Copias de seguridad, reinstalaciones", descripcion: "Backups, reinstalaciones, recovery.", esFacturable: "si" },
-    { codigo: "5", nombre: "Técnica de sistemas", descripcion: "Sistemas, infra, redes.", esFacturable: "si" },
-    { codigo: "6", nombre: "Otros servicios", descripcion: "Servicios diversos no clasificables.", esFacturable: "si" },
-    { codigo: "7", nombre: "Actividad comercial", descripcion: "Ventas, demos, prospección.", esFacturable: "no" },
-    { codigo: "8", nombre: "Gestiones administrativas", descripcion: "Tareas administrativas internas.", esFacturable: "no" },
+    { codigo: "1", nombre: "Análisis, Consulting", esFacturable: "si" },
+    { codigo: "2", nombre: "Programación", esFacturable: "si" },
+    { codigo: "3", nombre: "Soporte a usuario, explotación", esFacturable: "si" },
+    { codigo: "4", nombre: "Copias de seguridad, reinstalaciones", esFacturable: "si" },
+    { codigo: "5", nombre: "Técnica de sistemas", esFacturable: "si" },
+    { codigo: "6", nombre: "Otros servicios", esFacturable: "si" },
+    { codigo: "7", nombre: "Actividad comercial", esFacturable: "no" },
+    { codigo: "8", nombre: "Gestiones administrativas", esFacturable: "no" },
   ]},
-  // H7-C1: catálogo de actividades inspirado en SISPYME
-  { moduleKey: "actividades-catalogo", records: [
-    { codigo: "00", nombre: "Juntas, reuniones, etc.", tipoServicio: "Otros servicios", tarifaHora: "0 EUR", estado: "activa" },
-    { codigo: "03", nombre: "Visitas o gestiones con clientes", tipoServicio: "Otros servicios", tarifaHora: "0 EUR", estado: "activa" },
-    { codigo: "07", nombre: "Administración y secretaría", tipoServicio: "Otros servicios", tarifaHora: "0 EUR", estado: "activa" },
-    { codigo: "22", nombre: "Planificación comercial", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
-    { codigo: "23", nombre: "Telemarketing", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
-    { codigo: "24", nombre: "Entrevista prospección", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
-    { codigo: "26", nombre: "Preparación de ofertas", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
-    { codigo: "28", nombre: "Demostraciones", tipoServicio: "Actividad comercial", tarifaHora: "0 EUR", estado: "activa" },
-    { codigo: "31", nombre: "Entrevista o charla técnica", tipoServicio: "Análisis, Consulting", tarifaHora: "70 EUR", estado: "activa" },
-    { codigo: "32", nombre: "Gestión de proyecto", tipoServicio: "Análisis, Consulting", tarifaHora: "70 EUR", estado: "activa" },
-    { codigo: "33", nombre: "Análisis de enfoque", tipoServicio: "Análisis, Consulting", tarifaHora: "70 EUR", estado: "activa" },
-    { codigo: "35", nombre: "Análisis detallado y diseño", tipoServicio: "Análisis, Consulting", tarifaHora: "70 EUR", estado: "activa" },
-    { codigo: "37", nombre: "Codificación y pruebas", tipoServicio: "Programación", tarifaHora: "55 EUR", estado: "activa" },
-    { codigo: "38", nombre: "Modificaciones", tipoServicio: "Programación", tarifaHora: "55 EUR", estado: "activa" },
-    { codigo: "39", nombre: "Instalación y enseñanza aplicación", tipoServicio: "Otros servicios", tarifaHora: "60 EUR", estado: "activa" },
-    { codigo: "41", nombre: "Operación", tipoServicio: "Soporte a usuario, explotación", tarifaHora: "55 EUR", estado: "activa" },
-    { codigo: "47", nombre: "Técnica de sistemas", tipoServicio: "Técnica de sistemas", tarifaHora: "65 EUR", estado: "activa" },
-    { codigo: "48", nombre: "Backups, reinstalaciones, etc.", tipoServicio: "Copias de seguridad, reinstalaciones", tarifaHora: "55 EUR", estado: "activa" },
-    { codigo: "49", nombre: "Soporte y consultas de usuario", tipoServicio: "Soporte a usuario, explotación", tarifaHora: "55 EUR", estado: "activa" },
+  { moduleKey: "tipos-cliente", records: [
+    { codigo: "ADM", nombre: "Administración", esFacturable: "si" },
+    { codigo: "DST", nombre: "Distribuidor", esFacturable: "si" },
+    { codigo: "GST", nombre: "Gestión", esFacturable: "si" },
+    { codigo: "PRV", nombre: "Proveedor", esFacturable: "no" },
+    { codigo: "FIN", nombre: "Cliente final", esFacturable: "si" },
+  ]},
+  { moduleKey: "zonas-comerciales", records: [
+    { codigo: "OVI", nombre: "OVIEDO", estado: "activa" },
+    { codigo: "NOR", nombre: "NORTE", estado: "activa" },
+    { codigo: "CAN", nombre: "CANTABRIA", estado: "activa" },
+    { codigo: "MAD", nombre: "MADRID", estado: "activa" },
+  ]},
+  { moduleKey: "grupos-empresa", records: [
+    { codigo: "MN1", nombre: "Mantº N 1", estado: "activo" },
+    { codigo: "MN2", nombre: "Mantº N 2", estado: "activo" },
+    { codigo: "MXH", nombre: "Mensual x horas", estado: "activo" },
+    { codigo: "TXH", nombre: "Trimestral x Horas", estado: "activo" },
+    { codigo: "MQ", nombre: "Mensual Cuota", estado: "activo" },
+  ]},
+  { moduleKey: "clases-condicion", records: [
+    { codigo: "1", nombre: "PRECIO BASE", tipo: "precio", operador: "fijo" },
+    { codigo: "2", nombre: "DESCUENTO BASE", tipo: "descuento", operador: "porcentaje" },
+    { codigo: "3", nombre: "COMISION base", tipo: "comision", operador: "porcentaje" },
+    { codigo: "4", nombre: "PRECIO ESPECIAL (%)", tipo: "precio", operador: "porcentaje" },
+    { codigo: "5", nombre: "DESCUENTO CASCADA", tipo: "descuento", operador: "cascada" },
+    { codigo: "6", nombre: "I.V.A.", tipo: "impuesto", operador: "porcentaje" },
+    { codigo: "7", nombre: "RECARGO EQUIVALENCIA", tipo: "impuesto", operador: "porcentaje" },
+  ]},
+  { moduleKey: "tipos-urgencia", records: [
+    { codigo: "MU", nombre: "1-MUY URGENTE", nivel: "1", recargoPct: "50", color: "#dc2626" },
+    { codigo: "U", nombre: "2-URGENTE", nivel: "2", recargoPct: "25", color: "#ea580c" },
+    { codigo: "N", nombre: "3-NORMAL", nivel: "3", recargoPct: "0", color: "#475569" },
   ]},
   { moduleKey: "empleados", records: [
-    { codigoCorto: "OP", nombre: "Operador principal", email: "operador@empresa.com", rol: "Administrador", fechaAlta: "2026-01-01", esBaja: "no", tarifaHora: "55 EUR", notas: "" },
-  ]},
-  { moduleKey: "actividades", records: [
-    { fecha: "2026-05-08", empleado: "OP", cliente: "", actividad: "37", horaDesde: "09:00", horaHasta: "11:30", tiempoHoras: "2.5", lugar: "oficina", descripcion: "Codificación módulo facturación.", tipoFacturacion: "contra-bolsa", estado: "validada" },
-  ]},
-  { moduleKey: "gastos", records: [
-    { fecha: "2026-05-08", empleado: "OP", tipo: "kilometraje", descripcion: "Visita cliente en Madrid", kilometros: "120", importe: "48.00 EUR", estado: "pendiente" },
+    { codigoCorto: "OP", nombre: "Operador principal", email: "operador@empresa.com", rol: "Administrador", esBaja: "no", tarifaHora: "55 EUR" },
   ]},
 ];
 
 /**
  * Aplica los core modules al config runtime: añade modules, fields y
  * tableColumns que no estén ya definidos en el pack del sector.
- *
- * Si el pack ya define un field para `moduleKey + fieldKey`, prevalece
- * el del pack (permite override sectorial).
  */
 export function applyCoreModulesToConfig<T extends {
   modules: SectorPackModule[];
