@@ -29,6 +29,8 @@ export const runtime = "nodejs";
 type Kpi = { key: string; label: string; value: string; helper: string; tone?: "neutral" | "good" | "warn" | "bad"; href?: string };
 type QuickAction = { href: string; label: string; icon: string };
 type Alert = { severity: "info" | "warn" | "danger"; title: string; href: string };
+type PendingItem = { key: string; label: string; count: number; tone: "neutral" | "good" | "warn" | "bad"; href: string };
+type AgendaItem = { time: string; title: string; subtitle: string; kind: "meeting" | "call" | "video" | "task" | "event"; href?: string };
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
@@ -277,6 +279,100 @@ export async function GET(request: NextRequest) {
     }
     allRecent.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
+    // === H12-A: Pendientes (lista universal con bullets de color) ===
+    const tareas = await listModuleRecordsAsync("tareas", session.clientId).catch(() => []);
+    const productos = await listModuleRecordsAsync("productos", session.clientId).catch(() => []);
+    const documentos = await listModuleRecordsAsync("documentos", session.clientId).catch(() => []);
+
+    const tareasPendientes = tareas.filter((t) => {
+      const e = String(t.estado || "").toLowerCase();
+      return e !== "completado" && e !== "completada" && e !== "cancelado" && e !== "cancelada" && e !== "archivado";
+    });
+    const docsPorAprobar = documentos.filter((d) => {
+      const e = String(d.estado || "").toLowerCase();
+      return e === "pendiente" || e === "por_aprobar" || e === "borrador";
+    });
+    const stockBajo = productos.filter((p) => {
+      const stock = parseImporte(p.stock);
+      const minimo = parseImporte(p.stockMinimo) || 5;
+      return stock > 0 && stock <= minimo;
+    });
+
+    const pending: PendingItem[] = [];
+    if (facturasPendientes.length > 0) {
+      pending.push({
+        key: "pagos",
+        label: facturasPendientes.length + " pagos pendientes",
+        count: facturasPendientes.length,
+        tone: facturasVencidas.length > 0 ? "bad" : "warn",
+        href: "/facturacion",
+      });
+    }
+    if (tareasPendientes.length > 0) {
+      pending.push({
+        key: "tareas",
+        label: tareasPendientes.length + " tareas por revisar",
+        count: tareasPendientes.length,
+        tone: "warn",
+        href: "/tareas",
+      });
+    }
+    if (docsPorAprobar.length > 0) {
+      pending.push({
+        key: "docs",
+        label: docsPorAprobar.length + " documentos por aprobar",
+        count: docsPorAprobar.length,
+        tone: "neutral",
+        href: "/documentos",
+      });
+    }
+    if (stockBajo.length > 0) {
+      pending.push({
+        key: "stock",
+        label: stockBajo.length + " productos con stock bajo",
+        count: stockBajo.length,
+        tone: "warn",
+        href: "/productos",
+      });
+    }
+
+    // === H12-A: Agenda de hoy (citas/proyectos con fecha hoy + tareas con vencimiento hoy) ===
+    const agenda: AgendaItem[] = [];
+    type Rec = Record<string, unknown>;
+    function agendaItemFor(r: Rec, kind: AgendaItem["kind"], hrefBase: string): AgendaItem {
+      const fechaFull = String(r.fecha || r.fechaInicio || r.fechaLimite || "");
+      const horaRaw = String(r.hora || r.horaInicio || (fechaFull.length > 10 ? fechaFull.slice(11, 16) : "")) || "—";
+      const titulo = String(r.nombre || r.titulo || r.asunto || r.referencia || "Sin título");
+      const sub = String(r.cliente || r.lugar || r.descripcion || r.modalidad || "").slice(0, 60);
+      return { time: horaRaw, title: titulo, subtitle: sub, kind, href: hrefBase + "/" + String(r.id || "") };
+    }
+    // Citas/proyectos con fecha hoy
+    for (const p of (proyectos as Rec[])) {
+      const f = String(p.fecha || p.fechaInicio || "").slice(0, 10);
+      if (f === today) {
+        const tipo = String(p.tipo || p.modalidad || "").toLowerCase();
+        const kind: AgendaItem["kind"] = tipo.includes("teams") || tipo.includes("zoom") || tipo.includes("online")
+          ? "video"
+          : tipo.includes("llamada") || tipo.includes("call")
+          ? "call"
+          : tipo.includes("cita") || tipo.includes("reunion")
+          ? "meeting"
+          : "event";
+        agenda.push(agendaItemFor(p, kind, "/proyectos"));
+      }
+    }
+    // Citas explícitas si el módulo está
+    for (const c of (citas as Rec[])) {
+      const f = String(c.fecha || "").slice(0, 10);
+      if (f === today) agenda.push(agendaItemFor(c, "meeting", "/proyectos"));
+    }
+    // Tareas con vencimiento hoy
+    for (const t of (tareas as Rec[])) {
+      const f = String(t.fechaLimite || "").slice(0, 10);
+      if (f === today) agenda.push(agendaItemFor(t, "task", "/tareas"));
+    }
+    agenda.sort((a, b) => a.time.localeCompare(b.time));
+
     return NextResponse.json({
       ok: true,
       vertical: businessType,
@@ -284,6 +380,8 @@ export async function GET(request: NextRequest) {
       kpis,
       quickActions,
       alerts,
+      pending,
+      agenda: agenda.slice(0, 8),
       recentActivity: allRecent.slice(0, 10),
       generatedAt: new Date().toISOString(),
     });

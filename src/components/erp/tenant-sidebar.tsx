@@ -86,14 +86,17 @@ const FIXED_TOP = [
   { href: "/buscar", label: "Buscar", moduleKey: "_search", icon: "🔍" },
 ];
 
-// H9-A1 — Categorías agrupadoras del sidebar.
-type SidebarCategory = "operacion" | "administracion" | "comunicacion" | "reportes" | "configuracion";
-const CATEGORY_ORDER: SidebarCategory[] = ["operacion", "administracion", "comunicacion", "reportes", "configuracion"];
+// H12-B — Categorías agrupadoras del sidebar (4 categorías, mockup limpio).
+//   Operación → el día a día (clientes, ventas, agenda, tareas, comunicación).
+//   Administración → finanzas, compras, inventario.
+//   Analítica → reportes, indicadores, estadísticas.
+//   Configuración → ajustes, equipo, integraciones.
+type SidebarCategory = "operacion" | "administracion" | "analitica" | "configuracion";
+const CATEGORY_ORDER: SidebarCategory[] = ["operacion", "administracion", "analitica", "configuracion"];
 const CATEGORY_LABEL: Record<SidebarCategory, string> = {
   operacion: "Operación",
   administracion: "Administración",
-  comunicacion: "Comunicación",
-  reportes: "Reportes",
+  analitica: "Analítica",
   configuracion: "Configuración",
 };
 const MODULE_CATEGORY: Record<string, SidebarCategory> = {
@@ -110,6 +113,11 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   "vista-kanban": "operacion",
   "vista-gantt": "operacion",
   calendario: "operacion",
+  eventos: "operacion",
+  // Comunicación (fusionada en Operación)
+  comunicaciones: "operacion",
+  mensajes: "operacion",
+  "avisos-programados": "operacion",
   // Académico (colegio)
   docentes: "operacion",
   horarios: "operacion",
@@ -127,7 +135,6 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   visitantes: "operacion",
   tramites: "operacion",
   egresados: "operacion",
-  eventos: "operacion",
   // Administración — finanzas y stock
   presupuestos: "administracion",
   facturacion: "administracion",
@@ -150,15 +157,10 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   cau: "administracion",
   tickets: "administracion",
   "catalogo-servicios": "administracion",
-  // Comunicación
-  comunicaciones: "comunicacion",
-  mensajes: "comunicacion",
-  encuestas: "comunicacion",
-  "avisos-programados": "comunicacion",
-  plantillas: "comunicacion",
-  // Reportes
-  reportes: "reportes",
-  "estadistica-ventas": "reportes",
+  // Analítica — reportes y métricas
+  reportes: "analitica",
+  "estadistica-ventas": "analitica",
+  encuestas: "analitica",
   // Configuración — administración del sistema
   empleados: "configuracion",
   personal: "configuracion",
@@ -170,6 +172,7 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   integraciones: "configuracion",
   asistente: "configuracion",
   etiquetas: "configuracion",
+  plantillas: "configuracion",
   "tipos-cliente": "configuracion",
   "tipos-servicio": "configuracion",
   "tipos-urgencia": "configuracion",
@@ -317,11 +320,27 @@ export default function TenantSidebar() {
   const pathname = usePathname() || "/";
   const [config, setConfig] = useState<RuntimeConfig | null>(null);
   const [open, setOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const [params, setParams] = useState({ tenant: "", sectorPack: "" });
 
   useEffect(() => {
     setParams(readQueryParams());
+    if (typeof window !== "undefined") {
+      try {
+        setCollapsed(window.localStorage.getItem("prontara-sidebar-collapsed") === "1");
+      } catch { /* ignore */ }
+    }
   }, []);
+
+  function toggleCollapsed() {
+    const next = !collapsed;
+    setCollapsed(next);
+    if (typeof window !== "undefined") {
+      try { window.localStorage.setItem("prontara-sidebar-collapsed", next ? "1" : "0"); } catch { /* ignore */ }
+      // Notifica al shell para que ajuste el margin del main
+      window.dispatchEvent(new CustomEvent("prontara-sidebar-toggle", { detail: { collapsed: next } }));
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -428,35 +447,62 @@ export default function TenantSidebar() {
     return pathname === path || pathname.startsWith(path + "/");
   }
 
-  // Bloque visual común: lo renderizamos en un <aside> fijo en desktop y
-  // dentro del drawer en mobile.
+  // H12-B — Bloque visual común. Si collapsed, oculta labels y categorías.
   const navContent = (
     <nav
       style={{
         display: "flex",
         flexDirection: "column",
-        gap: 4,
-        padding: "20px 12px 16px",
+        gap: 2,
+        padding: collapsed ? "16px 8px 12px" : "20px 12px 16px",
         height: "100%",
         boxSizing: "border-box",
       }}
     >
-      <div style={{ padding: "0 8px 16px", borderBottom: "1px solid #e5e7eb", marginBottom: 12 }}>
-        <Link
-          href={buildHref("/", params)}
+      {/* Logo con icono hexagonal */}
+      <Link
+        href={buildHref("/", params)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: collapsed ? "0 0 14px" : "0 8px 16px",
+          borderBottom: "1px solid #e5e7eb",
+          marginBottom: 14,
+          textDecoration: "none",
+          justifyContent: collapsed ? "center" : "flex-start",
+        }}
+        title={displayName}
+      >
+        <span
+          aria-hidden
           style={{
-            textDecoration: "none",
-            color: accent,
-            fontSize: 18,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            background: accent,
+            color: "#ffffff",
+            fontSize: 16,
             fontWeight: 800,
-            letterSpacing: -0.3,
-            display: "block",
+            flexShrink: 0,
           }}
         >
-          {displayName}
-        </Link>
-        <div style={{ fontSize: 11, color: "#6b7280", marginTop: 2 }}>Panel del cliente</div>
-      </div>
+          {(displayName || "P").charAt(0).toUpperCase()}
+        </span>
+        {!collapsed ? (
+          <div style={{ minWidth: 0 }}>
+            <div style={{ color: "#0f172a", fontSize: 15, fontWeight: 800, letterSpacing: -0.2, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {displayName}
+            </div>
+            <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2, fontWeight: 500 }}>
+              Panel del cliente
+            </div>
+          </div>
+        ) : null}
+      </Link>
 
       {FIXED_TOP.map((item) => {
         const href = buildHref(item.href, params);
@@ -465,59 +511,69 @@ export default function TenantSidebar() {
           <Link
             key={item.moduleKey}
             href={href}
+            title={collapsed ? item.label : undefined}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 10,
-              padding: "9px 12px",
+              gap: 12,
+              padding: collapsed ? "10px 0" : "9px 12px",
+              justifyContent: collapsed ? "center" : "flex-start",
               borderRadius: 8,
               textDecoration: "none",
-              color: active ? "#ffffff" : "#1f2937",
+              color: active ? "#ffffff" : "#374151",
               background: active ? accent : "transparent",
               fontWeight: active ? 700 : 500,
               fontSize: 14,
             }}
             onClick={() => setOpen(false)}
           >
-            <span style={{ fontSize: 16, lineHeight: 1 }}>{item.icon}</span>
-            <span>{item.label}</span>
+            <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>{item.icon}</span>
+            {!collapsed ? <span>{item.label}</span> : null}
           </Link>
         );
       })}
 
-      {/* H9-A1 — Módulos agrupados por categoría */}
+      {/* H12-B — Módulos agrupados por categoría (4 categorías) */}
       {CATEGORY_ORDER.map((cat) => {
         const items = moduleItems.filter((m) => categoriaDe(m.moduleKey) === cat);
         if (items.length === 0) return null;
         return (
-          <div key={cat} style={{ marginTop: 8 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.6, padding: "8px 12px 4px" }}>
-              {CATEGORY_LABEL[cat]}
-            </div>
+          <div key={cat} style={{ marginTop: 10 }}>
+            {!collapsed ? (
+              <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.7, padding: "8px 12px 6px" }}>
+                {CATEGORY_LABEL[cat]}
+              </div>
+            ) : (
+              <div style={{ borderTop: "1px solid #f1f5f9", margin: "8px 4px" }} />
+            )}
             {items.map((item) => {
               const active = isActive(item.href);
               return (
                 <Link
                   key={item.moduleKey}
                   href={item.href}
+                  title={collapsed ? item.label : undefined}
                   style={{
                     display: "flex",
                     alignItems: "center",
-                    gap: 10,
-                    padding: "7px 12px",
+                    gap: 12,
+                    padding: collapsed ? "8px 0" : "7px 12px",
+                    justifyContent: collapsed ? "center" : "flex-start",
                     borderRadius: 8,
                     textDecoration: "none",
-                    color: active ? "#ffffff" : "#1f2937",
+                    color: active ? "#ffffff" : "#374151",
                     background: active ? accent : "transparent",
                     fontWeight: active ? 700 : 500,
                     fontSize: 13,
                   }}
                   onClick={() => setOpen(false)}
                 >
-                  <span style={{ fontSize: 15, lineHeight: 1 }}>{item.icon}</span>
-                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {item.label}
-                  </span>
+                  <span style={{ fontSize: 15, lineHeight: 1, flexShrink: 0 }}>{item.icon}</span>
+                  {!collapsed ? (
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {item.label}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -527,9 +583,36 @@ export default function TenantSidebar() {
 
       <div style={{ flex: 1 }} />
 
-      <div style={{ fontSize: 11, color: "#9ca3af", padding: "12px 8px", borderTop: "1px solid #e5e7eb" }}>
-        Pulsa <strong style={{ color: "#374151" }}>?</strong> para ayuda · powered by Prontara
-      </div>
+      {/* Botón Colapsar al fondo */}
+      <button
+        type="button"
+        onClick={toggleCollapsed}
+        title={collapsed ? "Expandir menú" : "Colapsar menú"}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          justifyContent: collapsed ? "center" : "flex-start",
+          padding: collapsed ? "10px 0" : "9px 12px",
+          marginTop: 8,
+          borderTop: "1px solid #e5e7eb",
+          paddingTop: 12,
+          background: "transparent",
+          border: "none",
+          borderTopColor: "#e5e7eb",
+          borderTopWidth: 1,
+          borderTopStyle: "solid",
+          color: "#6b7280",
+          fontSize: 12,
+          fontWeight: 600,
+          cursor: "pointer",
+          width: "100%",
+          textAlign: "left",
+        }}
+      >
+        <span style={{ fontSize: 14, lineHeight: 1 }}>{collapsed ? "›" : "‹"}</span>
+        {!collapsed ? <span>Colapsar</span> : null}
+      </button>
     </nav>
   );
 
@@ -566,12 +649,14 @@ export default function TenantSidebar() {
           position: "fixed",
           top: 0,
           left: 0,
-          width: 240,
+          width: collapsed ? 64 : 240,
           height: "100vh",
           background: "#ffffff",
           borderRight: "1px solid #e5e7eb",
           overflowY: "auto",
+          overflowX: "hidden",
           zIndex: 40,
+          transition: "width 180ms ease",
         }}
       >
         {navContent}
