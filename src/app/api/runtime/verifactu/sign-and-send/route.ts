@@ -3,6 +3,7 @@ import { requireTenantSession } from "@/lib/saas/auth-session";
 import { withPrisma, getPersistenceBackend } from "@/lib/persistence/db";
 import { decryptString, encryptString } from "@/lib/saas/crypto-vault";
 import { signXmlEnveloped } from "@/lib/verticals/xmldsig";
+import { sendToAeat, getAeatEndpoint } from "@/lib/verticals/verifactu-aeat-client";
 import { captureError } from "@/lib/observability/error-capture";
 
 /**
@@ -23,9 +24,8 @@ import { captureError } from "@/lib/observability/error-capture";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 30;
-
-const AEAT_ENDPOINT_SANDBOX = "https://prewww1.aeat.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP";
-const AEAT_ENDPOINT_PROD = "https://www1.agenciatributaria.gob.es/wlpl/TIKE-CONT/ws/SistemaFacturacion/VerifactuSOAP";
+// Constantes de endpoint movidas a `lib/verticals/verifactu-aeat-client`
+// junto con la lógica SOAP+mTLS (H14-C).
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,49 +74,20 @@ export async function POST(request: NextRequest) {
         return { error: "Firma XML-DSig falló. Verifica que el certificado y la clave coincidan." };
       }
 
-      // Envío AEAT
-      const useProd = String(process.env.VERIFACTU_PROD || "").trim() === "true";
-      const endpoint = useProd ? AEAT_ENDPOINT_PROD : AEAT_ENDPOINT_SANDBOX;
-      let aeatResponse = "";
-      let csvHuella: string | null = null;
-      let aeatStatus: "sent" | "error" = "error";
-      try {
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 15000);
-        const r = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "text/xml; charset=utf-8",
-            "SOAPAction": "",
-          },
-          body: signedXml,
-          signal: ctrl.signal,
-        });
-        clearTimeout(timer);
-        aeatResponse = await r.text();
-        // Buscar CSV en la respuesta (best-effort — el formato real lo
-        // define AEAT con WSDL específico)
-        const csvMatch = aeatResponse.match(/<[^>]*csv[^>]*>([^<]+)</i);
-        if (r.ok && csvMatch) {
-          csvHuella = csvMatch[1];
-          aeatStatus = "sent";
-        } else if (r.ok) {
-          aeatStatus = "sent";
-          csvHuella = "OK-" + Date.now(); // placeholder si no parsea CSV
-        } else {
-          aeatStatus = "error";
-        }
-      } catch (err) {
-        await c.verifactuSubmission.update({
-          where: { id: submissionId },
-          data: {
-            status: "error",
-            errorMsg: "Envío AEAT falló: " + (err instanceof Error ? err.message : String(err)),
-            xmlPayload: encryptString(signedXml),
-          },
-        });
-        return { error: "Envío AEAT falló: " + (err instanceof Error ? err.message : "timeout") };
-      }
+      // H14-C: envío AEAT vía cliente dedicado con SOAP envelope + mTLS.
+      const sendResult = await sendToAeat({
+        signedXml,
+        certPem,
+        keyPem,
+        keyPassphrase: process.env.VERIFACTU_CERT_PASSWORD || undefined,
+      });
+      const aeatResponse = sendResult.rawResponse;
+      const csvHuella = sendResult.csvHuella;
+      const aeatStatus: "sent" | "rejected" | "error" = sendResult.status;
+
+      const errorMsg = sendResult.errorMsg
+        ? sendResult.errorMsg + (sendResult.errorCode ? " [" + sendResult.errorCode + "]" : "")
+        : (aeatStatus !== "sent" ? aeatResponse.slice(0, 1000) : null);
 
       await c.verifactuSubmission.update({
         where: { id: submissionId },
@@ -125,15 +96,17 @@ export async function POST(request: NextRequest) {
           xmlPayload: encryptString(signedXml),
           csvHuella: csvHuella ? encryptString(csvHuella) : null,
           sentAt: aeatStatus === "sent" ? new Date() : null,
-          errorMsg: aeatStatus === "error" ? aeatResponse.slice(0, 1000) : null,
+          errorMsg,
         },
       });
 
       return {
-        ok: true,
+        ok: aeatStatus === "sent",
         status: aeatStatus,
         csvHuella,
-        environment: useProd ? "production" : "sandbox",
+        environment: String(process.env.VERIFACTU_PROD || "").trim() === "true" ? "production" : "sandbox",
+        endpoint: getAeatEndpoint(),
+        errorMsg,
       };
     });
 

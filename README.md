@@ -7,21 +7,45 @@ ERP online multi-tenant para pymes pequeñas, con una arquitectura de dos capas:
 
 Ambas capas viven en la misma app Next.js (App Router, React 19, TypeScript). La persistencia operativa se apoya hoy en ficheros JSON por tenant y está preparada para migrar a base de datos relacional manteniendo la misma interfaz (ver `docs/persistence-migration-plan.md`).
 
-## Arranque
+## Arranque rápido
 
-Requisitos: Node 20+, pnpm.
+Requisitos: **Node 20+** y **pnpm 9+**.
 
 ```bash
+# 1. Instalar dependencias
 pnpm install
-cp .env.example .env       # luego ajusta SESSION_SECRET, DATABASE_URL, STRIPE_*
-pnpm dev                   # servidor de desarrollo en http://localhost:3000
+
+# 2. Variables de entorno
+cp .env.example .env.local
+# Genera un secreto fuerte:
+openssl rand -hex 32          # pega el resultado en PRONTARA_SESSION_SECRET
+
+# 3. (Opcional) Base de datos Postgres — solo si PRONTARA_PERSISTENCE=postgres
+# Crea cuenta gratis en https://neon.tech, copia la connection string a DATABASE_URL
+pnpm exec prisma generate
+pnpm exec prisma db push
+
+# 4. Sembrar demos pulidos (3 tenants ejemplo)
+pnpm exec tsx scripts/seed-demos.ts   # crea: clinica-dental-demo, colegio-demo, peluqueria-demo
+
+# 5. Arrancar
+pnpm dev                       # http://localhost:3000
 ```
 
-Variables obligatorias en `.env`:
+Tras `pnpm dev` accede a:
 
-- `SESSION_SECRET` — sin ella el arranque falla (ver F-02).
-- `DATABASE_URL` — conexión PostgreSQL. Hoy solo la consumen migraciones de Prisma; el runtime sigue sobre JSON.
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` — necesarias para el alta de pago.
+- `http://localhost:3000` → Factory (panel CEO)
+- `http://localhost:3000/softwarefactory` → ERP demo Software Factory (login con cualquier email creado por seed)
+- `http://localhost:3000/dental`, `/colegio`, `/peluqueria` → otros verticales demo
+
+Las variables OBLIGATORIAS en `.env.local`:
+
+| Variable | Por qué |
+|----------|---------|
+| `PRONTARA_SESSION_SECRET` | sin ella el arranque falla en producción |
+| `DATABASE_URL` | solo si `PRONTARA_PERSISTENCE=postgres` |
+
+Todas las demás son opcionales — desactivan funcionalidad concreta (Stripe, AI, SSO, Verifactu) si faltan pero no rompen el build. Ver `.env.example` con la lista completa documentada.
 
 ## Scripts
 
