@@ -45,6 +45,10 @@ const KNOWN_MODULES = new Set<string>([
   "reservas", "rrhh", "salidas", "suscripcion", "tareas", "tickets",
   "timesheets", "tramites", "transporte", "vista-gantt", "vista-kanban",
   "visitantes", "workflows",
+  // H13-D — subrutas operativas tenant que estaban bajo /software-factory/
+  // y subruta del portal cliente.
+  "proyectos-riesgo", "propuestas-estancadas", "facturas-vencidas",
+  "portal-cliente",
 ]);
 
 function isWhitelisted(pathname: string): boolean {

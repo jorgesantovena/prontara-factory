@@ -69,6 +69,9 @@ export async function POST(request: NextRequest) {
       tenantId: updated.tenantId,
       clientId: updated.clientId,
       slug: updated.slug,
+      // H13-C/D: preservar businessType del session previo para que el
+      // middleware siga sabiendo a qué vertical pertenece tras refresh.
+      businessType: session.businessType,
       email: updated.email,
       fullName: updated.fullName,
       role: updated.role,

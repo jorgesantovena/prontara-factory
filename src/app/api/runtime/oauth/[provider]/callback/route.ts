@@ -127,6 +127,9 @@ export async function GET(
     tenantId: account.tenantId,
     clientId: account.clientId,
     slug: account.slug,
+    // H13-C/D: businessType en cookie para que el middleware
+    // pueda redirigir rutas viejas al vertical correcto.
+    businessType: String(tenant.businessType || ""),
     email: account.email,
     fullName: account.fullName,
     role: account.role as TenantSessionUser["role"],

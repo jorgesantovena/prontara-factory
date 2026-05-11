@@ -1,8 +1,9 @@
 /**
  * Listas operativas del vertical Software Factory.
  *
- * Alimentan las páginas focales /software-factory/proyectos-riesgo,
- * /software-factory/propuestas-estancadas y /software-factory/facturas-vencidas.
+ * Alimentan las páginas focales /softwarefactory/proyectos-riesgo,
+ * /softwarefactory/propuestas-estancadas y /softwarefactory/facturas-vencidas
+ * (H13-D — antes vivían bajo /software-factory/*, ahora bajo [vertical]/).
  *
  * Cada función recibe el clientId del tenant y lee los módulos relevantes
  * via listModuleRecords (misma fuente que overview.ts). Devuelve rows

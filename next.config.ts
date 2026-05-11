@@ -66,13 +66,11 @@ const securityHeaders = [
   },
 ];
 
-// Next 16 reconoce `eslint.ignoreDuringBuilds` en runtime pero los tipos
-// de NextConfig todavía no lo declaran. Extendemos el tipo localmente.
-type NextConfigWithEslint = NextConfig & {
-  eslint?: { ignoreDuringBuilds?: boolean; dirs?: string[] };
-};
-
-const nextConfig: NextConfigWithEslint = {
+// H13-D: Next 16 eliminó la opción `eslint` de next.config (next lint
+// se separó). El build ya no corre ESLint automáticamente, así que
+// ignoreDuringBuilds es innecesario. Para lint local sigue funcionando
+// `pnpm exec eslint .` directamente.
+const nextConfig: NextConfig = {
   // Paquetes que NO deben ser bundled por Webpack/Turbopack y se cargan
   // como módulos Node nativos en runtime serverless. Necesario para libs
   // que usan APIs Node específicas, exports CJS poco estándar, o assets
@@ -148,14 +146,11 @@ const nextConfig: NextConfigWithEslint = {
     ],
   },
 
-  // ESLint: NO bloqueamos el deploy por errores de lint. Los avisos
-  // tipo `no-unused-vars` o `unused eslint-disable directive` son
-  // cosmética que no afecta runtime — los limpiamos en local con
-  // `pnpm lint --fix` cuando da tiempo, pero no detienen producción.
-  // tsc sigue siendo estricto y SÍ bloquea (es el canario de tipos).
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  // H13-D: Next 16 ya no corre ESLint automáticamente en `next build`,
+  // así que la opción `eslint.ignoreDuringBuilds` no es necesaria (y ahora
+  // ni siquiera está en NextConfig). El typecheck con tsc sigue siendo
+  // estricto y SÍ bloquea (es el canario de tipos). Lint local: `pnpm exec
+  // eslint .` directamente.
 
   async headers() {
     return [
