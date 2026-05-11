@@ -372,9 +372,19 @@ export default function TenantSidebar() {
         if (!enabled) continue;
       }
     } else if (config) {
-      // Si hay config y el módulo está deshabilitado, lo saltamos.
+      // FIX-SIDEBAR: solo mostramos módulos que el pack del tenant
+      // habilita explícitamente. Si el módulo NO está en config.modules
+      // (porque pertenece a otro vertical) o está deshabilitado, lo
+      // saltamos. Antes el bug permitía ver módulos de COLEGIO en SF
+      // porque MODULE_ORDER los listaba y la condición previa
+      // (m && m.enabled === false) los dejaba pasar al ser m undefined.
       const m = config.modules.find((mm) => mm.moduleKey === key);
-      if (m && m.enabled === false) continue;
+      if (!m || m.enabled === false) continue;
+    } else {
+      // Sin config (cargando): no mostramos nada del catálogo de módulos
+      // para evitar el flash de "todos los módulos del mundo". El usuario
+      // verá brevemente solo Inicio + Buscar mientras llega la respuesta.
+      continue;
     }
     moduleItems.push({
       href: buildHref("/" + key, params),

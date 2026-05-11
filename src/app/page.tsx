@@ -157,6 +157,11 @@ function statusBadge(status: "listo" | "casi-listo" | "arrancando"): { text: str
   return { text: "Arrancando", bg: "#e0f2fe", fg: "#075985" };
 }
 
+// FIX-SIDEBAR: feature flag para el bloque de onboarding del home.
+// Mantenerlo en false hasta que el ERP esté terminado — no queremos
+// empujar al usuario por una guía que pase por flujos incompletos.
+const SHOW_ONBOARDING = false;
+
 export default function HomePage() {
   const [state, setState] = useState<
     | { kind: "loading" }
@@ -477,8 +482,13 @@ export default function HomePage() {
           );
         })() : null}
 
-        {/* Onboarding guiado — Fase 9.1 */}
-        {onboardingSnapshot ? <OnboardingStartPanel snapshot={onboardingSnapshot} /> : null}
+        {/* Onboarding guiado — Fase 9.1
+            DESACTIVADO temporalmente: se reactivará cuando el ERP esté
+            terminado. Mientras hay módulos en desarrollo no queremos
+            empujar al usuario por una guía que pueda llevarle a flujos
+            incompletos. La snapshot se sigue computando por si se
+            quiere reactivar (basta con cambiar SHOW_ONBOARDING a true). */}
+        {SHOW_ONBOARDING && onboardingSnapshot && <OnboardingStartPanel snapshot={onboardingSnapshot} />}
 
         {/* Alertas operativas */}
         {data.alerts && data.alerts.length > 0 ? (
