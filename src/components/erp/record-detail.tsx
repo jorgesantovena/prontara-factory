@@ -9,7 +9,7 @@ import Link from "next/link";
  * Header con nombre + badges + acciones primarias.
  * Tabs: Resumen | Datos | Actividad (timeline) | Documentos | Comentarios | Historial
  */
-type Record = Record<string, unknown> & { id: string };
+type RecordData = Record<string, unknown> & { id: string };
 
 type Comment = {
   id: string;
@@ -38,7 +38,7 @@ export default function RecordDetail({
 }: {
   moduleKey: string;
   recordId: string;
-  record: Record;
+  record: RecordData;
   onClose?: () => void;
   accent?: string;
 }) {
