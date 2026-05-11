@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import LoginSidePanel from "@/components/saas/login-side-panel";
 
 function readTenantFromBrowser(): string {
   if (typeof window === "undefined") {
@@ -82,17 +83,16 @@ export default function AccesoPage() {
     <main
       style={{
         minHeight: "100vh",
-        display: "grid",
-        placeItems: "center",
-        padding: 24,
+        display: "flex",
         background: "#f8fafc",
         fontFamily: "Arial, sans-serif",
       }}
     >
+      <div style={{ flex: 1, display: "grid", placeItems: "center", padding: 24 }}>
       <section
         style={{
           width: "100%",
-          maxWidth: 560,
+          maxWidth: 480,
           border: "1px solid #e5e7eb",
           borderRadius: 16,
           background: "#ffffff",
@@ -247,6 +247,8 @@ export default function AccesoPage() {
           </div>
         ) : null}
       </section>
+      </div>
+      <LoginSidePanel />
     </main>
   );
 }

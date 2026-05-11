@@ -1,6 +1,9 @@
 "use client";
 
 import TenantSidebar from "@/components/erp/tenant-sidebar";
+import DashboardTopBar from "@/components/erp/dashboard-topbar";
+import HelpPanel from "@/components/erp/help-panel";
+import FirstTimeTour from "@/components/erp/first-time-tour";
 
 /**
  * Wrapper del runtime del tenant: añade la sidebar lateral fija a la
@@ -34,12 +37,18 @@ export default function TenantShell({
           marginLeft: 240,
           minHeight: "100vh",
           background: contentBackground,
-          padding: contentPadding,
           boxSizing: "border-box",
         }}
       >
-        {children}
+        {/* H9-A2 — TopBar profesional con saludo, sede, notificaciones */}
+        <DashboardTopBar />
+        <div style={{ padding: contentPadding }}>
+          {children}
+        </div>
       </main>
+
+      <HelpPanel />
+      <FirstTimeTour />
 
       <style>{`
         @media (max-width: 900px) {

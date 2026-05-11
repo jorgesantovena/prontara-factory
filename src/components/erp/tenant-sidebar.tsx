@@ -86,6 +86,102 @@ const FIXED_TOP = [
   { href: "/buscar", label: "Buscar", moduleKey: "_search", icon: "🔍" },
 ];
 
+// H9-A1 — Categorías agrupadoras del sidebar.
+type SidebarCategory = "operacion" | "administracion" | "comunicacion" | "reportes" | "configuracion";
+const CATEGORY_ORDER: SidebarCategory[] = ["operacion", "administracion", "comunicacion", "reportes", "configuracion"];
+const CATEGORY_LABEL: Record<SidebarCategory, string> = {
+  operacion: "Operación",
+  administracion: "Administración",
+  comunicacion: "Comunicación",
+  reportes: "Reportes",
+  configuracion: "Configuración",
+};
+const MODULE_CATEGORY: Record<string, SidebarCategory> = {
+  // Operación — el día a día
+  clientes: "operacion",
+  crm: "operacion",
+  proyectos: "operacion",
+  produccion: "operacion",
+  tareas: "operacion",
+  actividades: "operacion",
+  reservas: "operacion",
+  caja: "operacion",
+  "puntos-venta": "operacion",
+  "vista-kanban": "operacion",
+  "vista-gantt": "operacion",
+  calendario: "operacion",
+  // Académico (colegio)
+  docentes: "operacion",
+  horarios: "operacion",
+  planeaciones: "operacion",
+  calificaciones: "operacion",
+  asistencia: "operacion",
+  disciplina: "operacion",
+  orientacion: "operacion",
+  enfermeria: "operacion",
+  transporte: "operacion",
+  comedor: "operacion",
+  biblioteca: "operacion",
+  salidas: "operacion",
+  becas: "operacion",
+  visitantes: "operacion",
+  tramites: "operacion",
+  egresados: "operacion",
+  eventos: "operacion",
+  // Administración — finanzas y stock
+  presupuestos: "administracion",
+  facturacion: "administracion",
+  albaranes: "administracion",
+  "vencimientos-factura": "administracion",
+  compras: "administracion",
+  productos: "administracion",
+  bodegas: "administracion",
+  kardex: "administracion",
+  documentos: "administracion",
+  gastos: "administracion",
+  desplazamientos: "administracion",
+  inventario: "administracion",
+  mantenimiento: "administracion",
+  "tarifas-generales": "administracion",
+  "tarifas-especiales": "administracion",
+  "clases-condicion": "administracion",
+  "formas-pago": "administracion",
+  "cuentas-bancarias": "administracion",
+  cau: "administracion",
+  tickets: "administracion",
+  "catalogo-servicios": "administracion",
+  // Comunicación
+  comunicaciones: "comunicacion",
+  mensajes: "comunicacion",
+  encuestas: "comunicacion",
+  "avisos-programados": "comunicacion",
+  plantillas: "comunicacion",
+  // Reportes
+  reportes: "reportes",
+  "estadistica-ventas": "reportes",
+  // Configuración — administración del sistema
+  empleados: "configuracion",
+  personal: "configuracion",
+  equipo: "configuracion",
+  ajustes: "configuracion",
+  "ajustes-cuenta": "configuracion",
+  "ajustes-campos": "configuracion",
+  workflows: "configuracion",
+  integraciones: "configuracion",
+  asistente: "configuracion",
+  etiquetas: "configuracion",
+  "tipos-cliente": "configuracion",
+  "tipos-servicio": "configuracion",
+  "tipos-urgencia": "configuracion",
+  "actividades-catalogo": "configuracion",
+  "zonas-comerciales": "configuracion",
+  "grupos-empresa": "configuracion",
+  aplicaciones: "configuracion",
+};
+function categoriaDe(moduleKey: string): SidebarCategory {
+  return MODULE_CATEGORY[moduleKey] || "operacion";
+}
+
 // Iconos por módulo (emoji simple para no añadir dependencia de iconos SVG).
 const MODULE_ICON: Record<string, string> = {
   clientes: "👥",
@@ -379,35 +475,43 @@ export default function TenantSidebar() {
         );
       })}
 
-      <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.5, padding: "16px 12px 6px" }}>
-        Módulos
-      </div>
-
-      {moduleItems.map((item) => {
-        const active = isActive(item.href);
+      {/* H9-A1 — Módulos agrupados por categoría */}
+      {CATEGORY_ORDER.map((cat) => {
+        const items = moduleItems.filter((m) => categoriaDe(m.moduleKey) === cat);
+        if (items.length === 0) return null;
         return (
-          <Link
-            key={item.moduleKey}
-            href={item.href}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              padding: "9px 12px",
-              borderRadius: 8,
-              textDecoration: "none",
-              color: active ? "#ffffff" : "#1f2937",
-              background: active ? accent : "transparent",
-              fontWeight: active ? 700 : 500,
-              fontSize: 14,
-            }}
-            onClick={() => setOpen(false)}
-          >
-            <span style={{ fontSize: 16, lineHeight: 1 }}>{item.icon}</span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {item.label}
-            </span>
-          </Link>
+          <div key={cat} style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#9ca3af", textTransform: "uppercase", letterSpacing: 0.6, padding: "8px 12px 4px" }}>
+              {CATEGORY_LABEL[cat]}
+            </div>
+            {items.map((item) => {
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.moduleKey}
+                  href={item.href}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "7px 12px",
+                    borderRadius: 8,
+                    textDecoration: "none",
+                    color: active ? "#ffffff" : "#1f2937",
+                    background: active ? accent : "transparent",
+                    fontWeight: active ? 700 : 500,
+                    fontSize: 13,
+                  }}
+                  onClick={() => setOpen(false)}
+                >
+                  <span style={{ fontSize: 15, lineHeight: 1 }}>{item.icon}</span>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {item.label}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         );
       })}
 
