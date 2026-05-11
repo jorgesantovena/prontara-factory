@@ -86,19 +86,27 @@ const FIXED_TOP = [
   { href: "/buscar", label: "Buscar", moduleKey: "_search", icon: "🔍" },
 ];
 
-// H12-B — Categorías agrupadoras del sidebar (4 categorías, mockup limpio).
+// H12-B + H12-E — Categorías agrupadoras del sidebar.
 //   Operación → el día a día (clientes, ventas, agenda, tareas, comunicación).
-//   Administración → finanzas, compras, inventario.
+//   Administración → finanzas, compras, inventario activos.
 //   Analítica → reportes, indicadores, estadísticas.
-//   Configuración → ajustes, equipo, integraciones.
-type SidebarCategory = "operacion" | "administracion" | "analitica" | "configuracion";
-const CATEGORY_ORDER: SidebarCategory[] = ["operacion", "administracion", "analitica", "configuracion"];
+//   Configuración → ajustes y módulos del sistema (asistente, equipo, integraciones).
+//   Maestros → tablas maestras de configuración avanzada (tipos *, tarifas,
+//     formas de pago, cuentas bancarias...). Colapsada por defecto para no
+//     saturar la sidebar — el usuario las toca una vez al mes.
+type SidebarCategory = "operacion" | "administracion" | "analitica" | "configuracion" | "maestros";
+const CATEGORY_ORDER: SidebarCategory[] = ["operacion", "administracion", "analitica", "configuracion", "maestros"];
 const CATEGORY_LABEL: Record<SidebarCategory, string> = {
   operacion: "Operación",
   administracion: "Administración",
   analitica: "Analítica",
   configuracion: "Configuración",
+  maestros: "Maestros",
 };
+// Las categorías en este set arrancan colapsadas (solo se ve el header,
+// click expande). El usuario puede expandirlas — la elección persiste en
+// localStorage por categoría.
+const COLLAPSED_BY_DEFAULT: Set<SidebarCategory> = new Set(["maestros"]);
 const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   // Operación — el día a día
   clientes: "operacion",
@@ -135,7 +143,7 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   visitantes: "operacion",
   tramites: "operacion",
   egresados: "operacion",
-  // Administración — finanzas y stock
+  // Administración — finanzas y stock (cosas que se tocan a diario/semana)
   presupuestos: "administracion",
   facturacion: "administracion",
   albaranes: "administracion",
@@ -149,21 +157,13 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   desplazamientos: "administracion",
   inventario: "administracion",
   mantenimiento: "administracion",
-  "tarifas-generales": "administracion",
-  "tarifas-especiales": "administracion",
-  "clases-condicion": "administracion",
-  "formas-pago": "administracion",
-  "cuentas-bancarias": "administracion",
   cau: "administracion",
   tickets: "administracion",
-  "catalogo-servicios": "administracion",
   // Analítica — reportes y métricas
   reportes: "analitica",
   "estadistica-ventas": "analitica",
   encuestas: "analitica",
-  // Configuración — administración del sistema
-  empleados: "configuracion",
-  personal: "configuracion",
+  // Configuración — accesos del usuario (asistente, ajustes, perfil, equipo)
   equipo: "configuracion",
   ajustes: "configuracion",
   "ajustes-cuenta": "configuracion",
@@ -171,15 +171,24 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   workflows: "configuracion",
   integraciones: "configuracion",
   asistente: "configuracion",
-  etiquetas: "configuracion",
-  plantillas: "configuracion",
-  "tipos-cliente": "configuracion",
-  "tipos-servicio": "configuracion",
-  "tipos-urgencia": "configuracion",
-  "actividades-catalogo": "configuracion",
-  "zonas-comerciales": "configuracion",
-  "grupos-empresa": "configuracion",
-  aplicaciones: "configuracion",
+  empleados: "configuracion",
+  personal: "configuracion",
+  // Maestros — tablas de catálogo y configuración avanzada (uso esporádico)
+  "catalogo-servicios": "maestros",
+  aplicaciones: "maestros",
+  etiquetas: "maestros",
+  plantillas: "maestros",
+  "tarifas-generales": "maestros",
+  "tarifas-especiales": "maestros",
+  "clases-condicion": "maestros",
+  "formas-pago": "maestros",
+  "cuentas-bancarias": "maestros",
+  "tipos-cliente": "maestros",
+  "tipos-servicio": "maestros",
+  "tipos-urgencia": "maestros",
+  "actividades-catalogo": "maestros",
+  "zonas-comerciales": "maestros",
+  "grupos-empresa": "maestros",
 };
 function categoriaDe(moduleKey: string): SidebarCategory {
   return MODULE_CATEGORY[moduleKey] || "operacion";
@@ -187,18 +196,22 @@ function categoriaDe(moduleKey: string): SidebarCategory {
 
 // Iconos por módulo (emoji simple para no añadir dependencia de iconos SVG).
 const MODULE_ICON: Record<string, string> = {
+  // Operación
   clientes: "👥",
   crm: "🎯",
   proyectos: "🛠️",
   produccion: "🏭",
-  presupuestos: "📄",
-  facturacion: "💶",
-  documentos: "📎",
-  "catalogo-servicios": "📚",
-  asistente: "💬",
-  equipo: "👤",
-  ajustes: "⚙️",
-  // SCHOOL-03
+  actividades: "⏱️",
+  tareas: "✔️",
+  reservas: "📅",
+  caja: "💰",
+  "puntos-venta": "🏪",
+  "avisos-programados": "🔔",
+  calendario: "🗓️",
+  eventos: "🎉",
+  comunicaciones: "📢",
+  mensajes: "💬",
+  // Académico (colegio)
   docentes: "👨‍🏫",
   horarios: "🕐",
   planeaciones: "📋",
@@ -210,26 +223,56 @@ const MODULE_ICON: Record<string, string> = {
   transporte: "🚌",
   comedor: "🍽️",
   biblioteca: "📖",
-  actividades: "🎨",
   salidas: "🚶",
   becas: "🎓",
-  comunicaciones: "📢",
-  eventos: "📅",
   visitantes: "🚪",
   tramites: "📝",
-  inventario: "📦",
-  mantenimiento: "🔧",
-  personal: "💼",
   egresados: "🎓",
-  // CORE-03
-  tareas: "✔️",
-  tickets: "🎫",
+  // Administración — finanzas y stock
+  presupuestos: "📄",
+  facturacion: "💶",
+  albaranes: "📦",
+  "vencimientos-factura": "⏰",
   compras: "🛒",
   productos: "🏷️",
-  reservas: "📌",
-  encuestas: "📊",
+  bodegas: "🏬",
+  kardex: "📈",
+  documentos: "📎",
+  gastos: "💸",
+  desplazamientos: "🚗",
+  inventario: "📦",
+  mantenimiento: "🔧",
+  cau: "🎧",
+  tickets: "🎫",
+  "catalogo-servicios": "📚",
+  // Analítica
+  reportes: "📊",
+  "estadistica-ventas": "📈",
+  encuestas: "📝",
+  // Configuración / Maestros
+  asistente: "💬",
+  equipo: "👤",
+  ajustes: "⚙️",
+  "ajustes-cuenta": "👤",
+  "ajustes-campos": "🧩",
+  workflows: "🔀",
+  integraciones: "🔌",
   etiquetas: "🏷",
-  plantillas: "📄",
+  plantillas: "📑",
+  aplicaciones: "📱",
+  empleados: "👔",
+  personal: "💼",
+  "tipos-cliente": "🔖",
+  "tipos-servicio": "🔖",
+  "tipos-urgencia": "🚨",
+  "actividades-catalogo": "📋",
+  "zonas-comerciales": "🗺️",
+  "grupos-empresa": "🏢",
+  "tarifas-generales": "💲",
+  "tarifas-especiales": "💎",
+  "clases-condicion": "🏷️",
+  "formas-pago": "💳",
+  "cuentas-bancarias": "🏦",
 };
 
 const FALLBACK_LABELS: Record<string, string> = {
@@ -322,12 +365,31 @@ export default function TenantSidebar() {
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [params, setParams] = useState({ tenant: "", sectorPack: "" });
+  // H12-E: expansion por categoría (Maestros arranca colapsada).
+  const [expandedCats, setExpandedCats] = useState<Record<SidebarCategory, boolean>>(() => {
+    const init: Record<SidebarCategory, boolean> = {
+      operacion: true,
+      administracion: true,
+      analitica: true,
+      configuracion: true,
+      maestros: false,
+    };
+    return init;
+  });
 
   useEffect(() => {
     setParams(readQueryParams());
     if (typeof window !== "undefined") {
       try {
         setCollapsed(window.localStorage.getItem("prontara-sidebar-collapsed") === "1");
+      } catch { /* ignore */ }
+      // Restaurar expanded por categoría
+      try {
+        const raw = window.localStorage.getItem("prontara-sidebar-cats");
+        if (raw) {
+          const stored = JSON.parse(raw) as Partial<Record<SidebarCategory, boolean>>;
+          setExpandedCats((prev) => ({ ...prev, ...stored }));
+        }
       } catch { /* ignore */ }
     }
   }, []);
@@ -340,6 +402,16 @@ export default function TenantSidebar() {
       // Notifica al shell para que ajuste el margin del main
       window.dispatchEvent(new CustomEvent("prontara-sidebar-toggle", { detail: { collapsed: next } }));
     }
+  }
+
+  function toggleCategory(cat: SidebarCategory) {
+    setExpandedCats((prev) => {
+      const next = { ...prev, [cat]: !prev[cat] };
+      if (typeof window !== "undefined") {
+        try { window.localStorage.setItem("prontara-sidebar-cats", JSON.stringify(next)); } catch { /* ignore */ }
+      }
+      return next;
+    });
   }
 
   useEffect(() => {
@@ -493,8 +565,19 @@ export default function TenantSidebar() {
           {(displayName || "P").charAt(0).toUpperCase()}
         </span>
         {!collapsed ? (
-          <div style={{ minWidth: 0 }}>
-            <div style={{ color: "#0f172a", fontSize: 15, fontWeight: 800, letterSpacing: -0.2, lineHeight: 1.1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{
+              color: "#0f172a",
+              fontSize: 14,
+              fontWeight: 800,
+              letterSpacing: -0.2,
+              lineHeight: 1.15,
+              display: "-webkit-box",
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: "vertical",
+              overflow: "hidden",
+              wordBreak: "break-word",
+            }}>
               {displayName}
             </div>
             <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2, fontWeight: 500 }}>
@@ -533,20 +616,46 @@ export default function TenantSidebar() {
         );
       })}
 
-      {/* H12-B — Módulos agrupados por categoría (4 categorías) */}
+      {/* H12-B + H12-E — Módulos agrupados por categoría (5 categorías; Maestros colapsable) */}
       {CATEGORY_ORDER.map((cat) => {
         const items = moduleItems.filter((m) => categoriaDe(m.moduleKey) === cat);
         if (items.length === 0) return null;
+        const hasActiveItem = items.some((it) => isActive(it.href));
+        // Si sidebar colapsada → siempre visible (solo iconos, da igual).
+        // Si hay item activo dentro → expandida (no esconder al usuario donde está).
+        // Si no, respetar elección del usuario (Maestros arranca false).
+        const isExpanded = collapsed ? true : (hasActiveItem || expandedCats[cat] !== false);
         return (
           <div key={cat} style={{ marginTop: 10 }}>
             {!collapsed ? (
-              <div style={{ fontSize: 10, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: 0.7, padding: "8px 12px 6px" }}>
-                {CATEGORY_LABEL[cat]}
-              </div>
+              <button
+                type="button"
+                onClick={() => toggleCategory(cat)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  width: "100%",
+                  padding: "8px 12px 6px",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: hasActiveItem ? "#475569" : "#94a3b8",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.7,
+                  textAlign: "left",
+                }}
+                aria-expanded={isExpanded}
+              >
+                <span>{CATEGORY_LABEL[cat]}</span>
+                <span style={{ fontSize: 9, transform: isExpanded ? "rotate(0deg)" : "rotate(-90deg)", transition: "transform 120ms ease" }}>▾</span>
+              </button>
             ) : (
               <div style={{ borderTop: "1px solid #f1f5f9", margin: "8px 4px" }} />
             )}
-            {items.map((item) => {
+            {isExpanded ? items.map((item) => {
               const active = isActive(item.href);
               return (
                 <Link
@@ -576,7 +685,7 @@ export default function TenantSidebar() {
                   ) : null}
                 </Link>
               );
-            })}
+            }) : null}
           </div>
         );
       })}

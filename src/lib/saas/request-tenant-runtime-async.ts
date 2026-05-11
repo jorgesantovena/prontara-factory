@@ -63,9 +63,12 @@ function rebuildBrandingForTenant(tenant: TenantDefinition): TenantBrandingConfi
   const businessType =
     getBrandingValue(branding, "businessType") || tenant.businessType;
   const logoUrl = getBrandingValue(branding, "logoUrl");
+  const pack = businessType ? getSectorPackByKey(businessType) : null;
+  // H12-E: accent del pack como fallback (mismo razonamiento que en rebuildConfigForTenant).
   const accentColor =
     getBrandingValue(branding, "accentColor") ||
-    getBrandingValue(branding, "primaryColor");
+    getBrandingValue(branding, "primaryColor") ||
+    pack?.branding.accentColor;
   const iconUrl = getBrandingValue(branding, "iconUrl");
 
   return {
@@ -98,12 +101,17 @@ function rebuildConfigForTenant(tenant: TenantDefinition): TenantRuntimeConfig {
   const sector = getBrandingValue(branding, "sector") || tenant.sector || "";
   const businessType =
     getBrandingValue(branding, "businessType") || tenant.businessType || "";
+
+  const pack = getSectorPackByKey(businessType);
+  // H12-E: el accentColor del PACK del vertical es prioritario sobre el
+  // gris por defecto. Antes el item activo del sidebar salía negro
+  // (#111827) en tenants sin accentColor propio porque ignorábamos el
+  // del pack. Ahora la cadena es: tenant.branding > pack.branding > gris.
   const accentColor =
     getBrandingValue(branding, "accentColor") ||
     getBrandingValue(branding, "primaryColor") ||
-    "#111827";
-
-  const pack = getSectorPackByKey(businessType);
+    pack?.branding.accentColor ||
+    "#1d4ed8";
   const shortName = pack?.branding.shortName || buildShortName(displayName);
   const logoHint = pack?.branding.logoHint || "logo limpio y profesional";
   const tone: TenantRuntimeConfigBranding["tone"] =
