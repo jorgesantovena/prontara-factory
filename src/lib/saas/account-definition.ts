@@ -51,6 +51,14 @@ export type TenantSessionUser = {
   tenantId: string;
   clientId: string;
   slug: string;
+  /**
+   * businessType del pack sectorial del tenant (software-factory,
+   * clinica-dental, colegio, etc.). Necesario para que el middleware
+   * pueda redirigir rutas viejas /<modulo> → /<vertical>/<modulo>
+   * sin tocar DB en edge runtime (H13-C). Opcional para compatibilidad
+   * con cookies emitidos antes del refactor — se rellena al login.
+   */
+  businessType?: string;
   email: string;
   fullName: string;
   role: TenantAccountRole;

@@ -156,6 +156,9 @@ export async function POST(request: NextRequest) {
       tenantId: account.tenantId,
       clientId: account.clientId,
       slug: account.slug,
+      // H13-C: businessType en la sesión para que el middleware pueda
+      // redirigir rutas viejas /<modulo> → /<vertical>/<modulo> sin DB.
+      businessType: String(context.tenant.businessType || ""),
       accountId: account.id,
       email: account.email,
       fullName: account.fullName,
