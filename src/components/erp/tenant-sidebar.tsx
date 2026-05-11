@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * Sidebar lateral fija del runtime del tenant.
@@ -352,19 +353,32 @@ function readQueryParams() {
   };
 }
 
-function buildHref(base: string, params: { tenant: string; sectorPack: string }) {
+function buildHref(base: string, params: { tenant: string; sectorPack: string; vertical: string | null }) {
+  // H13-A: si hay vertical, prefijamos las rutas tenant-runtime con
+  // /{vertical}/. La home del tenant (/) se convierte en /{vertical}.
+  // Las rutas que ya empiezan por /factory/ o /api/ NO se prefijan.
+  let path = base;
+  if (params.vertical) {
+    if (path === "/") {
+      path = "/" + params.vertical;
+    } else if (path.startsWith("/") && !path.startsWith("/factory") && !path.startsWith("/api") && !path.startsWith("/" + params.vertical)) {
+      path = "/" + params.vertical + path;
+    }
+  }
   const qs: string[] = [];
   if (params.tenant) qs.push("tenant=" + encodeURIComponent(params.tenant));
   if (params.sectorPack) qs.push("sectorPack=" + encodeURIComponent(params.sectorPack));
-  return qs.length === 0 ? base : base + "?" + qs.join("&");
+  return qs.length === 0 ? path : path + "?" + qs.join("&");
 }
 
 export default function TenantSidebar() {
   const pathname = usePathname() || "/";
+  const { vertical } = useCurrentVertical();
   const [config, setConfig] = useState<RuntimeConfig | null>(null);
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
-  const [params, setParams] = useState({ tenant: "", sectorPack: "" });
+  const [paramsBase, setParamsBase] = useState({ tenant: "", sectorPack: "" });
+  const params = { ...paramsBase, vertical };
   // H12-E: expansion por categoría (Maestros arranca colapsada).
   const [expandedCats, setExpandedCats] = useState<Record<SidebarCategory, boolean>>(() => {
     const init: Record<SidebarCategory, boolean> = {
@@ -378,7 +392,7 @@ export default function TenantSidebar() {
   });
 
   useEffect(() => {
-    setParams(readQueryParams());
+    setParamsBase(readQueryParams());
     if (typeof window !== "undefined") {
       try {
         setCollapsed(window.localStorage.getItem("prontara-sidebar-collapsed") === "1");
@@ -417,8 +431,8 @@ export default function TenantSidebar() {
   useEffect(() => {
     let cancelled = false;
     const qs: string[] = [];
-    if (params.tenant) qs.push("tenant=" + encodeURIComponent(params.tenant));
-    if (params.sectorPack) qs.push("sectorPack=" + encodeURIComponent(params.sectorPack));
+    if (paramsBase.tenant) qs.push("tenant=" + encodeURIComponent(paramsBase.tenant));
+    if (paramsBase.sectorPack) qs.push("sectorPack=" + encodeURIComponent(paramsBase.sectorPack));
     const url = "/api/runtime/tenant-config" + (qs.length ? "?" + qs.join("&") : "");
 
     fetch(url, { cache: "no-store" })
@@ -436,7 +450,7 @@ export default function TenantSidebar() {
     return () => {
       cancelled = true;
     };
-  }, [params.tenant, params.sectorPack]);
+  }, [paramsBase.tenant, paramsBase.sectorPack]);
 
   // Construir la lista de módulos a partir de config (orden por MODULE_ORDER + extras al final).
   const moduleItems: Array<{ href: string; label: string; moduleKey: string; icon: string }> = [];
