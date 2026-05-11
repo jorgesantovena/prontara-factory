@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import ErpRecordModal from "@/components/erp/erp-record-modal";
+import ErpRecordEditor from "@/components/erp/erp-record-editor";
 import TenantShell from "@/components/erp/tenant-shell";
 import ModuleExportButton from "@/components/erp/module-export-button";
 import ModuleImportButton from "@/components/erp/module-import-button";
@@ -361,6 +361,41 @@ export default function GenericModuleRuntimePage({
 
   const subtitle = MODULE_SUBTITLE[moduleKey] || ("Gestiona los registros de " + ui.label.toLowerCase() + ".");
 
+  // H12-G — Si estamos creando o editando, mostramos el editor full-page
+  // en lugar del listado. Más limpio que un slideover y permite el
+  // sidebar de info rápida + estadísticas.
+  if (modalMode !== null) {
+    return (
+      <TenantShell>
+        <ErpRecordEditor
+          mode={modalMode}
+          moduleKey={moduleKey}
+          moduleLabel={ui.label}
+          fields={ui.fields as Array<{
+            key: string; label: string;
+            kind: "text" | "email" | "tel" | "textarea" | "date" | "number" | "money" | "status" | "relation";
+            required?: boolean; relationModuleKey?: string; placeholder?: string;
+            options?: Array<{ value: string; label: string }>;
+          }>}
+          initialValue={modalMode === "edit" ? selected : null}
+          tenant={readTenant() || undefined}
+          accent={accent}
+          onCancel={() => setModalMode(null)}
+          onSubmit={async (payload, options) => {
+            await saveRecord(payload);
+            if (options?.andNew && modalMode === "create") {
+              // Quedarse en modo "create" con form limpio
+              setSelected(null);
+              setModalMode("create");
+            } else {
+              setModalMode(null);
+            }
+          }}
+        />
+      </TenantShell>
+    );
+  }
+
   // Filtros activos para chips
   const activeChips: Array<{ key: string; label: string; onClear: () => void }> = [];
   if (estadoFilter) activeChips.push({ key: "estado", label: estadoFilter.charAt(0).toUpperCase() + estadoFilter.slice(1), onClear: () => setEstadoFilter("") });
@@ -673,22 +708,6 @@ export default function GenericModuleRuntimePage({
         </>
       ) : null}
 
-      {/* Modal crear/editar */}
-      <ErpRecordModal
-        open={modalMode !== null}
-        mode={modalMode || "create"}
-        title={modalMode === "edit" ? "Editar " + singular(ui.label) : "Nuevo " + singular(ui.label)}
-        fields={ui.fields as Array<{
-          key: string; label: string;
-          kind: "text" | "email" | "tel" | "textarea" | "date" | "number" | "money" | "status" | "relation";
-          required?: boolean; relationModuleKey?: string; placeholder?: string;
-          options?: Array<{ value: string; label: string }>;
-        }>}
-        initialValue={modalMode === "edit" ? selected : null}
-        tenant={readTenant() || undefined}
-        onClose={() => setModalMode(null)}
-        onSubmit={saveRecord}
-      />
     </TenantShell>
   );
 }
