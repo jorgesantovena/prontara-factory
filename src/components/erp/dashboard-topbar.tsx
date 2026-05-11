@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import GlobalCreateButton from "@/components/erp/global-create-button";
 
 /**
  * TopBar profesional del ERP (H9-A2).
@@ -125,6 +126,9 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
             ))}
           </select>
         ) : null}
+
+        {/* Botón + Crear global (H10-E) */}
+        <GlobalCreateButton accent={accent} />
 
         {/* Notificaciones */}
         <div style={{ position: "relative" }}>

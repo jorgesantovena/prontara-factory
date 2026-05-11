@@ -648,6 +648,40 @@ model TenantLogPolicy {
   updatedAt     DateTime @updatedAt
 }
 
+/// H10-D — Vistas guardadas por usuario y módulo.
+model TenantSavedView {
+  id         String   @id @default(cuid())
+  tenantId   String
+  clientId   String
+  userEmail  String
+  moduleKey  String
+  name       String
+  /// JSON con filtros + columnas + orden + densidad
+  configJson Json
+  esDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([clientId, userEmail, moduleKey])
+}
+
+/// H10-F — Comentarios por registro.
+model TenantRecordComment {
+  id          String   @id @default(cuid())
+  tenantId    String
+  clientId    String
+  moduleKey   String
+  recordId    String
+  authorEmail String
+  body        String
+  /// Lista de emails mencionados con @
+  mentions    String[]
+  parentId    String?  // para threads
+  createdAt   DateTime @default(now())
+
+  @@index([clientId, moduleKey, recordId, createdAt])
+}
+
 /// H8-C1 — Punto de venta / sede de un cliente. Un cliente puede tener
 /// N puntos (sucursales, almacenes, oficinas). Cada uno con su código,
 /// dirección y tipo. Es el modelo Empresa+Puntos de Cliens.
