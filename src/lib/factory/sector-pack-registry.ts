@@ -219,14 +219,31 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
   sector: "tecnologia",
   businessType: "software-factory",
   description: "ERP sectorial para software factories pequeñas.",
-  // H15-A: módulos CORE que NO aplican al workflow de una software factory.
-  //   - productos / reservas / etiquetas / plantillas: no manejan stock
-  //     físico ni recursos reservables ni segmentación tipo retail.
-  //   - encuestas: irrelevante en una SF (no es B2C masivo).
-  //   - tickets: redundante con `cau` (módulo SF propio para soporte
-  //     de aplicación, más específico).
-  // El módulo `tareas` y `compras` SÍ se mantienen — son parte del
-  // workflow diario.
+  // H15-A + H15-D: módulos CORE que NO aplican al workflow de una
+  // software factory. Análisis del workflow real (B2B, facturación
+  // 30/60 días, entregables digitales, sin stock físico ni venta
+  // mostrador):
+  //
+  //   Grupo 1 — NO es retail B2C:
+  //     - productos: SF vende horas y servicios, no SKUs en estantería
+  //     - reservas: no hay salas/equipos reservables tipo recurso físico
+  //     - encuestas: irrelevante (no es B2C masivo)
+  //     - etiquetas: segmentación tipo retail, sin sentido en B2B SF
+  //     - plantillas: las plantillas que SF usa son las de propuesta/factura
+  //       PDF, gestionadas en otros lados
+  //     - tickets: redundante con `cau` (módulo SF propio, más específico)
+  //
+  //   Grupo 2 — NO hay venta directa ni stock físico:
+  //     - caja: SF factura a 30/60 días, no cobra en mostrador
+  //     - puntos-venta: no son retail multi-tienda
+  //     - bodegas: no manejan stock físico
+  //     - kardex: sin stock no hay movimientos
+  //     - albaranes: el "entregable" de SF es digital (PDF/release),
+  //       no un albarán físico
+  //
+  // Lo que SÍ se mantiene: tareas, compras (licencias/hardware/cloud
+  // a proveedores), gastos, desplazamientos, vencimientos-factura,
+  // avisos-programados (recordatorios cliente), etc.
   disabledCoreModules: [
     "productos",
     "reservas",
@@ -234,6 +251,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     "etiquetas",
     "plantillas",
     "tickets",
+    "caja",
+    "puntos-venta",
+    "bodegas",
+    "kardex",
+    "albaranes",
   ],
   branding: {
     displayName: "Prontara Tech",
