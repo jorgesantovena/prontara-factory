@@ -684,9 +684,13 @@ export function applyCoreModulesToConfig<T extends {
   tableColumnsByModule: Record<string, SectorPackTableColumn[]>;
   navigationLabelMap: Record<string, string>;
   emptyStateMap: Record<string, string>;
-}>(config: T): T {
+}>(config: T, opts?: { disabledCoreModules?: string[] }): T {
+  // H15-A: el vertical puede desactivar módulos CORE que no usa
+  // (ej. una software factory no maneja productos físicos ni reservas).
+  const disabled = new Set(opts?.disabledCoreModules || []);
   const existingModuleKeys = new Set(config.modules.map((m) => m.moduleKey));
   for (const cm of CORE_MODULES) {
+    if (disabled.has(cm.moduleKey)) continue;
     if (!existingModuleKeys.has(cm.moduleKey)) {
       config.modules.push(cm);
       config.navigationLabelMap[cm.moduleKey] = cm.navigationLabel;
@@ -694,6 +698,7 @@ export function applyCoreModulesToConfig<T extends {
     }
   }
   for (const f of CORE_FIELDS) {
+    if (disabled.has(f.moduleKey)) continue;
     const existing = config.fieldsByModule[f.moduleKey] || [];
     const hasIt = existing.some((x) => x.fieldKey === f.fieldKey);
     if (hasIt) continue;
@@ -703,6 +708,7 @@ export function applyCoreModulesToConfig<T extends {
     config.fieldsByModule[f.moduleKey].push(f);
   }
   for (const c of CORE_TABLE_COLUMNS) {
+    if (disabled.has(c.moduleKey)) continue;
     const existingCols = config.tableColumnsByModule[c.moduleKey] || [];
     if (existingCols.length > 0) continue;
     if (!config.tableColumnsByModule[c.moduleKey]) {

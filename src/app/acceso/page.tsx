@@ -2,13 +2,17 @@
 
 import { useEffect, useState } from "react";
 import LoginSidePanel from "@/components/saas/login-side-panel";
+import { businessTypeToVerticalSlug } from "@/lib/saas/vertical-slug";
 
+function readQuery(name: string): string {
+  if (typeof window === "undefined") return "";
+  return String(new URLSearchParams(window.location.search).get(name) || "").trim();
+}
 function readTenantFromBrowser(): string {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return String(new URLSearchParams(window.location.search).get("tenant") || "").trim();
+  return readQuery("tenant");
+}
+function readRedirectTo(): string {
+  return readQuery("redirectTo");
 }
 
 export default function AccesoPage() {
@@ -64,6 +68,24 @@ export default function AccesoPage() {
       }
 
       setMessage("Sesión iniciada correctamente. Entrando en tu entorno...");
+
+      // H15-A: a dónde ir después del login.
+      //   1) Si la URL trae ?redirectTo=<path>, respétalo (viene de la
+      //      landing del vertical o del middleware tras una ruta vieja).
+      //   2) Si no, deduce el vertical del businessType que vino en la
+      //      sesión y ve al home del vertical (/softwarefactory, /dental…).
+      //   3) Fallback: la home raíz, que redirige a /factory.
+      const redirectTo = readRedirectTo();
+      if (redirectTo && redirectTo.startsWith("/")) {
+        window.location.href = redirectTo;
+        return;
+      }
+      const businessType = String(data.session?.businessType || "");
+      const verticalSlug = businessType ? businessTypeToVerticalSlug(businessType) : null;
+      if (verticalSlug) {
+        window.location.href = "/" + verticalSlug;
+        return;
+      }
       window.location.href = "/?tenant=" + encodeURIComponent(form.tenant);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo entrar.");

@@ -52,6 +52,15 @@ export type SectorPackDefinition = {
     navigationLabel: string;
     emptyState: string;
   }>;
+  /**
+   * H15-A — moduleKeys de CORE que NO se inyectan a este vertical.
+   * Por defecto applyCoreModulesToConfig inyecta los 8 módulos CORE
+   * (tareas, tickets, compras, productos, reservas, encuestas,
+   * etiquetas, plantillas) a TODOS los packs. Si un vertical no usa
+   * alguno (ej. una software factory no maneja productos físicos ni
+   * reservas), listarlo aquí los excluye del config + sidebar.
+   */
+  disabledCoreModules?: string[];
   entities: SectorPackEntity[];
   fields: SectorPackField[];
   tableColumns: SectorPackTableColumn[];

@@ -26,7 +26,7 @@ export default function SoftwareFactoryLanding() {
         <Link href="/" style={{ textDecoration: "none", color: "#0f172a", fontWeight: 800, fontSize: 18 }}>Prontara</Link>
         <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
           <Link href="/landing?sectorPack=software-factory" style={navLink}>Otros packs</Link>
-          <Link href="/acceso" style={navLink}>Iniciar sesión</Link>
+          <Link href="/acceso?redirectTo=/softwarefactory" style={navLink}>Iniciar sesión</Link>
           <Link href="/alta?sectorPack=software-factory" style={ctaButtonSecondary}>Empezar gratis</Link>
         </div>
       </nav>

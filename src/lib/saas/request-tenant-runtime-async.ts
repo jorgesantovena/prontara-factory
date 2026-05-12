@@ -177,13 +177,16 @@ function rebuildConfigForTenant(tenant: TenantDefinition): TenantRuntimeConfig {
   // compras, productos, reservas, encuestas, etiquetas, plantillas).
   // Mutamos los maps in-place — el pack del vertical tiene prioridad si
   // ya define algo para esos módulos.
-  applyCoreModulesToConfig({
-    modules,
-    fieldsByModule,
-    tableColumnsByModule,
-    navigationLabelMap,
-    emptyStateMap,
-  });
+  applyCoreModulesToConfig(
+    {
+      modules,
+      fieldsByModule,
+      tableColumnsByModule,
+      navigationLabelMap,
+      emptyStateMap,
+    },
+    { disabledCoreModules: pack?.disabledCoreModules },
+  );
   // moduleKeys se reconstruye porque modules se mutó.
   const moduleKeysFinal = modules.map((m) => m.moduleKey);
 

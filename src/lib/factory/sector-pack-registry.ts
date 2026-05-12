@@ -219,6 +219,22 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
   sector: "tecnologia",
   businessType: "software-factory",
   description: "ERP sectorial para software factories pequeñas.",
+  // H15-A: módulos CORE que NO aplican al workflow de una software factory.
+  //   - productos / reservas / etiquetas / plantillas: no manejan stock
+  //     físico ni recursos reservables ni segmentación tipo retail.
+  //   - encuestas: irrelevante en una SF (no es B2C masivo).
+  //   - tickets: redundante con `cau` (módulo SF propio para soporte
+  //     de aplicación, más específico).
+  // El módulo `tareas` y `compras` SÍ se mantienen — son parte del
+  // workflow diario.
+  disabledCoreModules: [
+    "productos",
+    "reservas",
+    "encuestas",
+    "etiquetas",
+    "plantillas",
+    "tickets",
+  ],
   branding: {
     displayName: "Prontara Tech",
     shortName: "PT",
