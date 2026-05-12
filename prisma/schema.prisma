@@ -682,6 +682,75 @@ model TenantRecordComment {
   @@index([clientId, moduleKey, recordId, createdAt])
 }
 
+/// H15-B — Reply en un ticket CAU. Cada ticket es un hilo de
+/// mensajes entre agente y cliente. Los internos (internal=true) NO
+/// son visibles para el cliente, sirven para notas del equipo.
+model CauTicketReply {
+  id          String   @id @default(cuid())
+  tenantId    String
+  clientId    String
+  /// id del ticket (TenantModuleRecord.id de moduleKey=cau)
+  ticketId    String
+  authorEmail String
+  /// "agente" (alguien del equipo) | "cliente" (vista pública)
+  authorRole  String
+  body        String
+  /// Si true, solo visible para agentes — nota interna.
+  internal    Boolean  @default(false)
+  /// Adjuntos opcionales: array de URLs/keys S3.
+  attachments String[]
+  createdAt   DateTime @default(now())
+
+  @@index([clientId, ticketId, createdAt])
+}
+
+/// H15-B — Política SLA por combinación severidad+urgencia. Define
+/// cuántas horas para primera respuesta y cuántas para resolución.
+/// Si no hay política específica, usa los defaults hardcodeados.
+model CauSlaPolicy {
+  id              String   @id @default(cuid())
+  tenantId        String
+  clientId        String
+  severidad       String   // "baja" | "media" | "alta" | "critica"
+  urgencia        String   // "diferida" | "normal" | "urgente"
+  responseHours   Int      // horas para first response
+  resolutionHours Int      // horas para resolución total
+  /// Si true, al breach dispara escalación automática (notif al lead).
+  autoEscalate    Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([clientId, severidad, urgencia])
+  @@index([clientId])
+}
+
+/// H15-B — Entrada de la base de conocimiento. Se rellena cuando se
+/// cierra un ticket con `solucion`: el agente puede convertirla en KB
+/// reusable. Al crear un ticket nuevo, sugerimos KB entries que
+/// matchean por categoría+aplicación+síntoma.
+model CauKbEntry {
+  id           String   @id @default(cuid())
+  tenantId     String
+  clientId     String
+  titulo       String
+  sintoma      String   // descripción del problema (búsqueda full-text)
+  solucion     String   // la solución que aplicaste
+  categoria    String?  // "bug" | "mejora" | "consulta" | "cambio"
+  aplicacion   String?
+  /// id del ticket origen (referencia, no FK estricta porque los tickets
+  /// viven en TenantModuleRecord con moduleKey=cau).
+  ticketRefId  String?
+  /// Tags libres para búsqueda.
+  tags         String[]
+  views        Int      @default(0)
+  /// Email del autor.
+  authorEmail  String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([clientId, categoria, aplicacion])
+}
+
 /// H8-C1 — Punto de venta / sede de un cliente. Un cliente puede tener
 /// N puntos (sucursales, almacenes, oficinas). Cada uno con su código,
 /// dirección y tipo. Es el modelo Empresa+Puntos de Cliens.

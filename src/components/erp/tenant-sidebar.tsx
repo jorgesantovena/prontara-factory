@@ -159,6 +159,7 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   inventario: "administracion",
   mantenimiento: "administracion",
   cau: "administracion",
+  kb: "administracion",
   tickets: "administracion",
   // Analítica — reportes y métricas
   reportes: "analitica",
@@ -244,6 +245,7 @@ const MODULE_ICON: Record<string, string> = {
   inventario: "📦",
   mantenimiento: "🔧",
   cau: "🎧",
+  kb: "📚",
   tickets: "🎫",
   "catalogo-servicios": "📚",
   // Analítica

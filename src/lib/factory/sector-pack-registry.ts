@@ -282,6 +282,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "aplicaciones", enabled: true, label: "Aplicaciones", navigationLabel: "Aplicaciones", emptyState: "Aún no hay aplicaciones definidas." },
     // H7-S5 — CAU (vista dedicada para soporte aplicación)
     { moduleKey: "cau", enabled: true, label: "CAU (Soporte)", navigationLabel: "CAU", emptyState: "Sin tickets de soporte de aplicación." },
+    // H15-B — Base de conocimiento (soluciones reusables de CAU)
+    { moduleKey: "kb", enabled: true, label: "Base de conocimiento", navigationLabel: "Base de conocimiento", emptyState: "Sin entradas en la KB todavía." },
   ],
   entities: [
     { key: "cliente", label: "Cliente", description: "Cliente de la software factory.", moduleKey: "clientes", primaryFields: ["nombre", "email", "telefono"], relatedTo: ["oportunidad", "proyecto", "propuesta", "factura", "entregable"] },

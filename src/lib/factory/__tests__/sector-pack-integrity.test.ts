@@ -49,7 +49,9 @@ const HUB_CHILDREN_OF_SF = new Set([
 ]);
 
 // Módulos sistema sin tabla genérica (tienen UI custom).
-const SYSTEM_MODULES = new Set(["asistente", "ajustes"]);
+// H15-B: `kb` se añade — tiene página propia y modelo Prisma dedicado
+// (CauKbEntry), NO usa el shell genérico ni TenantModuleRecord.
+const SYSTEM_MODULES = new Set(["asistente", "ajustes", "kb"]);
 
 // SF tiene una página /clientes custom (no usa GenericModuleRuntimePage)
 // así que su pack puede no declarar fields/cols para clientes sin que
