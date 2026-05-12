@@ -7,6 +7,7 @@ import HelpPanel from "@/components/erp/help-panel";
 import FirstTimeTour from "@/components/erp/first-time-tour";
 import Breadcrumbs from "@/components/erp/breadcrumbs";
 import KeyboardShortcuts from "@/components/erp/keyboard-shortcuts";
+import DailyActivityBanner from "@/components/erp/daily-activity-banner";
 
 /**
  * Wrapper del runtime del tenant: añade la sidebar lateral fija a la
@@ -61,6 +62,7 @@ export default function TenantShell({
         }}
       >
         <DashboardTopBar />
+        <DailyActivityBanner />
         <Breadcrumbs />
         <div style={{ padding: contentPadding }}>
           {children}

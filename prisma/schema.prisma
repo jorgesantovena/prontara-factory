@@ -751,6 +751,187 @@ model CauKbEntry {
   @@index([clientId, categoria, aplicacion])
 }
 
+/// H15-C — Facturación recurrente. Un plan que genera facturas
+/// automáticamente cada `frecuenciaMeses` meses contra el `cliente`
+/// indicado, con `importe` y `concepto`. Útil para mantenimientos
+/// fijos, cuotas SaaS, etc.
+model RecurringInvoice {
+  id               String   @id @default(cuid())
+  tenantId         String
+  clientId         String
+  /// id del cliente (TenantModuleRecord.id con moduleKey=clientes)
+  clienteRefId     String
+  /// id del proyecto si aplica (para vincular al mantenimiento)
+  proyectoRefId    String?
+  concepto         String
+  importe          String   // decimal en string ("450.00")
+  frecuenciaMeses  Int      // 1 = mensual, 3 = trimestral, 12 = anual
+  diaCorte         Int      @default(1)   // día del mes para emitir
+  nextRunAt        DateTime
+  lastRunAt        DateTime?
+  activo           Boolean  @default(true)
+  notasInternas    String?
+  createdBy        String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([clientId, activo, nextRunAt])
+}
+
+/// H15-C — Hito (milestone) de un proyecto. Permite trocear un
+/// proyecto largo en fases con fecha objetivo y % del total. Al
+/// completarse, se puede disparar facturación parcial.
+model ProjectMilestone {
+  id               String   @id @default(cuid())
+  tenantId         String
+  clientId         String
+  /// id del proyecto (TenantModuleRecord.id con moduleKey=proyectos)
+  proyectoRefId    String
+  titulo           String
+  descripcion      String?
+  fechaObjetivo    DateTime
+  fechaCompletado  DateTime?
+  /// Porcentaje del total del proyecto (0-100). La suma de hitos debería = 100.
+  pesoPct          Int      @default(0)
+  /// "pendiente" | "en_curso" | "completado" | "cancelado"
+  estado           String   @default("pendiente")
+  /// Si true, al completar este hito se sugiere generar factura parcial.
+  disparaFactura   Boolean  @default(false)
+  orden            Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([clientId, proyectoRefId, orden])
+}
+
+/// H15-C — Firma electrónica de una propuesta. Cuando el cliente
+/// firma la propuesta vía link público, se guarda aquí el SVG path
+/// del trazo + metadata legal (IP, timestamp, user-agent).
+model ProposalSignature {
+  id           String   @id @default(cuid())
+  tenantId     String
+  clientId     String
+  /// id de la propuesta (TenantModuleRecord.id con moduleKey=presupuestos)
+  proposalRefId String
+  signerEmail  String
+  signerName   String
+  /// SVG path data del trazo de la firma (capturado en canvas).
+  signatureSvg String
+  signedIp     String?
+  signedUserAgent String?
+  signedAt     DateTime @default(now())
+
+  @@index([clientId, proposalRefId])
+}
+
+/// H15-C — Acceso de un cliente externo al portal público. Magic
+/// token sin password — el cliente entra a /portal/<token> y ve
+/// sus tickets/proyectos sin tener cuenta interna.
+model ClientPortalAccess {
+  id            String   @id @default(cuid())
+  tenantId      String
+  clientId      String
+  /// id del cliente (TenantModuleRecord.id con moduleKey=clientes)
+  clienteRefId  String
+  /// Token único para magic link público.
+  magicToken    String   @unique
+  /// Email del contacto del cliente (para enviar el link).
+  contactEmail  String
+  contactName   String
+  expiresAt     DateTime
+  lastSeenAt    DateTime?
+  /// Si false, el token está revocado.
+  active        Boolean  @default(true)
+  createdBy     String
+  createdAt     DateTime @default(now())
+
+  @@index([clientId, contactEmail])
+}
+
+/// H15-C — Mapeo de alias email entrante → cliente para CAU inbound.
+/// Cuando llega un email a `<alias>@cau.tudominio.com` (vía webhook
+/// inbound de Resend o Mailgun), se identifica el cliente por el
+/// alias y se crea un ticket CAU automáticamente.
+model CauInboundMapping {
+  id              String   @id @default(cuid())
+  tenantId        String
+  clientId        String
+  /// Alias antes de @ (ej: "delca", "acme"). Único por tenant.
+  aliasLocal      String
+  /// id del cliente que origina los tickets de este alias.
+  clienteRefId    String
+  /// Severidad por defecto si el email no especifica.
+  defaultSeveridad String  @default("media")
+  /// Aplicación por defecto.
+  defaultAplicacion String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  @@unique([clientId, aliasLocal])
+  @@index([clientId])
+}
+
+/// H15-C — Instalación de GitHub App en una organización del tenant.
+/// El tenant conecta su org GitHub vía OAuth y recibimos webhooks
+/// (push, PR opened, PR merged, issue opened) que enlazamos con
+/// tareas/tickets del proyecto.
+model GithubInstallation {
+  id              String   @id @default(cuid())
+  tenantId        String
+  clientId        String
+  installationId  String   // GitHub installation_id
+  accountLogin    String   // org/user GitHub
+  repos           String[] // lista de repos suscritos (full_name)
+  webhookSecret   String   // secret HMAC del webhook (cifrado)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([clientId, installationId])
+  @@index([clientId])
+}
+
+/// H15-C — Configuración por tenant de la obligatoriedad de parte
+/// de horas diario. Si requireDaily=true, cada empleado tiene que
+/// haber registrado `minHoursPerDay` horas antes de `cutoffTimeHHMM`
+/// del día siguiente.
+model DailyActivityRequirement {
+  id                String   @id @default(cuid())
+  tenantId          String
+  clientId          String   @unique
+  requireDaily      Boolean  @default(false)
+  minHoursPerDay    Float    @default(7.0)
+  /// Hora límite "HH:MM" del día siguiente para haber completado.
+  cutoffTimeHHMM    String   @default("10:00")
+  /// Días de la semana laborables (1=lunes ... 7=domingo). Default L-V.
+  workdays          Int[]    @default([1,2,3,4,5])
+  /// Si true, envía recordatorio email al empleado a las 18:00.
+  reminderEmail     Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+/// H15-C — Resumen diario por empleado. Lo rellena el cron nocturno
+/// agregando las horas imputadas en `actividades` de cada empleado
+/// del día. Sirve para mostrar el banner "te faltan X horas" en el
+/// topbar y para métricas de utilización.
+model EmployeeDailyLog {
+  id              String   @id @default(cuid())
+  tenantId        String
+  clientId        String
+  empleadoEmail   String
+  fecha           DateTime // solo fecha, sin hora
+  horasImputadas  Float    @default(0)
+  horasRequeridas Float    @default(7.0)
+  completed       Boolean  @default(false)
+  reminderSentAt  DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([clientId, empleadoEmail, fecha])
+  @@index([clientId, fecha])
+}
+
 /// H8-C1 — Punto de venta / sede de un cliente. Un cliente puede tener
 /// N puntos (sucursales, almacenes, oficinas). Cada uno con su código,
 /// dirección y tipo. Es el modelo Empresa+Puntos de Cliens.
