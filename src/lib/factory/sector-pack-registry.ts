@@ -330,10 +330,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "email", label: "Email", kind: "email", placeholder: "contacto@empresa.com" },
     { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 600 000 000" },
     { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle, número, código postal, localidad" },
-    { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / inactivo / prospecto", options: [
+    { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / inactivo / cliente potencial", options: [
       { value: "activo", label: "Activo" },
       { value: "inactivo", label: "Inactivo" },
-      { value: "prospecto", label: "Prospecto" },
+      // TEST-2.11 — antes "Prospecto", jerga para tester no técnico.
+      { value: "prospecto", label: "Cliente potencial" },
     ] },
     { moduleKey: "clientes", fieldKey: "segmento", label: "Segmento", kind: "status", placeholder: "vip / habitual / ocasional", options: [
       { value: "vip", label: "VIP" },

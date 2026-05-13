@@ -251,8 +251,31 @@ export default function ReportesPage() {
           {activeReport && busy ? <p>Ejecutando…</p> : null}
           {activeReport && activeResult ? (
             <div>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 8px 0" }}>{activeReport.name}</h2>
-              <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 16px 0" }}>{activeResult.total} registro(s)</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12, flexWrap: "wrap" }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0" }}>{activeReport.name}</h2>
+                  <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>{activeResult.total} registro(s)</p>
+                </div>
+                {/* TEST-2.8 — botones para descargar el reporte como archivo real. */}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => downloadCsv(activeReport.name, activeResult.rows)}
+                    style={{ border: "1px solid #d1d5db", background: "#ffffff", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                    title="Descargar como archivo CSV (abrir con Excel)"
+                  >
+                    ↓ Excel (CSV)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    style={{ border: "1px solid #d1d5db", background: "#ffffff", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}
+                    title="Imprimir o guardar como PDF desde el diálogo de impresión"
+                  >
+                    🖨 Imprimir / PDF
+                  </button>
+                </div>
+              </div>
 
               {/* H2-CHART: gráfico cuando el reporte lo pida */}
               {activeReport.chartType !== "none" && activeResult.groups && activeResult.groups.length > 0 ? (
@@ -309,6 +332,32 @@ export default function ReportesPage() {
       </div>
     </main>
   );
+}
+
+// TEST-2.8 — convierte rows a CSV y dispara descarga en el navegador.
+function downloadCsv(name: string, rows: Array<Record<string, string>>) {
+  if (!rows || rows.length === 0) {
+    alert("Este reporte no tiene filas para descargar.");
+    return;
+  }
+  const keys = Object.keys(rows[0] || {}).filter((k) => k !== "id");
+  const escape = (v: unknown) => {
+    const s = String(v ?? "");
+    return /[",\n;]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+  const lines: string[] = [];
+  lines.push(keys.join(";"));
+  for (const r of rows) lines.push(keys.map((k) => escape(r[k])).join(";"));
+  const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safe = name.replace(/[^a-z0-9_-]+/gi, "_");
+  a.href = url;
+  a.download = safe + "_" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 const ipt: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13, fontFamily: "inherit", boxSizing: "border-box" };

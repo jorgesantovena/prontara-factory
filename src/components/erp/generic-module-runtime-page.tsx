@@ -84,6 +84,14 @@ const MODULE_SUBTITLE: Record<string, string> = {
   "cuentas-bancarias": "Cuentas bancarias del tenant.",
 };
 
+// TEST-2.6 — módulos donde la vista Kanban tiene sentido (pipeline real
+// con fases o estados que progresan). En maestros (clientes, productos,
+// empleados...) no aplica y confunde al usuario.
+const KANBAN_MODULES = new Set([
+  "crm", "oportunidades", "proyectos", "tareas", "tickets", "cau",
+  "incidencias", "presupuestos", "compras",
+]);
+
 function fmtMoneda(v: unknown): { text: string; tone: "neutral" | "good" | "bad" } {
   const n = parseFloat(String(v ?? "").replace(/[^\d,.-]/g, "").replace(",", "."));
   if (!Number.isFinite(n)) return { text: String(v ?? "—"), tone: "neutral" };
@@ -191,6 +199,8 @@ export default function GenericModuleRuntimePage({
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState("");
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
+  // TEST-2.12 — menú "..." de fila con Editar / Email / Llamar / Eliminar / Copiar.
+  const [rowMenuOpenId, setRowMenuOpenId] = useState<string | null>(null);
   const [ui, setUi] = useState<{
     label: string;
     emptyState: string;
@@ -422,7 +432,8 @@ export default function GenericModuleRuntimePage({
             required?: boolean; relationModuleKey?: string; placeholder?: string;
             options?: Array<{ value: string; label: string }>;
           }>}
-          initialValue={modalMode === "edit" ? selected : null}
+          {/* TEST-2.12 Duplicar — pasar selected también en create-from-duplicate. */}
+          initialValue={selected}
           tenant={readTenant() || undefined}
           accent={accent}
           onCancel={() => setModalMode(null)}
@@ -481,9 +492,16 @@ export default function GenericModuleRuntimePage({
               </button>
               {showMore ? (
                 <div style={popover(280)}>
-                  <Link href={link("vista-kanban?moduleKey=" + moduleKey)} style={popoverItem}>Ver como Kanban</Link>
-                  <Link href={link("calendario")} style={popoverItem}>Ver en calendario</Link>
-                  <Link href={link("reportes?modulo=" + moduleKey)} style={popoverItem}>Crear reporte de este módulo</Link>
+                  {/* TEST-2.6 — Kanban solo tiene sentido en módulos con
+                      pipeline/fases (oportunidades, proyectos, tareas,
+                      tickets, cau). No en maestros tipo clientes. */}
+                  {KANBAN_MODULES.has(moduleKey) ? (
+                    <Link href={link("vista-kanban?moduleKey=" + moduleKey)} style={popoverItem} title="Vista tipo tablero: cada columna es un estado o fase y los registros se mueven entre ellas">
+                      Tablero por fases (Kanban)
+                    </Link>
+                  ) : null}
+                  <Link href={link("calendario")} style={popoverItem} title="Ver los registros con fecha en una grid mensual">Ver en calendario</Link>
+                  <Link href={link("reportes?modulo=" + moduleKey)} style={popoverItem} title="Crear un informe descargable con los registros de este listado">Crear informe de este listado</Link>
                 </div>
               ) : null}
             </div>
@@ -517,20 +535,38 @@ export default function GenericModuleRuntimePage({
               <span>≣</span> Vistas <span style={{ fontSize: 9, marginLeft: 4 }}>▾</span>
             </button>
             {showViews ? (
-              <div style={popover(260)}>
+              <div style={popover(300)}>
                 <div style={popoverHeader}>Vistas guardadas</div>
-                <button type="button" onClick={() => { setEstadoFilter(""); setQuery(""); setShowViews(false); }} style={popoverItemBtn}>
-                  <span>👥</span><span style={{ flex: 1, textAlign: "left" }}>Todos</span><span style={popoverCount}>{rows.length}</span>
+                {/* TEST-2.10 — explicar diferencia entre "Todos" y vistas personalizadas */}
+                <button type="button" onClick={() => { setEstadoFilter(""); setSegmentoFilter(""); setResponsableFilter(""); setQuery(""); setShowViews(false); }} style={popoverItemBtn} title="Muestra todos los registros sin filtro aplicado">
+                  <span>👥</span>
+                  <span style={{ flex: 1, textAlign: "left" }}>
+                    Todos
+                    <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>Sin filtros — toda la lista</div>
+                  </span>
+                  <span style={popoverCount}>{rows.length}</span>
                 </button>
-                {savedViews.map((v) => (
-                  <button key={v.id} type="button" onClick={() => {
-                    if (v.configJson?.filters?.estado) setEstadoFilter(v.configJson.filters.estado);
-                    if (v.configJson?.query) setQuery(v.configJson.query);
-                    setShowViews(false);
-                  }} style={popoverItemBtn}>
-                    <span>★</span><span style={{ flex: 1, textAlign: "left" }}>{v.name}</span>
-                  </button>
-                ))}
+                {savedViews.map((v) => {
+                  // Resumir qué filtros guarda la vista
+                  const f = v.configJson?.filters || {};
+                  const tags: string[] = [];
+                  if (f.estado) tags.push("estado=" + f.estado);
+                  if (v.configJson?.query) tags.push('"' + v.configJson.query + '"');
+                  const summary = tags.length > 0 ? tags.join(" · ") : "Sin filtros guardados";
+                  return (
+                    <button key={v.id} type="button" onClick={() => {
+                      if (v.configJson?.filters?.estado) setEstadoFilter(v.configJson.filters.estado);
+                      if (v.configJson?.query) setQuery(v.configJson.query);
+                      setShowViews(false);
+                    }} style={popoverItemBtn} title={"Aplica los filtros: " + summary}>
+                      <span>★</span>
+                      <span style={{ flex: 1, textAlign: "left" }}>
+                        {v.name}
+                        <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>{summary}</div>
+                      </span>
+                    </button>
+                  );
+                })}
                 <div style={{ borderTop: "1px solid #f1f5f9", marginTop: 4 }}>
                   <button type="button" onClick={async () => {
                     const name = prompt("Nombre de la vista:");
@@ -674,7 +710,8 @@ export default function GenericModuleRuntimePage({
             {ui.fields.some((f) => f.key === "estado") ? (
               <button type="button" onClick={() => { setBulkValue(""); setBulkError(""); setBulkModal("estado"); }} style={bulkBtn}>Cambiar estado</button>
             ) : null}
-            <button type="button" onClick={() => setArchiveConfirmOpen(true)} style={bulkBtn}>Archivar</button>
+            {/* TEST-2.11 — copy más claro. Antes "Archivar" no era obvio para usuario no técnico. */}
+            <button type="button" onClick={() => setArchiveConfirmOpen(true)} style={bulkBtn} title="Elimina los registros seleccionados de la lista (operación irreversible)">Eliminar seleccionados</button>
             <div style={{ flex: 1 }} />
             <button type="button" onClick={() => setSelectedIds(new Set())} style={{ background: "transparent", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16 }}>×</button>
           </div>
@@ -716,6 +753,8 @@ export default function GenericModuleRuntimePage({
                       <tr
                         key={id}
                         onClick={() => openDetail(item)}
+                        onDoubleClick={() => { setSelected(item); setModalMode("edit"); }}
+                        title="Click: detalle rápido — Doble click: editar"
                         style={{
                           borderBottom: "1px solid #f1f5f9",
                           cursor: "pointer",
@@ -733,7 +772,17 @@ export default function GenericModuleRuntimePage({
                           />
                         </td>
                         {columns.map((col, idx) => {
-                          const val = item[col.fieldKey];
+                          let val = item[col.fieldKey];
+                          // TEST-2.4 — columna "contacto" muestra el preferido del JSON.
+                          if (col.fieldKey === "contacto" && item.contactosJson) {
+                            try {
+                              const arr = JSON.parse(String(item.contactosJson));
+                              if (Array.isArray(arr) && arr.length > 0) {
+                                const preferido = arr.find((c) => c?.preferido) || arr[0];
+                                if (preferido?.nombre) val = String(preferido.nombre);
+                              }
+                            } catch { /* fallback al campo plano */ }
+                          }
                           const valStr = val == null || val === "" ? "—" : String(val);
                           return (
                             <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 400 }}>
@@ -741,16 +790,58 @@ export default function GenericModuleRuntimePage({
                             </td>
                           );
                         })}
-                        <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
+                        {/* TEST-2.12 — menú "..." consolidado con Editar / Email
+                            / Llamar / Eliminar / Copiar. Antes solo abría editor. */}
+                        <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap", position: "relative" }} onClick={(e) => e.stopPropagation()}>
                           {extraRowActions ? extraRowActions(item) : null}
                           <button
                             type="button"
-                            onClick={() => { setSelected(item); setModalMode("edit"); }}
-                            title="Editar"
+                            onClick={() => setRowMenuOpenId(rowMenuOpenId === id ? null : id)}
+                            title="Acciones rápidas"
                             style={{ background: "transparent", border: "none", padding: 4, cursor: "pointer", color: "#94a3b8", fontSize: 16 }}
                           >
                             ⋯
                           </button>
+                          {rowMenuOpenId === id ? (
+                            <>
+                              {/* backdrop para cerrar al hacer click fuera */}
+                              <div onClick={() => setRowMenuOpenId(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                              <div style={{ ...popover(180), zIndex: 41 }}>
+                                <button type="button" style={popoverItemBtn} onClick={() => { setRowMenuOpenId(null); setSelected(item); setModalMode("edit"); }}>
+                                  <span>✎</span><span>Editar</span>
+                                </button>
+                                {item.email ? (
+                                  <a href={"mailto:" + item.email + "?subject=" + encodeURIComponent("Contacto desde " + ui.label)} style={popoverItem} onClick={() => setRowMenuOpenId(null)}>
+                                    <span>✉️</span> Enviar email
+                                  </a>
+                                ) : null}
+                                {item.telefono || item.tel ? (
+                                  <a href={"tel:" + String(item.telefono || item.tel)} style={popoverItem} onClick={() => setRowMenuOpenId(null)}>
+                                    <span>📞</span> Llamar
+                                  </a>
+                                ) : null}
+                                <button type="button" style={popoverItemBtn} onClick={async () => {
+                                  setRowMenuOpenId(null);
+                                  // Duplicar: clonar payload (sin id), abrir create con valores precargados
+                                  const clone: Record<string, string> = {};
+                                  for (const [k, v] of Object.entries(item)) {
+                                    if (k === "id") continue;
+                                    clone[k] = String(v ?? "");
+                                  }
+                                  setSelected(clone);
+                                  setModalMode("create");
+                                }}>
+                                  <span>⎘</span><span>Duplicar</span>
+                                </button>
+                                <button type="button" style={{ ...popoverItemBtn, color: "#dc2626" }} onClick={async () => {
+                                  setRowMenuOpenId(null);
+                                  if (confirm("¿Eliminar este " + singular(ui.label) + "?")) await removeRecord(id);
+                                }}>
+                                  <span>🗑</span><span>Eliminar</span>
+                                </button>
+                              </div>
+                            </>
+                          ) : null}
                         </td>
                       </tr>
                     );
@@ -1026,7 +1117,7 @@ function DetailDrawer({
   onEdit: () => void;
   onDelete: () => Promise<void>;
 }) {
-  // TEST-1.4 — link helper vertical-aware para "Ver ficha completa".
+  // TEST-1.4 — link helper vertical-aware.
   const { link } = useCurrentVertical();
   const titulo = String(record[titleField] || "Sin título");
   const tint = avatarTint(titulo);
@@ -1088,13 +1179,27 @@ function DetailDrawer({
 
       {/* Acciones rápidas */}
       <DrawerSection title="Acciones rápidas">
-        <Link href={link(moduleKey + "/" + String(record.id))} style={drawerActionLink}>
+        {/* TEST-2.1 — antes era Link a /{vertical}/{modulo}/{id} que daba
+            404 porque esa ruta no existe. Ahora abre el editor full-page
+            (mismo onEdit que el botón "Editar" inferior). */}
+        <button type="button" onClick={onEdit} style={drawerActionLink}>
           <span>📄</span> Ver ficha completa
-        </Link>
+        </button>
         <button type="button" onClick={onEdit} style={drawerActionBtn(accent)}>
           <span>✎</span> Editar
         </button>
-        {record.email ? <a href={"mailto:" + record.email} style={drawerActionLink}><span>✉️</span> Enviar email</a> : null}
+        {/* TEST-2.9 — mailto real con asunto pre-rellenado. Si el navegador
+            del usuario no tiene cliente de email configurado puede no abrir
+            nada; el title lo explica. */}
+        {record.email ? (
+          <a
+            href={"mailto:" + record.email + "?subject=" + encodeURIComponent("Contacto desde " + moduleLabel)}
+            style={drawerActionLink}
+            title={"Abrir email a " + record.email + " en tu cliente de correo predeterminado"}
+          >
+            <span>✉️</span> Enviar email
+          </a>
+        ) : null}
         {record.telefono ? <a href={"tel:" + record.telefono} style={drawerActionLink}><span>📞</span> Llamar</a> : null}
         <button type="button" onClick={async () => {
           if (confirm("¿Borrar este " + singular(moduleLabel) + "?")) await onDelete();

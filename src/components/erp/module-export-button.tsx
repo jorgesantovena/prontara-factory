@@ -28,9 +28,10 @@ export default function ModuleExportButton({ modulo, label }: Props) {
         textDecoration: "none",
         whiteSpace: "nowrap",
       }}
-      title={"Descargar todos los registros de " + modulo + " en CSV"}
+      title={"Descargar todos los registros de " + modulo + " como archivo CSV (compatible con Excel)"}
     >
-      {label || "↓ CSV"}
+      {/* TEST-2.11 — copy más claro. Mantenemos CSV pero con icono y tooltip. */}
+      {label || "↓ Exportar a Excel"}
     </a>
   );
 }

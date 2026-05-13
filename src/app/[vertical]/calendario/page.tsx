@@ -222,6 +222,25 @@ export default function CalendarioPage() {
           </span>
         ))}
       </div>
+
+      {/* TEST-2.7 — empty state explicativo cuando el calendario está vacío.
+          Antes el tester abría el mes y se quedaba en blanco sin saber
+          de dónde salen las entradas. */}
+      {!loading && filtered.length === 0 ? (
+        <div style={{ marginTop: 24, padding: 20, background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: 10, color: "#475569", fontSize: 13, lineHeight: 1.55 }}>
+          <strong style={{ display: "block", marginBottom: 6, color: "#0f172a", fontSize: 14 }}>
+            📅 Tu calendario está vacío
+          </strong>
+          El calendario muestra automáticamente las tareas con fecha límite, las reservas, citas, actividades del parte de horas, eventos y movimientos de caja que crees en sus módulos respectivos.
+          <br/><br/>
+          Para que aparezcan entradas:
+          <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+            <li>Crea una <strong>Tarea</strong> con fecha límite.</li>
+            <li>Apunta una <strong>actividad</strong> en el parte de horas.</li>
+            <li>Reserva un recurso o crea una cita si tu vertical los usa.</li>
+          </ul>
+        </div>
+      ) : null}
     </main>
   );
 }

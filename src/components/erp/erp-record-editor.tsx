@@ -49,10 +49,11 @@ const TAB_LABELS: Record<TabKey, string> = {
 
 function classifyField(key: string): TabKey {
   const k = key.toLowerCase();
+  // TEST-2.5 — dirección, población, CP, provincia, país NO van en
+  // "contacto" sino en "general" (son datos de la empresa/cliente, no
+  // del interlocutor humano que es un contacto independiente).
   if (k.includes("telefono") || k.includes("tel") || k.includes("email") ||
-      k.includes("direccion") || k.includes("ciudad") || k.includes("localidad") ||
-      k.includes("provincia") || k.includes("cp") || k.includes("postal") ||
-      k.includes("pais") || k.includes("contacto") || k.includes("web") || k.includes("sitio")) {
+      k.includes("contacto") || k.includes("web") || k.includes("sitio")) {
     return "contacto";
   }
   if (k.includes("importe") || k.includes("saldo") || k.includes("credito") ||
@@ -292,7 +293,19 @@ export default function ErpRecordEditor({
           ) : tab === "documentos" ? (
             <DocumentosTab moduleKey={moduleKey} recordId={String(initialValue?.id || "")} mode={mode} />
           ) : (
-            <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} />
+            <>
+              <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} />
+              {/* TEST-2.3 + TEST-2.4 — Sublista de Contactos cuando aplique.
+                  El usuario puede crear/editar/eliminar contactos y marcar
+                  uno como preferido. Se persiste como JSON en contactosJson. */}
+              {tab === "contacto" && moduleKey === "clientes" ? (
+                <ContactosSublist
+                  initialJson={String(values.contactosJson || initialValue?.contactosJson || "[]")}
+                  onChange={(json) => setField("contactosJson", json)}
+                  accent={accent}
+                />
+              ) : null}
+            </>
           )}
         </form>
 
@@ -442,6 +455,152 @@ function FieldInput({ field, value, onChange, options, accent }: {
 }
 
 const chevronBg = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8.5L2 4.5h8z'/%3E%3C/svg%3E\")";
+
+// TEST-2.3 + TEST-2.4 — Sublista de Contactos con CRUD inline.
+// Persiste como JSON en el field `contactosJson` del cliente.
+type Contacto = {
+  id: string;
+  nombre: string;
+  cargo: string;
+  email: string;
+  telefono: string;
+  preferido: boolean;
+};
+
+function ContactosSublist({ initialJson, onChange, accent }: {
+  initialJson: string;
+  onChange: (json: string) => void;
+  accent: string;
+}) {
+  const [contactos, setContactos] = useState<Contacto[]>(() => {
+    try {
+      const arr = JSON.parse(initialJson || "[]");
+      if (Array.isArray(arr)) return arr.filter((c) => c && typeof c === "object").map((c) => ({
+        id: String(c.id || Math.random().toString(36).slice(2, 10)),
+        nombre: String(c.nombre || ""),
+        cargo: String(c.cargo || ""),
+        email: String(c.email || ""),
+        telefono: String(c.telefono || ""),
+        preferido: Boolean(c.preferido),
+      }));
+    } catch { /* invalid json */ }
+    return [];
+  });
+
+  function persist(next: Contacto[]) {
+    setContactos(next);
+    onChange(JSON.stringify(next));
+  }
+
+  function add() {
+    const newC: Contacto = {
+      id: Math.random().toString(36).slice(2, 10),
+      nombre: "", cargo: "", email: "", telefono: "",
+      preferido: contactos.length === 0, // el primero queda como preferido por defecto
+    };
+    persist([...contactos, newC]);
+  }
+
+  function update(id: string, patch: Partial<Contacto>) {
+    persist(contactos.map((c) => c.id === id ? { ...c, ...patch } : c));
+  }
+
+  function setPreferido(id: string) {
+    persist(contactos.map((c) => ({ ...c, preferido: c.id === id })));
+  }
+
+  function remove(id: string) {
+    const removing = contactos.find((c) => c.id === id);
+    let next = contactos.filter((c) => c.id !== id);
+    // Si borramos el preferido y queda alguien, marcar el primero
+    if (removing?.preferido && next.length > 0) {
+      next = next.map((c, i) => ({ ...c, preferido: i === 0 }));
+    }
+    persist(next);
+  }
+
+  return (
+    <section style={{ marginTop: 24, paddingTop: 18, borderTop: "1px solid #e5e7eb" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Contactos del cliente</h3>
+          <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+            Las personas con las que tratas. Marca uno como preferido para que aparezca en el listado.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={add}
+          style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+        >
+          + Añadir contacto
+        </button>
+      </div>
+
+      {contactos.length === 0 ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+          Aún no hay contactos. Pulsa "Añadir contacto" para empezar.
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: 8 }}>
+          {contactos.map((c) => (
+            <div key={c.id} style={{ border: "1px solid " + (c.preferido ? accent : "#e5e7eb"), background: c.preferido ? "#eff6ff" : "#ffffff", borderRadius: 10, padding: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={c.nombre}
+                  onChange={(e) => update(c.id, { nombre: e.target.value })}
+                  placeholder="Nombre"
+                  style={subIpt}
+                />
+                <input
+                  type="text"
+                  value={c.cargo}
+                  onChange={(e) => update(c.id, { cargo: e.target.value })}
+                  placeholder="Cargo"
+                  style={subIpt}
+                />
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: c.preferido ? accent : "#64748b", cursor: "pointer", whiteSpace: "nowrap" }}>
+                  <input type="radio" checked={c.preferido} onChange={() => setPreferido(c.id)} />
+                  Preferido
+                </label>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "center" }}>
+                <input
+                  type="email"
+                  value={c.email}
+                  onChange={(e) => update(c.id, { email: e.target.value })}
+                  placeholder="email@ejemplo.com"
+                  style={subIpt}
+                />
+                <input
+                  type="tel"
+                  value={c.telefono}
+                  onChange={(e) => update(c.id, { telefono: e.target.value })}
+                  placeholder="+34 600 000 000"
+                  style={subIpt}
+                />
+                <button
+                  type="button"
+                  onClick={() => remove(c.id)}
+                  title="Eliminar contacto"
+                  style={{ background: "transparent", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                >
+                  Eliminar
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+const subIpt: React.CSSProperties = {
+  padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 6,
+  fontSize: 13, fontFamily: "inherit", boxSizing: "border-box",
+};
 
 // TEST-1.5 — mensaje cuando el pack del tenant no tiene fields para el
 // módulo. Antes el editor mostraba la tab "Documentos" como única, lo que
