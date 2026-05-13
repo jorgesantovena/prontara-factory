@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * Editor full-page para crear/editar un registro de cualquier módulo.
@@ -111,7 +112,12 @@ export default function ErpRecordEditor({
     return acc;
   }, [fields]);
 
-  const visibleTabs = (Object.keys(TAB_LABELS) as TabKey[]).filter((t) => grouped[t].length > 0 || t === "documentos");
+  // TEST-1.5 — Tabs visibles. "Documentos" solo se muestra si hay otras
+  // tabs con fields (no como única tab — antes salía sola si fields=[]).
+  const tabsConFields = (Object.keys(TAB_LABELS) as TabKey[]).filter((t) => grouped[t].length > 0);
+  const visibleTabs: TabKey[] = tabsConFields.length > 0
+    ? [...tabsConFields, "documentos" as TabKey]
+    : []; // sin fields → no mostramos tabs, mostramos mensaje (ver render)
 
   // Reset valores al cambiar mode/initialValue/fields
   useEffect(() => {
@@ -120,7 +126,8 @@ export default function ErpRecordEditor({
     setValues(next);
     setDirty(false);
     setError("");
-    setTab(visibleTabs[0] || "general");
+    // Tab inicial: primera tab con fields, NUNCA "documentos" como default.
+    setTab(tabsConFields[0] || "general");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, fields, initialValue]);
 
@@ -156,6 +163,11 @@ export default function ErpRecordEditor({
     setBusy(true);
     setError("");
     try {
+      // TEST-1.5 — Bloquear guardado si no hay fields configurados.
+      // Antes el tester podía pulsar Guardar 4 veces y crear 4 registros vacíos.
+      if (fields.length === 0) {
+        throw new Error("Este módulo no tiene campos configurados. Configúralos en Ajustes → Campos personalizados antes de crear registros.");
+      }
       // Validación mínima: required no vacíos
       const missing = fields.filter((f) => f.required && !String(values[f.key] || "").trim());
       if (missing.length > 0) {
@@ -220,7 +232,13 @@ export default function ErpRecordEditor({
               Guardar y nuevo
             </button>
           ) : null}
-          <button type="button" onClick={() => doSubmit(false)} disabled={busy} style={btnPrimary(accent)}>
+          <button
+            type="button"
+            onClick={() => doSubmit(false)}
+            disabled={busy || fields.length === 0}
+            style={{ ...btnPrimary(accent), opacity: fields.length === 0 ? 0.5 : 1, cursor: fields.length === 0 ? "not-allowed" : "pointer" }}
+            title={fields.length === 0 ? "No hay campos configurados en este módulo" : undefined}
+          >
             {busy ? "Guardando…" : "Guardar"}
           </button>
         </div>
@@ -269,7 +287,9 @@ export default function ErpRecordEditor({
           onSubmit={(e) => { e.preventDefault(); doSubmit(false); }}
           style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12, padding: 24 }}
         >
-          {tab === "documentos" ? (
+          {fields.length === 0 ? (
+            <NoFieldsConfigured moduleLabel={moduleLabel} />
+          ) : tab === "documentos" ? (
             <DocumentosTab moduleKey={moduleKey} recordId={String(initialValue?.id || "")} mode={mode} />
           ) : (
             <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} />
@@ -423,8 +443,30 @@ function FieldInput({ field, value, onChange, options, accent }: {
 
 const chevronBg = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8.5L2 4.5h8z'/%3E%3C/svg%3E\")";
 
+// TEST-1.5 — mensaje cuando el pack del tenant no tiene fields para el
+// módulo. Antes el editor mostraba la tab "Documentos" como única, lo que
+// permitía al usuario pulsar Guardar y crear registros vacíos.
+function NoFieldsConfigured({ moduleLabel }: { moduleLabel: string }) {
+  return (
+    <div style={{ padding: 40, textAlign: "center", color: "#64748b" }}>
+      <div style={{ fontSize: 40, marginBottom: 14 }}>🧩</div>
+      <h3 style={{ margin: "0 0 8px 0", fontSize: 16, fontWeight: 700, color: "#0f172a" }}>
+        Sin campos configurados
+      </h3>
+      <p style={{ margin: "0 0 16px 0", fontSize: 13, maxWidth: 460, marginLeft: "auto", marginRight: "auto", lineHeight: 1.5 }}>
+        El módulo <strong>{moduleLabel}</strong> aún no tiene campos definidos en tu pack sectorial.
+        Configúralos en <strong>Ajustes → Campos personalizados</strong> antes de crear registros.
+      </p>
+      <a href="/ajustes-campos" style={{ display: "inline-block", padding: "8px 16px", background: "#1d4ed8", color: "#ffffff", borderRadius: 8, textDecoration: "none", fontSize: 13, fontWeight: 600 }}>
+        Ir a Ajustes de campos →
+      </a>
+    </div>
+  );
+}
+
 // === Documentos tab (placeholder con link al módulo documentos) ===
 function DocumentosTab({ moduleKey, recordId, mode }: { moduleKey: string; recordId: string; mode: "create" | "edit" }) {
+  const { link } = useCurrentVertical();
   if (mode === "create") {
     return (
       <div style={{ padding: 40, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
@@ -437,7 +479,7 @@ function DocumentosTab({ moduleKey, recordId, mode }: { moduleKey: string; recor
     <div style={{ padding: 30, textAlign: "center", color: "#64748b", fontSize: 13 }}>
       <div style={{ fontSize: 32, marginBottom: 10 }}>📎</div>
       <div style={{ marginBottom: 10 }}>Documentos vinculados aparecerán aquí.</div>
-      <Link href={"/documentos?ref=" + recordId} style={{ color: "#1d4ed8", fontSize: 13, fontWeight: 600 }}>
+      <Link href={link("documentos?ref=" + recordId)} style={{ color: "#1d4ed8", fontSize: 13, fontWeight: 600 }}>
         Ir a Documentos →
       </Link>
     </div>
@@ -510,10 +552,45 @@ function fmtMoney(v: unknown): string {
   if (!Number.isFinite(n)) return String(v ?? "—");
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
+// TEST-1.2 — singular() con overrides. El fallback genérico se equivocaba
+// con palabras tipo "Clientes" → "client" (cortaba "es" entero). Para
+// palabras castellanas comunes mapeamos a su singular correcto.
+const SINGULAR_OVERRIDES: Record<string, string> = {
+  clientes: "cliente",
+  oportunidades: "oportunidad",
+  proyectos: "proyecto",
+  propuestas: "propuesta",
+  presupuestos: "presupuesto",
+  facturas: "factura",
+  documentos: "documento",
+  entregables: "entregable",
+  tareas: "tarea",
+  tickets: "ticket",
+  compras: "compra",
+  productos: "producto",
+  reservas: "reserva",
+  encuestas: "encuesta",
+  etiquetas: "etiqueta",
+  plantillas: "plantilla",
+  empleados: "empleado",
+  gastos: "gasto",
+  vencimientos: "vencimiento",
+  desplazamientos: "desplazamiento",
+  hitos: "hito",
+  aplicaciones: "aplicación",
+  notificaciones: "notificación",
+  pacientes: "paciente",
+  citas: "cita",
+  tratamientos: "tratamiento",
+  alumnos: "alumno",
+  docentes: "docente",
+  calificaciones: "calificación",
+};
 function singular(label: string): string {
-  const l = label.toLowerCase();
-  if (l.endsWith("es")) return l.slice(0, -2);
-  if (l.endsWith("s")) return l.slice(0, -1);
+  const l = label.toLowerCase().trim();
+  if (SINGULAR_OVERRIDES[l]) return SINGULAR_OVERRIDES[l];
+  // Fallback genérico: si termina en "s", quitar la "s" final.
+  if (l.endsWith("s") && l.length > 2) return l.slice(0, -1);
   return l;
 }
 

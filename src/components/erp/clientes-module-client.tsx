@@ -10,6 +10,7 @@ import {
 import { ModuleGrid } from "@/components/erp/module-grid";
 import { ModuleForm } from "@/components/erp/module-form";
 import { getSectorLabels } from "@/lib/erp/sector-runtime";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 type RuntimeClientInfo = {
   clientId: string;
@@ -35,6 +36,8 @@ const MODULE_KEY = "clientes";
 export default function ClientesModuleClient(props: ClientesModuleClientProps) {
   const { runtimeInfo } = props;
   const labels = getSectorLabels(runtimeInfo);
+  // TEST-1.4 — link helper vertical-aware (antes "/clientes/:id" → /acceso por middleware).
+  const { link } = useCurrentVertical();
 
   const [schema, setSchema] = useState<ModuleSchema | null>(null);
   const [rows, setRows] = useState<ModuleRecord[]>([]);
@@ -235,7 +238,7 @@ export default function ClientesModuleClient(props: ClientesModuleClientProps) {
       label: "Ficha",
       render: (row: ModuleRecord) => (
         <Link
-          href={"/clientes/" + row.id}
+          href={link("clientes/" + row.id)}
           style={{
             textDecoration: "none",
             border: "1px solid #111",

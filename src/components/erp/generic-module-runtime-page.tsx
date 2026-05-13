@@ -6,6 +6,8 @@ import ErpRecordEditor from "@/components/erp/erp-record-editor";
 import TenantShell from "@/components/erp/tenant-shell";
 import ModuleExportButton from "@/components/erp/module-export-button";
 import ModuleImportButton from "@/components/erp/module-import-button";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
+import DangerConfirm from "@/components/erp/danger-confirm";
 
 /**
  * Página genérica de un módulo del runtime del tenant (H12-F — rediseño).
@@ -157,6 +159,10 @@ export default function GenericModuleRuntimePage({
   extraActions?: React.ReactNode;
   extraRowActions?: (row: Record<string, string>) => React.ReactNode;
 }) {
+  // TEST-1.4 — hook para construir URLs vertical-aware. Antes el dropdown
+  // "Más acciones" enlazaba a /vista-kanban sin prefix de vertical →
+  // redirect a /acceso por el middleware.
+  const { link } = useCurrentVertical();
   const [rows, setRows] = useState<Array<Record<string, string>>>([]);
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(true);
@@ -167,6 +173,10 @@ export default function GenericModuleRuntimePage({
   const [accent, setAccent] = useState("#1d4ed8");
   // H12-F nuevo: filtros por columna estado, vistas, columnas visibles, selección, paginación.
   const [estadoFilter, setEstadoFilter] = useState<string>("");
+  // TEST-1.6 — filtros adicionales y popover unificado.
+  const [segmentoFilter, setSegmentoFilter] = useState<string>("");
+  const [responsableFilter, setResponsableFilter] = useState<string>("");
+  const [showFilters, setShowFilters] = useState(false);
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [showViews, setShowViews] = useState(false);
   const [showColumns, setShowColumns] = useState(false);
@@ -175,6 +185,12 @@ export default function GenericModuleRuntimePage({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  // TEST-1.3 — bulk action modals reales (antes eran alert("TODO: ...")).
+  const [bulkModal, setBulkModal] = useState<null | "responsable" | "estado">(null);
+  const [bulkValue, setBulkValue] = useState("");
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState("");
+  const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   const [ui, setUi] = useState<{
     label: string;
     emptyState: string;
@@ -251,15 +267,23 @@ export default function GenericModuleRuntimePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moduleKey]);
 
-  // Filtrado: query + estadoFilter
+  // Filtrado: query + estadoFilter + segmento + responsable (TEST-1.6).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((item) => {
       if (estadoFilter && String(item.estado || "").toLowerCase() !== estadoFilter.toLowerCase()) return false;
+      if (segmentoFilter) {
+        const seg = String(item.segmento || item.tipo || "").toLowerCase();
+        if (seg !== segmentoFilter.toLowerCase()) return false;
+      }
+      if (responsableFilter) {
+        const resp = String(item.responsable || item.asignado || "").toLowerCase();
+        if (resp !== responsableFilter.toLowerCase()) return false;
+      }
       if (q && !Object.values(item || {}).join(" ").toLowerCase().includes(q)) return false;
       return true;
     });
-  }, [rows, query, estadoFilter]);
+  }, [rows, query, estadoFilter, segmentoFilter, responsableFilter]);
 
   // KPIs derivados de los rows (Total + breakdown por estado).
   const kpis = useMemo(() => {
@@ -331,6 +355,27 @@ export default function GenericModuleRuntimePage({
     await load();
   }
 
+  // TEST-1.3 — actualización en bloque: aplica { field: value } a cada id
+  // seleccionado mediante /api/erp/module mode=edit con el payload merge.
+  async function bulkUpdate(field: string, value: string) {
+    const tenant = readTenant();
+    const sectorPack = readSectorPack();
+    const ids = Array.from(selectedIds);
+    for (const id of ids) {
+      const existing = rows.find((r) => r.id === id);
+      if (!existing) continue;
+      const payload = { ...existing, [field]: value };
+      const response = await fetch("/api/erp/module", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ module: moduleKey, mode: "edit", recordId: id, payload, tenant, sectorPack }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || "No se pudo actualizar " + id);
+    }
+    await load();
+  }
+
   // Columnas (derivar de fields si pack no trae)
   const allColumns: TableColumnDef[] = ui.tableColumns.length > 0
     ? ui.tableColumns
@@ -396,9 +441,11 @@ export default function GenericModuleRuntimePage({
     );
   }
 
-  // Filtros activos para chips
+  // Filtros activos para chips (TEST-1.6)
   const activeChips: Array<{ key: string; label: string; onClear: () => void }> = [];
-  if (estadoFilter) activeChips.push({ key: "estado", label: estadoFilter.charAt(0).toUpperCase() + estadoFilter.slice(1), onClear: () => setEstadoFilter("") });
+  if (estadoFilter) activeChips.push({ key: "estado", label: "Estado: " + estadoFilter, onClear: () => setEstadoFilter("") });
+  if (segmentoFilter) activeChips.push({ key: "segmento", label: "Segmento: " + segmentoFilter, onClear: () => setSegmentoFilter("") });
+  if (responsableFilter) activeChips.push({ key: "responsable", label: "Responsable: " + responsableFilter, onClear: () => setResponsableFilter("") });
   if (query) activeChips.push({ key: "query", label: '"' + query + '"', onClear: () => setQuery("") });
 
   return (
@@ -406,7 +453,7 @@ export default function GenericModuleRuntimePage({
       <div style={{ maxWidth: 1320, margin: "0 auto", color: "#0f172a", fontFamily: "system-ui, -apple-system, sans-serif" }}>
         {/* Breadcrumb */}
         <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-          <Link href="/" style={{ color: "#64748b", textDecoration: "none" }}>Inicio</Link>
+          <Link href={link("") || "/"} style={{ color: "#64748b", textDecoration: "none" }}>Inicio</Link>
           <span style={{ margin: "0 6px" }}>/</span>
           <span style={{ color: "#0f172a", fontWeight: 600 }}>{ui.label}</span>
         </div>
@@ -434,9 +481,9 @@ export default function GenericModuleRuntimePage({
               </button>
               {showMore ? (
                 <div style={popover(280)}>
-                  <Link href={"/vista-kanban?moduleKey=" + moduleKey} style={popoverItem}>Ver como Kanban</Link>
-                  <Link href="/calendario" style={popoverItem}>Ver en calendario</Link>
-                  <Link href={"/reportes?modulo=" + moduleKey} style={popoverItem}>Crear reporte de este módulo</Link>
+                  <Link href={link("vista-kanban?moduleKey=" + moduleKey)} style={popoverItem}>Ver como Kanban</Link>
+                  <Link href={link("calendario")} style={popoverItem}>Ver en calendario</Link>
+                  <Link href={link("reportes?modulo=" + moduleKey)} style={popoverItem}>Crear reporte de este módulo</Link>
                 </div>
               ) : null}
             </div>
@@ -500,18 +547,75 @@ export default function GenericModuleRuntimePage({
             ) : null}
           </div>
 
-          {/* Filtros simples — por estado */}
-          <select
-            value={estadoFilter}
-            onChange={(e) => { setEstadoFilter(e.target.value); setPage(1); }}
-            style={{ ...toolbarBtn, padding: "8px 28px 8px 14px", appearance: "none", backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8.5L2 4.5h8z'/%3E%3C/svg%3E\")", backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "10px" }}
-            title="Filtrar por estado"
-          >
-            <option value="">▽ Filtros</option>
-            {Array.from(new Set(rows.map((r) => String(r.estado || "")).filter(Boolean))).sort().map((e) => (
-              <option key={e} value={e}>{e}</option>
-            ))}
-          </select>
+          {/* TEST-1.6 — Filtros popover real con múltiples dimensiones */}
+          <div style={{ position: "relative" }}>
+            <button type="button" onClick={() => setShowFilters(!showFilters)} style={toolbarBtn}>
+              <span>▽</span> Filtros
+              {(estadoFilter || segmentoFilter || responsableFilter) ? (
+                <span style={popoverCount}>{[estadoFilter, segmentoFilter, responsableFilter].filter(Boolean).length}</span>
+              ) : null}
+              <span style={{ fontSize: 9, marginLeft: 4 }}>▾</span>
+            </button>
+            {showFilters ? (
+              <div style={{ ...popover(280), padding: 12 }}>
+                <div style={popoverHeader}>Filtrar registros</div>
+                {/* Estado */}
+                {(() => {
+                  const estados = Array.from(new Set(rows.map((r) => String(r.estado || "")).filter(Boolean))).sort();
+                  if (estados.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={filterLabel}>Estado</label>
+                      <select value={estadoFilter} onChange={(e) => { setEstadoFilter(e.target.value); setPage(1); }} style={filterSelect}>
+                        <option value="">Todos</option>
+                        {estados.map((e) => <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>)}
+                      </select>
+                    </div>
+                  );
+                })()}
+                {/* Segmento / tipo */}
+                {(() => {
+                  const hasField = ui.fields.some((f) => f.key === "segmento" || f.key === "tipo");
+                  if (!hasField) return null;
+                  const segs = Array.from(new Set(rows.map((r) => String(r.segmento || r.tipo || "")).filter(Boolean))).sort();
+                  if (segs.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={filterLabel}>Segmento</label>
+                      <select value={segmentoFilter} onChange={(e) => { setSegmentoFilter(e.target.value); setPage(1); }} style={filterSelect}>
+                        <option value="">Todos</option>
+                        {segs.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+                  );
+                })()}
+                {/* Responsable */}
+                {(() => {
+                  const hasField = ui.fields.some((f) => f.key === "responsable" || f.key === "asignado");
+                  if (!hasField) return null;
+                  const resps = Array.from(new Set(rows.map((r) => String(r.responsable || r.asignado || "")).filter(Boolean))).sort();
+                  if (resps.length === 0) return null;
+                  return (
+                    <div style={{ marginBottom: 10 }}>
+                      <label style={filterLabel}>Responsable</label>
+                      <select value={responsableFilter} onChange={(e) => { setResponsableFilter(e.target.value); setPage(1); }} style={filterSelect}>
+                        <option value="">Todos</option>
+                        {resps.map((r) => <option key={r} value={r}>{r}</option>)}
+                      </select>
+                    </div>
+                  );
+                })()}
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #f1f5f9" }}>
+                  <button type="button" onClick={() => { setEstadoFilter(""); setSegmentoFilter(""); setResponsableFilter(""); }} style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    Limpiar
+                  </button>
+                  <button type="button" onClick={() => setShowFilters(false)} style={{ background: accent, color: "#fff", border: "none", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    Aplicar
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
 
           {/* Columnas visibles */}
           <div style={{ position: "relative" }}>
@@ -546,7 +650,7 @@ export default function GenericModuleRuntimePage({
                 <button type="button" onClick={c.onClear} style={chipClear} aria-label="Quitar filtro">×</button>
               </span>
             ))}
-            <button type="button" onClick={() => { setEstadoFilter(""); setQuery(""); }} style={{ background: "transparent", border: "none", color: accent, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            <button type="button" onClick={() => { setEstadoFilter(""); setSegmentoFilter(""); setResponsableFilter(""); setQuery(""); }} style={{ background: "transparent", border: "none", color: accent, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
               Limpiar filtros
             </button>
           </div>
@@ -559,19 +663,18 @@ export default function GenericModuleRuntimePage({
           </div>
         ) : null}
 
-        {/* Bulk action bar */}
+        {/* Bulk action bar — TEST-1.3 con acciones reales (no alerts). */}
         {selectedIds.size > 0 ? (
           <div style={{ display: "flex", gap: 12, alignItems: "center", padding: "10px 14px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: 10, marginBottom: 10, fontSize: 13 }}>
             <strong style={{ color: "#1e40af" }}>{selectedIds.size} seleccionados</strong>
             <span style={{ color: "#cbd5e1" }}>|</span>
-            <button type="button" onClick={() => alert("TODO: Asignar responsable")} style={bulkBtn}>Asignar responsable</button>
-            <button type="button" onClick={() => alert("TODO: Cambiar estado")} style={bulkBtn}>Cambiar estado</button>
-            <button type="button" onClick={() => alert("TODO: Enviar")} style={bulkBtn}>Enviar</button>
-            <button type="button" onClick={async () => {
-              if (!confirm("¿Archivar " + selectedIds.size + " registros?")) return;
-              for (const id of Array.from(selectedIds)) await removeRecord(id);
-              setSelectedIds(new Set());
-            }} style={bulkBtn}>Archivar</button>
+            {ui.fields.some((f) => f.key === "responsable") ? (
+              <button type="button" onClick={() => { setBulkValue(""); setBulkError(""); setBulkModal("responsable"); }} style={bulkBtn}>Asignar responsable</button>
+            ) : null}
+            {ui.fields.some((f) => f.key === "estado") ? (
+              <button type="button" onClick={() => { setBulkValue(""); setBulkError(""); setBulkModal("estado"); }} style={bulkBtn}>Cambiar estado</button>
+            ) : null}
+            <button type="button" onClick={() => setArchiveConfirmOpen(true)} style={bulkBtn}>Archivar</button>
             <div style={{ flex: 1 }} />
             <button type="button" onClick={() => setSelectedIds(new Set())} style={{ background: "transparent", border: "none", color: "#64748b", cursor: "pointer", fontSize: 16 }}>×</button>
           </div>
@@ -708,6 +811,89 @@ export default function GenericModuleRuntimePage({
         </>
       ) : null}
 
+      {/* TEST-1.3 — modal bulk: asignar responsable o cambiar estado */}
+      {bulkModal ? (
+        <>
+          <div onClick={() => !bulkBusy && setBulkModal(null)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)", zIndex: 140 }} />
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)", background: "#fff", borderRadius: 12, padding: 24, width: "min(460px, 92%)", zIndex: 141, boxShadow: "0 30px 80px rgba(0,0,0,0.3)" }}>
+            <h2 style={{ margin: "0 0 8px 0", fontSize: 18, fontWeight: 800 }}>
+              {bulkModal === "responsable" ? "Asignar responsable" : "Cambiar estado"}
+            </h2>
+            <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#64748b" }}>
+              Se aplicará a <strong>{selectedIds.size}</strong> registro{selectedIds.size === 1 ? "" : "s"}.
+            </p>
+            {bulkModal === "estado" ? (
+              <select
+                value={bulkValue}
+                onChange={(e) => setBulkValue(e.target.value)}
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, marginBottom: 14, boxSizing: "border-box" }}
+              >
+                <option value="">— elegir estado —</option>
+                {(() => {
+                  const seen = new Set<string>();
+                  for (const r of rows) {
+                    const v = String(r.estado || "").trim();
+                    if (v) seen.add(v);
+                  }
+                  return Array.from(seen).sort().map((v) => (
+                    <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>
+                  ));
+                })()}
+              </select>
+            ) : (
+              <input
+                type="text"
+                value={bulkValue}
+                onChange={(e) => setBulkValue(e.target.value)}
+                placeholder="Nombre del responsable"
+                autoFocus
+                style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, marginBottom: 14, boxSizing: "border-box" }}
+              />
+            )}
+            {bulkError ? <div style={{ color: "#dc2626", fontSize: 12, marginBottom: 12 }}>{bulkError}</div> : null}
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <button type="button" disabled={bulkBusy} onClick={() => setBulkModal(null)} style={{ padding: "9px 14px", border: "1px solid #d1d5db", background: "transparent", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: bulkBusy ? "not-allowed" : "pointer" }}>Cancelar</button>
+              <button
+                type="button"
+                disabled={bulkBusy || !bulkValue.trim()}
+                onClick={async () => {
+                  setBulkBusy(true);
+                  setBulkError("");
+                  try {
+                    await bulkUpdate(bulkModal === "responsable" ? "responsable" : "estado", bulkValue.trim());
+                    setBulkModal(null);
+                    setSelectedIds(new Set());
+                  } catch (err) {
+                    setBulkError(err instanceof Error ? err.message : "Error aplicando cambios.");
+                  } finally {
+                    setBulkBusy(false);
+                  }
+                }}
+                style={{ padding: "9px 14px", border: "none", background: bulkValue.trim() && !bulkBusy ? accent : "#cbd5e1", color: "#fff", borderRadius: 6, fontSize: 14, fontWeight: 700, cursor: bulkValue.trim() && !bulkBusy ? "pointer" : "not-allowed" }}
+              >
+                {bulkBusy ? "Aplicando…" : "Aplicar a " + selectedIds.size}
+              </button>
+            </div>
+          </div>
+        </>
+      ) : null}
+
+      {/* TEST-1.3 — Archivar en bloque con DangerConfirm en vez de confirm() */}
+      <DangerConfirm
+        open={archiveConfirmOpen}
+        onClose={() => setArchiveConfirmOpen(false)}
+        onConfirm={async () => {
+          for (const id of Array.from(selectedIds)) {
+            await removeRecord(id);
+          }
+          setSelectedIds(new Set());
+        }}
+        title={"Archivar " + selectedIds.size + " registro" + (selectedIds.size === 1 ? "" : "s")}
+        description="Los registros se eliminarán. Esta acción no se puede deshacer."
+        mustType="ARCHIVAR"
+        confirmLabel={"Archivar " + selectedIds.size}
+      />
+
     </TenantShell>
   );
 }
@@ -749,10 +935,43 @@ function renderCell(fieldKey: string, val: string, primaryRow: Record<string, st
 }
 
 // === Singular del label (Clientes → cliente) ===
+// TEST-1.2 — overrides para palabras castellanas comunes. Fallback "quitar s"
+// solo si no hay override. Antes "Clientes" → "client" porque slice(-2) en "es".
+const SINGULAR_OVERRIDES: Record<string, string> = {
+  clientes: "cliente",
+  oportunidades: "oportunidad",
+  proyectos: "proyecto",
+  propuestas: "propuesta",
+  presupuestos: "presupuesto",
+  facturas: "factura",
+  documentos: "documento",
+  entregables: "entregable",
+  tareas: "tarea",
+  tickets: "ticket",
+  compras: "compra",
+  productos: "producto",
+  reservas: "reserva",
+  encuestas: "encuesta",
+  etiquetas: "etiqueta",
+  plantillas: "plantilla",
+  empleados: "empleado",
+  gastos: "gasto",
+  vencimientos: "vencimiento",
+  desplazamientos: "desplazamiento",
+  hitos: "hito",
+  aplicaciones: "aplicación",
+  notificaciones: "notificación",
+  pacientes: "paciente",
+  citas: "cita",
+  tratamientos: "tratamiento",
+  alumnos: "alumno",
+  docentes: "docente",
+  calificaciones: "calificación",
+};
 function singular(label: string): string {
-  const l = label.toLowerCase();
-  if (l.endsWith("es")) return l.slice(0, -2);
-  if (l.endsWith("s")) return l.slice(0, -1);
+  const l = label.toLowerCase().trim();
+  if (SINGULAR_OVERRIDES[l]) return SINGULAR_OVERRIDES[l];
+  if (l.endsWith("s") && l.length > 2) return l.slice(0, -1);
   return l;
 }
 
@@ -807,6 +1026,8 @@ function DetailDrawer({
   onEdit: () => void;
   onDelete: () => Promise<void>;
 }) {
+  // TEST-1.4 — link helper vertical-aware para "Ver ficha completa".
+  const { link } = useCurrentVertical();
   const titulo = String(record[titleField] || "Sin título");
   const tint = avatarTint(titulo);
   const estado = String(record.estado || "");
@@ -867,7 +1088,7 @@ function DetailDrawer({
 
       {/* Acciones rápidas */}
       <DrawerSection title="Acciones rápidas">
-        <Link href={"/" + moduleKey + "/" + String(record.id)} style={drawerActionLink}>
+        <Link href={link(moduleKey + "/" + String(record.id))} style={drawerActionLink}>
           <span>📄</span> Ver ficha completa
         </Link>
         <button type="button" onClick={onEdit} style={drawerActionBtn(accent)}>
@@ -975,6 +1196,15 @@ const popoverItemBtn: React.CSSProperties = {
 const popoverCount: React.CSSProperties = {
   background: "#f1f5f9", color: "#475569", fontSize: 11, fontWeight: 700,
   padding: "1px 8px", borderRadius: 999,
+};
+const filterLabel: React.CSSProperties = {
+  display: "block", fontSize: 11, fontWeight: 700, color: "#64748b",
+  textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4,
+};
+const filterSelect: React.CSSProperties = {
+  width: "100%", padding: "6px 10px", border: "1px solid #e2e8f0",
+  borderRadius: 6, fontSize: 13, color: "#0f172a", background: "#fff",
+  boxSizing: "border-box",
 };
 const thStyle: React.CSSProperties = {
   textAlign: "left", padding: "12px 14px",

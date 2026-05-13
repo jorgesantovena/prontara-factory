@@ -323,6 +323,27 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     },
   ],
   fields: [
+    // TEST-1.1 — Clientes (B2B software factory).
+    { moduleKey: "clientes", fieldKey: "nombre", label: "Empresa", kind: "text", required: true, placeholder: "Razón social del cliente" },
+    { moduleKey: "clientes", fieldKey: "cif", label: "CIF / NIF", kind: "text", placeholder: "B12345678" },
+    { moduleKey: "clientes", fieldKey: "contacto", label: "Persona de contacto", kind: "text", placeholder: "Nombre del interlocutor habitual" },
+    { moduleKey: "clientes", fieldKey: "email", label: "Email", kind: "email", placeholder: "contacto@empresa.com" },
+    { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 600 000 000" },
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle, número, código postal, localidad" },
+    { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / inactivo / prospecto", options: [
+      { value: "activo", label: "Activo" },
+      { value: "inactivo", label: "Inactivo" },
+      { value: "prospecto", label: "Prospecto" },
+    ] },
+    { moduleKey: "clientes", fieldKey: "segmento", label: "Segmento", kind: "status", placeholder: "vip / habitual / ocasional", options: [
+      { value: "vip", label: "VIP" },
+      { value: "habitual", label: "Habitual" },
+      { value: "ocasional", label: "Ocasional" },
+    ] },
+    { moduleKey: "clientes", fieldKey: "responsable", label: "Account manager", kind: "text", placeholder: "Quién lleva la cuenta internamente" },
+    { moduleKey: "clientes", fieldKey: "fechaAlta", label: "Cliente desde", kind: "date" },
+    { moduleKey: "clientes", fieldKey: "notas", label: "Notas internas", kind: "textarea", placeholder: "Observaciones útiles del cliente" },
+
     // CRM (oportunidades) — SF-21.
     { moduleKey: "crm", fieldKey: "empresa", label: "Empresa", kind: "text", required: true, placeholder: "Razón social del prospecto" },
     { moduleKey: "crm", fieldKey: "contacto", label: "Contacto", kind: "text", required: true, placeholder: "Persona con la que tratas" },
@@ -502,6 +523,15 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "cau", fieldKey: "solucion", label: "Solución aplicada", kind: "textarea" },
   ],
   tableColumns: [
+    // TEST-1.1 — Clientes (columnas visibles en el listado).
+    { moduleKey: "clientes", fieldKey: "nombre", label: "Empresa", isPrimary: true },
+    { moduleKey: "clientes", fieldKey: "contacto", label: "Contacto" },
+    { moduleKey: "clientes", fieldKey: "email", label: "Email" },
+    { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono" },
+    { moduleKey: "clientes", fieldKey: "segmento", label: "Segmento" },
+    { moduleKey: "clientes", fieldKey: "responsable", label: "Account manager" },
+    { moduleKey: "clientes", fieldKey: "estado", label: "Estado" },
+
     // CRM (oportunidades) — SF-21.
     { moduleKey: "crm", fieldKey: "empresa", label: "Empresa", isPrimary: true },
     { moduleKey: "crm", fieldKey: "contacto", label: "Contacto" },

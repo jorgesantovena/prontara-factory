@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * Ficha de detalle de registro reusable (H10-A + H10-B + H10-F).
@@ -47,6 +48,8 @@ export default function RecordDetail({
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [newComment, setNewComment] = useState("");
   const [busy, setBusy] = useState(false);
+  // TEST-1.4 — vertical-aware link helper.
+  const { link } = useCurrentVertical();
 
   useEffect(() => {
     if (tab === "comentarios") loadComments();
@@ -157,7 +160,7 @@ export default function RecordDetail({
 
         {tab === "documentos" ? (
           <div style={{ color: "var(--fg-muted, #94a3b8)", fontSize: 13, padding: 20 }}>
-            <Link href={"/documentos?cliente=" + encodeURIComponent(titulo)} style={{ color: accent }}>Ver documentos del módulo →</Link>
+            <Link href={link("documentos?cliente=" + encodeURIComponent(titulo))} style={{ color: accent }}>Ver documentos del módulo →</Link>
           </div>
         ) : null}
 

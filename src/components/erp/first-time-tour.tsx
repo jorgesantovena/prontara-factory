@@ -21,8 +21,10 @@ const STEPS = [
     icon: "👋",
   },
   {
+    // TEST-1.7 — antes mencionaba botones que no existen en tenants con
+    // una sola empresa. Ahora describe sólo lo que ve cualquier usuario.
     title: "TopBar — siempre arriba",
-    body: "Saluda con tu nombre, te muestra la fecha, deja cambiar de empresa, ver notificaciones y abrir esta ayuda con el botón ?",
+    body: "Te saluda con tu nombre, muestra la fecha y permite ver notificaciones o abrir esta ayuda con el botón \"?\" en la esquina superior derecha. Si tu cuenta gestiona varias empresas, también podrás cambiar entre ellas.",
     icon: "🔝",
   },
   {
