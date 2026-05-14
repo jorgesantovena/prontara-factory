@@ -432,7 +432,7 @@ export default function GenericModuleRuntimePage({
             required?: boolean; relationModuleKey?: string; placeholder?: string;
             options?: Array<{ value: string; label: string }>;
           }>}
-          {/* TEST-2.12 Duplicar — pasar selected también en create-from-duplicate. */}
+          // TEST-2.12 Duplicar — pasar selected también en create-from-duplicate.
           initialValue={selected}
           tenant={readTenant() || undefined}
           accent={accent}
