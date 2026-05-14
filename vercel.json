@@ -20,7 +20,7 @@
   "crons": [
     {
       "path": "/api/cron/process-domain-events",
-      "schedule": "*/2 * * * *"
+      "schedule": "0 4 * * *"
     }
   ],
   "regions": ["fra1"]
