@@ -329,7 +329,12 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "contacto", label: "Persona de contacto", kind: "text", placeholder: "Nombre del interlocutor habitual" },
     { moduleKey: "clientes", fieldKey: "email", label: "Email", kind: "email", placeholder: "contacto@empresa.com" },
     { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 600 000 000" },
-    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle, número, código postal, localidad" },
+    // TEST-3.1 — Dirección desglosada para filtros y estadísticas.
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / inactivo / cliente potencial", options: [
       { value: "activo", label: "Activo" },
       { value: "inactivo", label: "Inactivo" },

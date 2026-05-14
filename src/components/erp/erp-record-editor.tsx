@@ -36,7 +36,10 @@ type UiFieldDefinition = {
 
 type OptionItem = { value: string; label: string };
 
-type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "documentos";
+// TEST-3.8 — "proyectos" añadido como tab virtual (no agrupa fields, igual
+// que "documentos"). Solo visible cuando moduleKey === "clientes" y el
+// cliente ya tiene id (mode === "edit").
+type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "documentos";
 
 const TAB_LABELS: Record<TabKey, string> = {
   general: "Datos generales",
@@ -44,6 +47,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   comercial: "Comercial",
   financiero: "Financiero",
   notas: "Notas",
+  proyectos: "Proyectos",
   documentos: "Documentos",
 };
 
@@ -104,10 +108,11 @@ export default function ErpRecordEditor({
   const [tab, setTab] = useState<TabKey>("general");
   const [favorite, setFavorite] = useState(false);
 
-  // Agrupa fields por tab
+  // Agrupa fields por tab. "proyectos" y "documentos" son tabs virtuales
+  // (no agrupan fields del registro — tienen contenido propio).
   const grouped = useMemo(() => {
     const acc: Record<TabKey, UiFieldDefinition[]> = {
-      general: [], contacto: [], comercial: [], financiero: [], notas: [], documentos: [],
+      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], documentos: [],
     };
     for (const f of fields) acc[classifyField(f.key)].push(f);
     return acc;
@@ -115,9 +120,16 @@ export default function ErpRecordEditor({
 
   // TEST-1.5 — Tabs visibles. "Documentos" solo se muestra si hay otras
   // tabs con fields (no como única tab — antes salía sola si fields=[]).
+  // TEST-3.8 — "Proyectos" se añade entre las otras tabs y Documentos
+  // cuando moduleKey === "clientes" y el cliente ya tiene id.
   const tabsConFields = (Object.keys(TAB_LABELS) as TabKey[]).filter((t) => grouped[t].length > 0);
+  const showProyectosTab = moduleKey === "clientes" && mode === "edit" && Boolean(initialValue?.id);
   const visibleTabs: TabKey[] = tabsConFields.length > 0
-    ? [...tabsConFields, "documentos" as TabKey]
+    ? [
+        ...tabsConFields,
+        ...(showProyectosTab ? ["proyectos" as TabKey] : []),
+        "documentos" as TabKey,
+      ]
     : []; // sin fields → no mostramos tabs, mostramos mensaje (ver render)
 
   // Reset valores al cambiar mode/initialValue/fields
@@ -292,6 +304,8 @@ export default function ErpRecordEditor({
             <NoFieldsConfigured moduleLabel={moduleLabel} />
           ) : tab === "documentos" ? (
             <DocumentosTab moduleKey={moduleKey} recordId={String(initialValue?.id || "")} mode={mode} />
+          ) : tab === "proyectos" ? (
+            <ProyectosSublist clienteId={String(initialValue?.id || "")} accent={accent} />
           ) : (
             <>
               <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} />
@@ -456,7 +470,11 @@ function FieldInput({ field, value, onChange, options, accent }: {
 
 const chevronBg = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8.5L2 4.5h8z'/%3E%3C/svg%3E\")";
 
-// TEST-2.3 + TEST-2.4 — Sublista de Contactos con CRUD inline.
+// TEST-2.3 + TEST-2.4 — Sublista de Contactos con CRUD.
+// TEST-3.2a — Migrada a modo rejilla (tabla) con acciones por fila:
+// Editar / Copiar / Eliminar / marcar Preferido. Edición en panel inline.
+// TEST-3.2b-i — Normalizador asegura que contactos legacy salgan con shape
+// canónico y, si ninguno está marcado preferido, fuerza el primero.
 // Persiste como JSON en el field `contactosJson` del cliente.
 type Contacto = {
   id: string;
@@ -467,56 +485,108 @@ type Contacto = {
   preferido: boolean;
 };
 
+function normalizeContactos(raw: unknown): Contacto[] {
+  if (!Array.isArray(raw)) return [];
+  let list: Contacto[] = raw
+    .filter((c): c is Record<string, unknown> => !!c && typeof c === "object")
+    .map((c) => ({
+      id: String(c.id || Math.random().toString(36).slice(2, 10)),
+      nombre: String(c.nombre || ""),
+      cargo: String(c.cargo || ""),
+      email: String(c.email || ""),
+      telefono: String(c.telefono || ""),
+      preferido: Boolean(c.preferido),
+    }));
+  // TEST-3.2b-i: si hay contactos pero ninguno preferido (legacy), marcar el primero.
+  if (list.length > 0 && !list.some((c) => c.preferido)) {
+    list = list.map((c, i) => ({ ...c, preferido: i === 0 }));
+  }
+  return list;
+}
+
 function ContactosSublist({ initialJson, onChange, accent }: {
   initialJson: string;
   onChange: (json: string) => void;
   accent: string;
 }) {
   const [contactos, setContactos] = useState<Contacto[]>(() => {
-    try {
-      const arr = JSON.parse(initialJson || "[]");
-      if (Array.isArray(arr)) return arr.filter((c) => c && typeof c === "object").map((c) => ({
-        id: String(c.id || Math.random().toString(36).slice(2, 10)),
-        nombre: String(c.nombre || ""),
-        cargo: String(c.cargo || ""),
-        email: String(c.email || ""),
-        telefono: String(c.telefono || ""),
-        preferido: Boolean(c.preferido),
-      }));
-    } catch { /* invalid json */ }
-    return [];
+    try { return normalizeContactos(JSON.parse(initialJson || "[]")); }
+    catch { return []; }
   });
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<Contacto | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   function persist(next: Contacto[]) {
     setContactos(next);
     onChange(JSON.stringify(next));
   }
 
-  function add() {
+  function startAdd() {
     const newC: Contacto = {
       id: Math.random().toString(36).slice(2, 10),
       nombre: "", cargo: "", email: "", telefono: "",
-      preferido: contactos.length === 0, // el primero queda como preferido por defecto
+      preferido: contactos.length === 0,
     };
     persist([...contactos, newC]);
+    setEditingId(newC.id);
+    setDraft(newC);
   }
 
-  function update(id: string, patch: Partial<Contacto>) {
-    persist(contactos.map((c) => c.id === id ? { ...c, ...patch } : c));
+  function startEdit(c: Contacto) {
+    setEditingId(c.id);
+    setDraft({ ...c });
+  }
+
+  function saveDraft() {
+    if (!draft || editingId === null) return;
+    persist(contactos.map((c) => c.id === editingId ? draft : c));
+    setEditingId(null);
+    setDraft(null);
+  }
+
+  function cancelEdit() {
+    // Si era una fila recién añadida y está vacía, eliminarla
+    if (draft && !draft.nombre && !draft.email && !draft.telefono && !draft.cargo) {
+      const filtered = contactos.filter((c) => c.id !== editingId);
+      // Mantener invariante de preferido si quitamos el preferido
+      const fixed = filtered.length > 0 && !filtered.some((c) => c.preferido)
+        ? filtered.map((c, i) => ({ ...c, preferido: i === 0 }))
+        : filtered;
+      persist(fixed);
+    }
+    setEditingId(null);
+    setDraft(null);
+  }
+
+  function duplicate(c: Contacto) {
+    const copy: Contacto = {
+      ...c,
+      id: Math.random().toString(36).slice(2, 10),
+      nombre: c.nombre ? c.nombre + " (copia)" : "(copia)",
+      preferido: false,
+    };
+    persist([...contactos, copy]);
   }
 
   function setPreferido(id: string) {
     persist(contactos.map((c) => ({ ...c, preferido: c.id === id })));
   }
 
+  function confirmRemove(id: string) {
+    setConfirmDeleteId(id);
+  }
+
   function remove(id: string) {
     const removing = contactos.find((c) => c.id === id);
     let next = contactos.filter((c) => c.id !== id);
-    // Si borramos el preferido y queda alguien, marcar el primero
     if (removing?.preferido && next.length > 0) {
       next = next.map((c, i) => ({ ...c, preferido: i === 0 }));
     }
     persist(next);
+    setConfirmDeleteId(null);
+    if (editingId === id) { setEditingId(null); setDraft(null); }
   }
 
   return (
@@ -530,7 +600,7 @@ function ContactosSublist({ initialJson, onChange, accent }: {
         </div>
         <button
           type="button"
-          onClick={add}
+          onClick={startAdd}
           style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
         >
           + Añadir contacto
@@ -539,58 +609,79 @@ function ContactosSublist({ initialJson, onChange, accent }: {
 
       {contactos.length === 0 ? (
         <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
-          Aún no hay contactos. Pulsa "Añadir contacto" para empezar.
+          Aún no hay contactos. Pulsa &quot;Añadir contacto&quot; para empezar.
         </div>
       ) : (
-        <div style={{ display: "grid", gap: 8 }}>
-          {contactos.map((c) => (
-            <div key={c.id} style={{ border: "1px solid " + (c.preferido ? accent : "#e5e7eb"), background: c.preferido ? "#eff6ff" : "#ffffff", borderRadius: 10, padding: 12 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginBottom: 8, alignItems: "center" }}>
-                <input
-                  type="text"
-                  value={c.nombre}
-                  onChange={(e) => update(c.id, { nombre: e.target.value })}
-                  placeholder="Nombre"
-                  style={subIpt}
-                />
-                <input
-                  type="text"
-                  value={c.cargo}
-                  onChange={(e) => update(c.id, { cargo: e.target.value })}
-                  placeholder="Cargo"
-                  style={subIpt}
-                />
-                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: c.preferido ? accent : "#64748b", cursor: "pointer", whiteSpace: "nowrap" }}>
-                  <input type="radio" checked={c.preferido} onChange={() => setPreferido(c.id)} />
-                  Preferido
-                </label>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, alignItems: "center" }}>
-                <input
-                  type="email"
-                  value={c.email}
-                  onChange={(e) => update(c.id, { email: e.target.value })}
-                  placeholder="email@ejemplo.com"
-                  style={subIpt}
-                />
-                <input
-                  type="tel"
-                  value={c.telefono}
-                  onChange={(e) => update(c.id, { telefono: e.target.value })}
-                  placeholder="+34 600 000 000"
-                  style={subIpt}
-                />
-                <button
-                  type="button"
-                  onClick={() => remove(c.id)}
-                  title="Eliminar contacto"
-                  style={{ background: "transparent", border: "1px solid #fecaca", color: "#dc2626", borderRadius: 6, padding: "6px 12px", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
-                >
-                  Eliminar
-                </button>
-              </div>
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
+                <th style={subTh(56)}>Pref.</th>
+                <th style={subTh()}>Nombre</th>
+                <th style={subTh()}>Cargo</th>
+                <th style={subTh()}>Email</th>
+                <th style={subTh()}>Teléfono</th>
+                <th style={subTh(160)}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contactos.map((c) => {
+                const isEditing = editingId === c.id;
+                const v = isEditing && draft ? draft : c;
+                return (
+                  <tr key={c.id} style={{ borderTop: "1px solid #e5e7eb", background: c.preferido ? "#f0f9ff" : "transparent" }}>
+                    <td style={subTd}>
+                      <label title={c.preferido ? "Contacto preferido" : "Marcar como preferido"} style={{ display: "inline-flex", cursor: "pointer" }}>
+                        <input type="radio" checked={c.preferido} onChange={() => setPreferido(c.id)} disabled={isEditing} />
+                      </label>
+                    </td>
+                    {isEditing && draft ? (
+                      <>
+                        <td style={subTd}><input style={subIpt} value={draft.nombre} onChange={(e) => setDraft({ ...draft, nombre: e.target.value })} placeholder="Nombre" autoFocus /></td>
+                        <td style={subTd}><input style={subIpt} value={draft.cargo} onChange={(e) => setDraft({ ...draft, cargo: e.target.value })} placeholder="Cargo" /></td>
+                        <td style={subTd}><input style={subIpt} type="email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} placeholder="email@ejemplo.com" /></td>
+                        <td style={subTd}><input style={subIpt} type="tel" value={draft.telefono} onChange={(e) => setDraft({ ...draft, telefono: e.target.value })} placeholder="+34 600 000 000" /></td>
+                        <td style={subTd}>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <button type="button" onClick={saveDraft} style={subBtnPrimary(accent)} title="Guardar cambios">Guardar</button>
+                            <button type="button" onClick={cancelEdit} style={subBtn} title="Descartar cambios">Cancelar</button>
+                          </div>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={subTd}>{v.nombre || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                        <td style={subTd}>{v.cargo || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                        <td style={subTd}>{v.email ? <a href={"mailto:" + v.email} style={{ color: "#2563eb", textDecoration: "none" }}>{v.email}</a> : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                        <td style={subTd}>{v.telefono ? <a href={"tel:" + v.telefono} style={{ color: "#2563eb", textDecoration: "none" }}>{v.telefono}</a> : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                        <td style={subTd}>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <button type="button" onClick={() => startEdit(c)} style={subBtn} title="Modificar">✏️</button>
+                            <button type="button" onClick={() => duplicate(c)} style={subBtn} title="Copiar / Duplicar">📋</button>
+                            <button type="button" onClick={() => confirmRemove(c.id)} style={subBtnDanger} title="Eliminar">🗑</button>
+                          </div>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Confirmación de eliminación */}
+      {confirmDeleteId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", zIndex: 80, display: "grid", placeItems: "center" }} onClick={() => setConfirmDeleteId(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, padding: 20, maxWidth: 380, boxShadow: "0 12px 32px rgba(0,0,0,0.25)" }}>
+            <h4 style={{ margin: "0 0 8px 0", fontSize: 16, color: "#0f172a" }}>Eliminar contacto</h4>
+            <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#475569" }}>¿Eliminar este contacto del cliente? Esta acción no se puede deshacer hasta que guardes el cliente.</p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" onClick={() => setConfirmDeleteId(null)} style={subBtn}>Cancelar</button>
+              <button type="button" onClick={() => remove(confirmDeleteId)} style={{ ...subBtnDanger, padding: "8px 14px" }}>Eliminar</button>
             </div>
-          ))}
+          </div>
         </div>
       )}
     </section>
@@ -598,9 +689,195 @@ function ContactosSublist({ initialJson, onChange, accent }: {
 }
 
 const subIpt: React.CSSProperties = {
-  padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 6,
-  fontSize: 13, fontFamily: "inherit", boxSizing: "border-box",
+  padding: "6px 8px", border: "1px solid #d1d5db", borderRadius: 6,
+  fontSize: 13, fontFamily: "inherit", boxSizing: "border-box", width: "100%",
 };
+
+function subTh(width?: number): React.CSSProperties {
+  return {
+    textAlign: "left", padding: "8px 10px", fontSize: 11,
+    ...(width ? { width } : {}),
+  };
+}
+
+const subTd: React.CSSProperties = {
+  padding: "8px 10px", verticalAlign: "middle", color: "#0f172a",
+};
+
+const subBtn: React.CSSProperties = {
+  background: "#fff", border: "1px solid #e2e8f0", borderRadius: 6,
+  padding: "4px 8px", fontSize: 13, cursor: "pointer", color: "#334155",
+};
+
+const subBtnDanger: React.CSSProperties = {
+  ...subBtn,
+  border: "1px solid #fecaca", color: "#dc2626",
+};
+
+function subBtnPrimary(accent: string): React.CSSProperties {
+  return {
+    ...subBtn,
+    background: accent, color: "#fff", border: "1px solid " + accent,
+    fontWeight: 600,
+  };
+}
+
+// TEST-3.8 — Sublista de Proyectos colgando del cliente.
+// Lista los proyectos cuyo campo "cliente" coincide con el ID del cliente
+// abierto. Solo se monta cuando ya existe id (mode === "edit"). El usuario
+// puede ver datos, eliminar y crear nuevos proyectos con el cliente
+// precargado vía query string `?prefill_cliente=<id>` que el generic
+// module-runtime-page interpreta para abrir el editor en modo create.
+type ProyectoRow = {
+  id: string;
+  nombre: string;
+  cliente: string;
+  estado: string;
+  responsable: string;
+  fechaInicio: string;
+  fechaCaducidad: string;
+};
+
+function ProyectosSublist({ clienteId, accent }: { clienteId: string; accent: string }) {
+  const { link } = useCurrentVertical();
+  const [rows, setRows] = useState<ProyectoRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  async function load() {
+    if (!clienteId) { setLoading(false); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const r = await fetch("/api/erp/module?module=proyectos", { cache: "no-store" });
+      const data = await r.json();
+      if (!r.ok || !data.ok) {
+        // Si el tenant no tiene el módulo proyectos, salimos limpios.
+        setRows([]);
+        setError("");
+        setLoading(false);
+        return;
+      }
+      const all: Array<Record<string, unknown>> = Array.isArray(data.rows) ? data.rows : [];
+      const filtered = all.filter((row) => String(row.cliente || "") === clienteId).map((row) => ({
+        id: String(row.id || ""),
+        nombre: String(row.nombre || ""),
+        cliente: String(row.cliente || ""),
+        estado: String(row.estado || ""),
+        responsable: String(row.responsable || ""),
+        fechaInicio: String(row.fechaInicio || ""),
+        fechaCaducidad: String(row.fechaCaducidad || ""),
+      }));
+      setRows(filtered);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error cargando proyectos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [clienteId]);
+
+  async function remove(id: string) {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/erp/module", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ module: "proyectos", mode: "delete", recordId: id }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) {
+        setError(data.error || "Error eliminando.");
+      } else {
+        setRows((prev) => prev.filter((row) => row.id !== id));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error.");
+    } finally {
+      setBusy(false);
+      setConfirmDeleteId(null);
+    }
+  }
+
+  const nuevoHref = link("proyectos") + "?prefill_cliente=" + encodeURIComponent(clienteId);
+
+  return (
+    <section>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Proyectos del cliente</h3>
+          <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+            Trabajos y contratos asignados a este cliente. Para crear o editar a fondo se abre el módulo Proyectos con el cliente ya seleccionado.
+          </p>
+        </div>
+        <Link href={nuevoHref} style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+          + Nuevo proyecto
+        </Link>
+      </div>
+
+      {error ? (
+        <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 13 }}>{error}</div>
+      ) : null}
+
+      {loading ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando proyectos…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+          Este cliente todavía no tiene proyectos asignados. Pulsa &quot;Nuevo proyecto&quot; para crear el primero.
+        </div>
+      ) : (
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
+                <th style={subTh()}>Proyecto</th>
+                <th style={subTh()}>Estado</th>
+                <th style={subTh()}>Responsable</th>
+                <th style={subTh(110)}>Inicio</th>
+                <th style={subTh(110)}>Caducidad</th>
+                <th style={subTh(120)}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((p) => (
+                <tr key={p.id} style={{ borderTop: "1px solid #e5e7eb" }}>
+                  <td style={subTd}>{p.nombre || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.estado || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.responsable || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.fechaInicio || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.fechaCaducidad || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <Link href={link("proyectos")} style={{ ...subBtn, textDecoration: "none" }} title="Abrir módulo Proyectos para editar">Abrir</Link>
+                      <button type="button" onClick={() => setConfirmDeleteId(p.id)} style={subBtnDanger} title="Eliminar proyecto" disabled={busy}>🗑</button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Confirmación de eliminación */}
+      {confirmDeleteId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", zIndex: 80, display: "grid", placeItems: "center" }} onClick={() => setConfirmDeleteId(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, padding: 20, maxWidth: 380, boxShadow: "0 12px 32px rgba(0,0,0,0.25)" }}>
+            <h4 style={{ margin: "0 0 8px 0", fontSize: 16, color: "#0f172a" }}>Eliminar proyecto</h4>
+            <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#475569" }}>¿Eliminar este proyecto del cliente? Esta acción no se puede deshacer.</p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" onClick={() => setConfirmDeleteId(null)} style={subBtn}>Cancelar</button>
+              <button type="button" onClick={() => remove(confirmDeleteId)} style={{ ...subBtnDanger, padding: "8px 14px" }} disabled={busy}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
 
 // TEST-1.5 — mensaje cuando el pack del tenant no tiene fields para el
 // módulo. Antes el editor mostraba la tab "Documentos" como única, lo que

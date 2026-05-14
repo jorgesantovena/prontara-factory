@@ -256,8 +256,10 @@ export default function ReportesPage() {
                   <h2 style={{ fontSize: 18, fontWeight: 700, margin: "0 0 4px 0" }}>{activeReport.name}</h2>
                   <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>{activeResult.total} registro(s)</p>
                 </div>
-                {/* TEST-2.8 — botones para descargar el reporte como archivo real. */}
-                <div style={{ display: "flex", gap: 8 }}>
+                {/* TEST-2.8 — botones para descargar el reporte como archivo real.
+                    TEST-3.6 — añadido botón Word (.docx) que llama al endpoint
+                    server-side y genera un documento de Word de verdad. */}
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
                     type="button"
                     onClick={() => downloadCsv(activeReport.name, activeResult.rows)}
@@ -266,6 +268,14 @@ export default function ReportesPage() {
                   >
                     ↓ Excel (CSV)
                   </button>
+                  <a
+                    href={"/api/erp/reports/" + encodeURIComponent(activeReport.id) + "/export?format=docx"}
+                    download
+                    style={{ display: "inline-flex", alignItems: "center", border: "1px solid #1d4ed8", background: "#1d4ed8", color: "#ffffff", borderRadius: 8, padding: "8px 14px", fontWeight: 600, fontSize: 13, cursor: "pointer", textDecoration: "none" }}
+                    title="Descargar como documento de Microsoft Word (.docx)"
+                  >
+                    ↓ Word (.docx)
+                  </a>
                   <button
                     type="button"
                     onClick={() => window.print()}

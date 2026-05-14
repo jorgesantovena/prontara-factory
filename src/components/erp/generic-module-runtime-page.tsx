@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import ErpRecordEditor from "@/components/erp/erp-record-editor";
 import TenantShell from "@/components/erp/tenant-shell";
@@ -201,6 +201,10 @@ export default function GenericModuleRuntimePage({
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   // TEST-2.12 — menú "..." de fila con Editar / Email / Llamar / Eliminar / Copiar.
   const [rowMenuOpenId, setRowMenuOpenId] = useState<string | null>(null);
+  // TEST-3.3 — confirm de eliminación (vía tecla Supr o bulk Supr).
+  const [deleteSuprOpen, setDeleteSuprOpen] = useState(false);
+  // TEST-3.3 — timer click/dblclick para evitar que doble-click abra primero el drawer.
+  const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [ui, setUi] = useState<{
     label: string;
     emptyState: string;
@@ -276,6 +280,58 @@ export default function GenericModuleRuntimePage({
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moduleKey]);
+
+  // TEST-3.8 — Pre-carga vía query string `?prefill_<campo>=<valor>`. Si
+  // existe al menos un parámetro `prefill_*`, abrimos el editor en modo
+  // "create" con esos valores ya rellenos. Útil para flujos como
+  // "Nuevo proyecto desde la ficha de Cliente" (prefill_cliente=<id>).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const prefill: Record<string, string> = {};
+    let hasAny = false;
+    for (const [k, v] of params.entries()) {
+      if (k.startsWith("prefill_") && v) {
+        prefill[k.slice("prefill_".length)] = v;
+        hasAny = true;
+      }
+    }
+    if (hasAny && modalMode === null) {
+      setSelected(prefill);
+      setModalMode("create");
+      // Limpiamos los prefill_* de la URL para no re-abrir al refrescar.
+      const cleaned = new URLSearchParams(window.location.search);
+      for (const k of Array.from(cleaned.keys())) {
+        if (k.startsWith("prefill_")) cleaned.delete(k);
+      }
+      const newSearch = cleaned.toString();
+      const newUrl = window.location.pathname + (newSearch ? "?" + newSearch : "");
+      window.history.replaceState({}, "", newUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moduleKey]);
+
+  // TEST-3.3 — Atajo de teclado: Supr/Delete elimina la selección actual o
+  // el registro abierto en el drawer. Ignora si hay foco en input/textarea
+  // o si está abierto el editor full-page (modalMode !== null).
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Delete") return;
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (target?.isContentEditable) return;
+      if (modalMode !== null) return; // editor abierto
+      if (bulkModal || archiveConfirmOpen || deleteSuprOpen) return;
+      const tienenSeleccion = selectedIds.size > 0;
+      const drawerConRegistro = detailOpen && selected?.id;
+      if (!tienenSeleccion && !drawerConRegistro) return;
+      e.preventDefault();
+      setDeleteSuprOpen(true);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedIds, detailOpen, selected, modalMode, bulkModal, archiveConfirmOpen, deleteSuprOpen]);
 
   // Filtrado: query + estadoFilter + segmento + responsable (TEST-1.6).
   const filtered = useMemo(() => {
@@ -752,9 +808,19 @@ export default function GenericModuleRuntimePage({
                     return (
                       <tr
                         key={id}
-                        onClick={() => openDetail(item)}
-                        onDoubleClick={() => { setSelected(item); setModalMode("edit"); }}
-                        title="Click: detalle rápido — Doble click: editar"
+                        onClick={() => {
+                          // TEST-3.3 — un solo click abre Detalle Rápido tras un
+                          // pequeño delay; si llega doble-click antes, se cancela
+                          // y abre el editor en su lugar.
+                          if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+                          clickTimerRef.current = setTimeout(() => { openDetail(item); clickTimerRef.current = null; }, 220);
+                        }}
+                        onDoubleClick={() => {
+                          if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
+                          setSelected(item);
+                          setModalMode("edit");
+                        }}
+                        title="Click: detalle rápido — Doble click: editar — Supr: eliminar"
                         style={{
                           borderBottom: "1px solid #f1f5f9",
                           cursor: "pointer",
@@ -773,13 +839,32 @@ export default function GenericModuleRuntimePage({
                         </td>
                         {columns.map((col, idx) => {
                           let val = item[col.fieldKey];
-                          // TEST-2.4 — columna "contacto" muestra el preferido del JSON.
+                          // TEST-2.4 + TEST-3.2b-ii — columna "contacto":
+                          // muestra el preferido del JSON con nombre arriba y
+                          // email + teléfono debajo (subtexto gris).
                           if (col.fieldKey === "contacto" && item.contactosJson) {
                             try {
                               const arr = JSON.parse(String(item.contactosJson));
                               if (Array.isArray(arr) && arr.length > 0) {
                                 const preferido = arr.find((c) => c?.preferido) || arr[0];
-                                if (preferido?.nombre) val = String(preferido.nombre);
+                                if (preferido) {
+                                  const nombre = String(preferido.nombre || "").trim();
+                                  const email = String(preferido.email || "").trim();
+                                  const tel = String(preferido.telefono || "").trim();
+                                  return (
+                                    <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 400 }}>
+                                      <div style={{ lineHeight: 1.3 }}>
+                                        <div style={{ color: "#0f172a", fontWeight: 600 }}>{nombre || "—"}</div>
+                                        {(email || tel) && (
+                                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                            {email && <span title={email}>✉ {email}</span>}
+                                            {tel && <span title={tel}>☎ {tel}</span>}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+                                  );
+                                }
                               }
                             } catch { /* fallback al campo plano */ }
                           }
@@ -822,7 +907,8 @@ export default function GenericModuleRuntimePage({
                                 ) : null}
                                 <button type="button" style={popoverItemBtn} onClick={async () => {
                                   setRowMenuOpenId(null);
-                                  // Duplicar: clonar payload (sin id), abrir create con valores precargados
+                                  // TEST-3.3 — "Copiar" (antes "Duplicar"): clona payload
+                                  // sin id y abre create con valores precargados.
                                   const clone: Record<string, string> = {};
                                   for (const [k, v] of Object.entries(item)) {
                                     if (k === "id") continue;
@@ -831,7 +917,7 @@ export default function GenericModuleRuntimePage({
                                   setSelected(clone);
                                   setModalMode("create");
                                 }}>
-                                  <span>⎘</span><span>Duplicar</span>
+                                  <span>⎘</span><span>Copiar</span>
                                 </button>
                                 <button type="button" style={{ ...popoverItemBtn, color: "#dc2626" }} onClick={async () => {
                                   setRowMenuOpenId(null);
@@ -878,7 +964,7 @@ export default function GenericModuleRuntimePage({
         ) : null}
       </div>
 
-      {/* Drawer de detalle rápido */}
+      {/* Drawer de detalle rápido (TEST-3.3: solo info, sin botones de acción) */}
       {detailOpen && selected ? (
         <>
           <div onClick={() => setDetailOpen(false)} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.35)", zIndex: 90 }} />
@@ -895,8 +981,6 @@ export default function GenericModuleRuntimePage({
               fields={ui.fields}
               titleField={titleField}
               onClose={() => setDetailOpen(false)}
-              onEdit={() => { setDetailOpen(false); setModalMode("edit"); }}
-              onDelete={async () => removeRecord(String(selected.id))}
             />
           </aside>
         </>
@@ -983,6 +1067,31 @@ export default function GenericModuleRuntimePage({
         description="Los registros se eliminarán. Esta acción no se puede deshacer."
         mustType="ARCHIVAR"
         confirmLabel={"Archivar " + selectedIds.size}
+      />
+
+      {/* TEST-3.3 — Eliminar via tecla Supr (sobre selección o sobre la
+          fila del drawer abierto). Confirmación obligatoria escribiendo
+          ELIMINAR. */}
+      <DangerConfirm
+        open={deleteSuprOpen}
+        onClose={() => setDeleteSuprOpen(false)}
+        onConfirm={async () => {
+          const ids = selectedIds.size > 0
+            ? Array.from(selectedIds)
+            : (selected?.id ? [String(selected.id)] : []);
+          for (const id of ids) {
+            await removeRecord(id);
+          }
+          setSelectedIds(new Set());
+          setDetailOpen(false);
+        }}
+        title={(() => {
+          const n = selectedIds.size > 0 ? selectedIds.size : (selected?.id ? 1 : 0);
+          return "Eliminar " + n + " registro" + (n === 1 ? "" : "s");
+        })()}
+        description="Los registros se eliminarán. Esta acción no se puede deshacer."
+        mustType="ELIMINAR"
+        confirmLabel="Eliminar definitivamente"
       />
 
     </TenantShell>
@@ -1104,8 +1213,11 @@ function MiniKpi({ kpi, index }: { kpi: { key: string; label: string; value: num
 }
 
 // === Drawer detalle rápido ===
+// TEST-3.3 — Solo información. Las acciones (Editar / Eliminar / Email /
+// Llamar / Copiar) ya viven en el botón "⋯" de la fila. Aquí solo se
+// muestra el contenido relevante en modo lectura.
 function DetailDrawer({
-  accent, moduleKey, moduleLabel, record, fields, titleField, onClose, onEdit, onDelete,
+  accent, moduleKey, moduleLabel, record, fields, titleField, onClose,
 }: {
   accent: string;
   moduleKey: string;
@@ -1114,11 +1226,7 @@ function DetailDrawer({
   fields: FieldDef[];
   titleField: string;
   onClose: () => void;
-  onEdit: () => void;
-  onDelete: () => Promise<void>;
 }) {
-  // TEST-1.4 — link helper vertical-aware.
-  const { link } = useCurrentVertical();
   const titulo = String(record[titleField] || "Sin título");
   const tint = avatarTint(titulo);
   const estado = String(record.estado || "");
@@ -1177,36 +1285,13 @@ function DetailDrawer({
         </DrawerSection>
       ) : null}
 
-      {/* Acciones rápidas */}
-      <DrawerSection title="Acciones rápidas">
-        {/* TEST-2.1 — antes era Link a /{vertical}/{modulo}/{id} que daba
-            404 porque esa ruta no existe. Ahora abre el editor full-page
-            (mismo onEdit que el botón "Editar" inferior). */}
-        <button type="button" onClick={onEdit} style={drawerActionLink}>
-          <span>📄</span> Ver ficha completa
-        </button>
-        <button type="button" onClick={onEdit} style={drawerActionBtn(accent)}>
-          <span>✎</span> Editar
-        </button>
-        {/* TEST-2.9 — mailto real con asunto pre-rellenado. Si el navegador
-            del usuario no tiene cliente de email configurado puede no abrir
-            nada; el title lo explica. */}
-        {record.email ? (
-          <a
-            href={"mailto:" + record.email + "?subject=" + encodeURIComponent("Contacto desde " + moduleLabel)}
-            style={drawerActionLink}
-            title={"Abrir email a " + record.email + " en tu cliente de correo predeterminado"}
-          >
-            <span>✉️</span> Enviar email
-          </a>
-        ) : null}
-        {record.telefono ? <a href={"tel:" + record.telefono} style={drawerActionLink}><span>📞</span> Llamar</a> : null}
-        <button type="button" onClick={async () => {
-          if (confirm("¿Borrar este " + singular(moduleLabel) + "?")) await onDelete();
-        }} style={{ ...drawerActionLink, color: "#dc2626" }}>
-          <span>🗑</span> Eliminar
-        </button>
-      </DrawerSection>
+      {/* TEST-3.3 — sin sección de "Acciones rápidas". Las acciones
+          (Editar / Email / Llamar / Copiar / Eliminar) están en el
+          botón "⋯" de la fila. Doble-click sobre la fila edita. */}
+      <div style={{ marginTop: 18, padding: 10, borderRadius: 8, background: "#f8fafc", color: "#64748b", fontSize: 12, lineHeight: 1.5 }}>
+        Esto es el <strong>detalle rápido</strong> (solo lectura).<br />
+        Para <strong>editar</strong>: haz <em>doble click</em> sobre la fila o usa el botón <em>⋯</em> de la línea.
+      </div>
     </div>
   );
 }

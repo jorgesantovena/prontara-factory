@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * Vista calendario unificada (H3-FUNC-03).
@@ -51,6 +53,7 @@ function ymd(d: Date): string {
 }
 
 export default function CalendarioPage() {
+  const { link } = useCurrentVertical();
   const [cursor, setCursor] = useState<Date>(startOfMonth(new Date()));
   const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
@@ -223,22 +226,40 @@ export default function CalendarioPage() {
         ))}
       </div>
 
-      {/* TEST-2.7 — empty state explicativo cuando el calendario está vacío.
-          Antes el tester abría el mes y se quedaba en blanco sin saber
-          de dónde salen las entradas. */}
+      {/* TEST-2.7 + TEST-3.5 — empty state explicativo cuando el calendario
+          está vacío. Antes el tester abría el mes y se quedaba en blanco sin
+          saber de dónde salen las entradas ni cómo se mantienen.
+          TEST-3.5 añade el bloque "Cómo se mantiene" y un botón CTA. */}
       {!loading && filtered.length === 0 ? (
-        <div style={{ marginTop: 24, padding: 20, background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: 10, color: "#475569", fontSize: 13, lineHeight: 1.55 }}>
-          <strong style={{ display: "block", marginBottom: 6, color: "#0f172a", fontSize: 14 }}>
+        <div style={{ marginTop: 24, padding: 22, background: "#f8fafc", border: "1px dashed #cbd5e1", borderRadius: 10, color: "#475569", fontSize: 13, lineHeight: 1.55 }}>
+          <strong style={{ display: "block", marginBottom: 6, color: "#0f172a", fontSize: 15 }}>
             📅 Tu calendario está vacío
           </strong>
-          El calendario muestra automáticamente las tareas con fecha límite, las reservas, citas, actividades del parte de horas, eventos y movimientos de caja que crees en sus módulos respectivos.
-          <br/><br/>
-          Para que aparezcan entradas:
-          <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
-            <li>Crea una <strong>Tarea</strong> con fecha límite.</li>
-            <li>Apunta una <strong>actividad</strong> en el parte de horas.</li>
-            <li>Reserva un recurso o crea una cita si tu vertical los usa.</li>
-          </ul>
+          El calendario es una <strong>vista unificada</strong>: <em>no se crea nada directamente aquí</em>. Recoge automáticamente las entradas con fecha que tienes en otros módulos: tareas con fecha límite, reservas, citas, actividades del parte de horas, eventos y movimientos de caja.
+
+          <div style={{ marginTop: 14 }}>
+            <strong style={{ color: "#0f172a" }}>Para que aparezcan entradas, crea registros en el módulo correspondiente:</strong>
+            <ul style={{ margin: "6px 0 0 18px", padding: 0 }}>
+              <li>Una <strong>Tarea</strong> con campo &quot;fecha límite&quot; → aparece en el día asignado.</li>
+              <li>Una <strong>Actividad</strong> en el parte de horas (módulo Actividades).</li>
+              <li>Una <strong>Reserva</strong> de recurso o una <strong>Cita</strong> si tu vertical los usa.</li>
+            </ul>
+          </div>
+
+          <div style={{ marginTop: 14 }}>
+            <strong style={{ color: "#0f172a" }}>¿Cómo se mantiene cada entrada?</strong>
+            <br/>
+            Cada entrada del calendario es un acceso de lectura. Para <strong>modificar</strong>, <strong>completar</strong> o <strong>eliminar</strong> una tarea/cita/reserva, ve al módulo del que proviene (Tareas, Reservas, etc.) y edita o elimina el registro desde ahí. El calendario refleja automáticamente los cambios al recargar.
+          </div>
+
+          <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Link href={link("tareas")} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#1d4ed8", color: "#fff", padding: "8px 14px", borderRadius: 6, textDecoration: "none", fontWeight: 600, fontSize: 13 }}>
+              + Crear una tarea con fecha
+            </Link>
+            <Link href={link("actividades")} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fff", color: "#1d4ed8", padding: "8px 14px", borderRadius: 6, textDecoration: "none", fontWeight: 600, fontSize: 13, border: "1px solid #1d4ed8" }}>
+              Ir a Actividades
+            </Link>
+          </div>
         </div>
       ) : null}
     </main>
