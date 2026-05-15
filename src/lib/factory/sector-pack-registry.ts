@@ -59,6 +59,12 @@ const CLINICA_DENTAL_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "fecha_nacimiento", label: "Fecha de nacimiento", kind: "date" },
     { moduleKey: "clientes", fieldKey: "alergias", label: "Alergias / antecedentes médicos", kind: "textarea", placeholder: "Alergias relevantes, medicación, embarazo..." },
     { moduleKey: "clientes", fieldKey: "doctor_referente", label: "Doctor referente", kind: "text", placeholder: "Doctor habitual" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales).
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / inactivo / nuevo" },
 
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Tratamiento o cita", kind: "text", required: true, placeholder: "Ortodoncia superior, Limpieza..." },
@@ -901,6 +907,12 @@ const GIMNASIO_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
     { moduleKey: "clientes", fieldKey: "email", label: "Email", kind: "email", placeholder: "socio@email.com" },
     { moduleKey: "clientes", fieldKey: "plan_actual", label: "Plan actual", kind: "text", placeholder: "Mensual / Trimestral / Personal" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales).
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / baja / pendiente_pago" },
     { moduleKey: "clientes", fieldKey: "fecha_alta", label: "Alta", kind: "date" },
 
@@ -1114,6 +1126,12 @@ const PELUQUERIA_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "email", label: "Email", kind: "email", placeholder: "cliente@email.com" },
     { moduleKey: "clientes", fieldKey: "color_actual", label: "Color/fórmula", kind: "text", placeholder: "Mechas californianas / Color 5.6" },
     { moduleKey: "clientes", fieldKey: "ultimo_servicio", label: "Último servicio", kind: "text", placeholder: "Color + corte (12 abr)" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales).
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / inactivo" },
 
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Cita o servicio", kind: "text", required: true, placeholder: "Corte, color, mechas, tratamiento..." },
@@ -1331,6 +1349,12 @@ const TALLER_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "marca_modelo", label: "Marca y modelo (vehículo)", kind: "text", placeholder: "VW Golf 2018 1.6 TDI" },
     { moduleKey: "clientes", fieldKey: "kilometraje", label: "Kilometraje", kind: "number", placeholder: "85000" },
     { moduleKey: "clientes", fieldKey: "cliente", label: "Propietario (vehículo)", kind: "relation", relationModuleKey: "clientes" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales).
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / inactivo" },
 
     { moduleKey: "proyectos", fieldKey: "numero", label: "Nº OT", kind: "text", required: true, placeholder: "OT-2026-0042" },
@@ -1610,6 +1634,12 @@ const COLEGIO_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "familia", label: "Familia (si es alumno)", kind: "relation", relationModuleKey: "clientes" },
     { moduleKey: "clientes", fieldKey: "curso", label: "Curso (si es alumno)", kind: "text", placeholder: "Primaria 2º, Infantil 5..." },
     { moduleKey: "clientes", fieldKey: "fecha_nacimiento", label: "Fecha nacimiento (alumno)", kind: "date" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales).
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "matriculado / baja / pendiente" },
 
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Curso o grupo", kind: "text", required: true, placeholder: "Primaria 2º A, Infantil 5..." },
@@ -2331,6 +2361,12 @@ const VETERINARIA_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono propietario", kind: "tel", placeholder: "+34 ..." },
     { moduleKey: "clientes", fieldKey: "email", label: "Email propietario", kind: "email" },
     { moduleKey: "clientes", fieldKey: "alergias", label: "Alergias / observaciones", kind: "textarea" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales — dirección del propietario).
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
       { value: "activo", label: "Activo" }, { value: "fallecido", label: "Fallecido" }, { value: "perdido", label: "Perdido" }, { value: "inactivo", label: "Inactivo" },
     ] },
@@ -2514,7 +2550,12 @@ const ABOGADOS_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "nif", label: "NIF / CIF", kind: "text" },
     { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
     { moduleKey: "clientes", fieldKey: "email", label: "Email", kind: "email" },
-    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text" },
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales).
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }] },
     // Casos
     { moduleKey: "proyectos", fieldKey: "referencia", label: "Nº referencia", kind: "text", required: true, placeholder: "C-2026-001" },
@@ -2661,6 +2702,12 @@ const HOSTELERIA_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
     { moduleKey: "clientes", fieldKey: "email", label: "Email", kind: "email" },
     { moduleKey: "clientes", fieldKey: "preferencias", label: "Preferencias / alergias", kind: "textarea" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales).
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }] },
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Evento", kind: "text", required: true, placeholder: "Boda, comida empresa, comunión..." },
     { moduleKey: "proyectos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [{ value: "boda", label: "Boda" }, { value: "comunion", label: "Comunión" }, { value: "empresa", label: "Comida empresa" }, { value: "celebracion", label: "Celebración familiar" }, { value: "otro", label: "Otro" }] },
@@ -2777,6 +2824,12 @@ const INMOBILIARIA_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
     { moduleKey: "clientes", fieldKey: "email", label: "Email", kind: "email" },
     { moduleKey: "clientes", fieldKey: "preferencias", label: "Preferencias búsqueda", kind: "textarea" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales).
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }] },
     { moduleKey: "proyectos", fieldKey: "referencia", label: "Ref.", kind: "text", required: true, placeholder: "INM-001" },
     { moduleKey: "proyectos", fieldKey: "tipo", label: "Tipo inmueble", kind: "status", required: true, options: [{ value: "piso", label: "Piso" }, { value: "casa", label: "Casa" }, { value: "chalet", label: "Chalet" }, { value: "local", label: "Local" }, { value: "oficina", label: "Oficina" }, { value: "garaje", label: "Garaje" }, { value: "terreno", label: "Terreno" }] },
@@ -2905,6 +2958,12 @@ const ASESORIA_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "email", label: "Email", kind: "email" },
     { moduleKey: "clientes", fieldKey: "tipoCuota", label: "Tipo cuota", kind: "status", options: [{ value: "ninguna", label: "Sin cuota" }, { value: "autonomo", label: "Cuota autónomo" }, { value: "pyme", label: "Cuota PYME" }, { value: "empresa", label: "Cuota empresa" }, { value: "personalizada", label: "Personalizada" }] },
     { moduleKey: "clientes", fieldKey: "importeCuota", label: "Importe cuota mensual", kind: "money" },
+    // TEST-3.1 — dirección desglosada (extendido a todos los verticales).
+    { moduleKey: "clientes", fieldKey: "direccion", label: "Dirección", kind: "text", placeholder: "Calle y número" },
+    { moduleKey: "clientes", fieldKey: "poblacion", label: "Población", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "codigoPostal", label: "Código postal", kind: "text", placeholder: "28001" },
+    { moduleKey: "clientes", fieldKey: "provincia", label: "Provincia", kind: "text", placeholder: "Ej. Madrid" },
+    { moduleKey: "clientes", fieldKey: "pais", label: "País", kind: "text", placeholder: "España" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "activo", label: "Activo" }, { value: "inactivo", label: "Inactivo" }, { value: "baja", label: "Baja" }] },
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Encargo", kind: "text", required: true, placeholder: "Constitución SL, declaración renta..." },
     { moduleKey: "proyectos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
