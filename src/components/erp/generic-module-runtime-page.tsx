@@ -203,8 +203,11 @@ export default function GenericModuleRuntimePage({
   const [rowMenuOpenId, setRowMenuOpenId] = useState<string | null>(null);
   // TEST-3.3 — confirm de eliminación (vía tecla Supr o bulk Supr).
   const [deleteSuprOpen, setDeleteSuprOpen] = useState(false);
-  // TEST-3.3 — timer click/dblclick para evitar que doble-click abra primero el drawer.
+  // TEST-4.1.b — detección manual de doble-click usando timestamp del último
+  // click. Más fiable que onDoubleClick + setTimeout (que dejaba pasar el
+  // primer doble-click). Threshold 320ms.
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastClickRef = useRef<{ id: string; t: number }>({ id: "", t: 0 });
   const [ui, setUi] = useState<{
     label: string;
     emptyState: string;
@@ -809,16 +812,27 @@ export default function GenericModuleRuntimePage({
                       <tr
                         key={id}
                         onClick={() => {
-                          // TEST-3.3 — un solo click abre Detalle Rápido tras un
-                          // pequeño delay; si llega doble-click antes, se cancela
-                          // y abre el editor en su lugar.
+                          // TEST-4.1.b — detección manual con timestamp. Si dos
+                          // clicks llegan sobre la misma fila en < 320ms, se
+                          // interpreta como doble-click y abre el editor. Si
+                          // pasa más de 320ms, abre el drawer (detalle rápido).
+                          const now = Date.now();
+                          const last = lastClickRef.current;
+                          if (last.id === id && now - last.t < 320) {
+                            // doble-click
+                            if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
+                            lastClickRef.current = { id: "", t: 0 };
+                            setSelected(item);
+                            setModalMode("edit");
+                            return;
+                          }
+                          // click simple: registramos y programamos drawer si no llega un segundo click
+                          lastClickRef.current = { id, t: now };
                           if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
-                          clickTimerRef.current = setTimeout(() => { openDetail(item); clickTimerRef.current = null; }, 220);
-                        }}
-                        onDoubleClick={() => {
-                          if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
-                          setSelected(item);
-                          setModalMode("edit");
+                          clickTimerRef.current = setTimeout(() => {
+                            openDetail(item);
+                            clickTimerRef.current = null;
+                          }, 320);
                         }}
                         title="Click: detalle rápido — Doble click: editar — Supr: eliminar"
                         style={{
@@ -838,35 +852,54 @@ export default function GenericModuleRuntimePage({
                           />
                         </td>
                         {columns.map((col, idx) => {
-                          let val = item[col.fieldKey];
-                          // TEST-2.4 + TEST-3.2b-ii — columna "contacto":
-                          // muestra el preferido del JSON con nombre arriba y
-                          // email + teléfono debajo (subtexto gris).
-                          if (col.fieldKey === "contacto" && item.contactosJson) {
-                            try {
-                              const arr = JSON.parse(String(item.contactosJson));
-                              if (Array.isArray(arr) && arr.length > 0) {
-                                const preferido = arr.find((c) => c?.preferido) || arr[0];
-                                if (preferido) {
-                                  const nombre = String(preferido.nombre || "").trim();
-                                  const email = String(preferido.email || "").trim();
-                                  const tel = String(preferido.telefono || "").trim();
-                                  return (
-                                    <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 400 }}>
-                                      <div style={{ lineHeight: 1.3 }}>
-                                        <div style={{ color: "#0f172a", fontWeight: 600 }}>{nombre || "—"}</div>
-                                        {(email || tel) && (
-                                          <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                            {email && <span title={email}>✉ {email}</span>}
-                                            {tel && <span title={tel}>☎ {tel}</span>}
-                                          </div>
-                                        )}
-                                      </div>
-                                    </td>
-                                  );
+                          const val = item[col.fieldKey];
+                          // TEST-2.4 + TEST-3.2b-ii + TEST-4.1.a.iii —
+                          // columna "contacto" unificada: si hay
+                          // contactosJson, usa el preferido; si no, sintetiza
+                          // un "preferido virtual" desde los fields del propio
+                          // record (item.contacto / item.email / item.telefono).
+                          // Así el formato enriquecido es siempre el mismo.
+                          if (col.fieldKey === "contacto") {
+                            let nombre = "";
+                            let email = "";
+                            let tel = "";
+                            // Intento 1: contactosJson válido.
+                            if (item.contactosJson) {
+                              try {
+                                const raw = typeof item.contactosJson === "string"
+                                  ? JSON.parse(item.contactosJson)
+                                  : item.contactosJson;
+                                if (Array.isArray(raw) && raw.length > 0) {
+                                  const preferido = raw.find((c) => c?.preferido) || raw[0];
+                                  if (preferido) {
+                                    nombre = String(preferido.nombre || "").trim();
+                                    email = String(preferido.email || "").trim();
+                                    tel = String(preferido.telefono || "").trim();
+                                  }
                                 }
-                              }
-                            } catch { /* fallback al campo plano */ }
+                              } catch { /* fallback abajo */ }
+                            }
+                            // Intento 2 (fallback): record planos.
+                            if (!nombre && !email && !tel) {
+                              nombre = String(item.contacto || "").trim();
+                              email = String(item.email || "").trim();
+                              tel = String(item.telefono || item.tel || "").trim();
+                            }
+                            if (nombre || email || tel) {
+                              return (
+                                <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 400 }}>
+                                  <div style={{ lineHeight: 1.3 }}>
+                                    <div style={{ color: "#0f172a", fontWeight: 600 }}>{nombre || "—"}</div>
+                                    {(email || tel) && (
+                                      <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                        {email && <span title={email}>✉ {email}</span>}
+                                        {tel && <span title={tel}>☎ {tel}</span>}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
+                              );
+                            }
                           }
                           const valStr = val == null || val === "" ? "—" : String(val);
                           return (

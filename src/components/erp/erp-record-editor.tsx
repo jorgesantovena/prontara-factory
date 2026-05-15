@@ -189,7 +189,29 @@ export default function ErpRecordEditor({
         setTab(firstMissingTab);
         throw new Error("Faltan campos obligatorios: " + missing.map((m) => m.label).join(", "));
       }
-      await onSubmit(values, { andNew });
+      // TEST-4.1.a.iii — Sincronizar contacto/email/telefono del record con
+      // el contacto preferido de contactosJson, para que el listado siempre
+      // muestre los datos correctos sin importar de dónde vengan.
+      const payload: Record<string, string> = { ...values };
+      if (moduleKey === "clientes" && payload.contactosJson) {
+        try {
+          const raw = typeof payload.contactosJson === "string"
+            ? JSON.parse(payload.contactosJson)
+            : payload.contactosJson;
+          if (Array.isArray(raw) && raw.length > 0) {
+            const pref = raw.find((c) => c?.preferido) || raw[0];
+            if (pref) {
+              const prefNombre = String(pref.nombre || "").trim();
+              const prefEmail = String(pref.email || "").trim();
+              const prefTel = String(pref.telefono || "").trim();
+              if (prefNombre) payload.contacto = prefNombre;
+              if (prefEmail) payload.email = prefEmail;
+              if (prefTel) payload.telefono = prefTel;
+            }
+          }
+        } catch { /* ignorar JSON malformado */ }
+      }
+      await onSubmit(payload, { andNew });
       setDirty(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error guardando.");
@@ -305,21 +327,29 @@ export default function ErpRecordEditor({
           ) : tab === "documentos" ? (
             <DocumentosTab moduleKey={moduleKey} recordId={String(initialValue?.id || "")} mode={mode} />
           ) : tab === "proyectos" ? (
-            <ProyectosSublist clienteId={String(initialValue?.id || "")} accent={accent} />
+            <ProyectosSublist
+              clienteId={String(initialValue?.id || "")}
+              clienteName={String(initialValue?.nombre || "")}
+              accent={accent}
+            />
+          ) : tab === "contacto" && moduleKey === "clientes" ? (
+            // TEST-4.1.a.i — En el tab Contactos del cliente solo se muestra
+            // la sublista en rejilla. Los antiguos inputs sueltos
+            // (Persona de contacto / Email / Teléfono del record) se ocultan
+            // para evitar duplicar la entrada de datos; quedan como espejo
+            // del contacto preferido y se sincronizan en doSubmit().
+            <ContactosSublist
+              initialJson={(() => {
+                const raw = values.contactosJson ?? initialValue?.contactosJson;
+                if (raw == null) return "[]";
+                if (typeof raw === "string") return raw;
+                try { return JSON.stringify(raw); } catch { return "[]"; }
+              })()}
+              onChange={(json) => setField("contactosJson", json)}
+              accent={accent}
+            />
           ) : (
-            <>
-              <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} />
-              {/* TEST-2.3 + TEST-2.4 — Sublista de Contactos cuando aplique.
-                  El usuario puede crear/editar/eliminar contactos y marcar
-                  uno como preferido. Se persiste como JSON en contactosJson. */}
-              {tab === "contacto" && moduleKey === "clientes" ? (
-                <ContactosSublist
-                  initialJson={String(values.contactosJson || initialValue?.contactosJson || "[]")}
-                  onChange={(json) => setField("contactosJson", json)}
-                  accent={accent}
-                />
-              ) : null}
-            </>
+            <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} />
           )}
         </form>
 
@@ -518,17 +548,37 @@ function ContactosSublist({ initialJson, onChange, accent }: {
   const [draft, setDraft] = useState<Contacto | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
+  // TEST-4.1.a.ii — Resincronizar el state local con initialJson cuando éste
+  // cambia (por ejemplo, al recargar el editor con datos frescos del servidor).
+  // El useState inicial solo se evalúa una vez al montar, así que sin este
+  // useEffect los datos persistidos no aparecían tras salir y volver.
+  useEffect(() => {
+    if (editingId !== null) return; // no pisar edición en curso
+    try {
+      const next = normalizeContactos(JSON.parse(initialJson || "[]"));
+      setContactos((prev) => {
+        // Evitar bucle: solo actualizar si difiere realmente.
+        if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+        return next;
+      });
+    } catch { /* ignorar */ }
+  }, [initialJson, editingId]);
+
   function persist(next: Contacto[]) {
     setContactos(next);
     onChange(JSON.stringify(next));
   }
 
-  function startAdd() {
-    const newC: Contacto = {
+  function buildEmptyDraft(currentList: Contacto[]): Contacto {
+    return {
       id: Math.random().toString(36).slice(2, 10),
       nombre: "", cargo: "", email: "", telefono: "",
-      preferido: contactos.length === 0,
+      preferido: currentList.length === 0,
     };
+  }
+
+  function startAdd() {
+    const newC = buildEmptyDraft(contactos);
     persist([...contactos, newC]);
     setEditingId(newC.id);
     setDraft(newC);
@@ -541,9 +591,21 @@ function ContactosSublist({ initialJson, onChange, accent }: {
 
   function saveDraft() {
     if (!draft || editingId === null) return;
-    persist(contactos.map((c) => c.id === editingId ? draft : c));
-    setEditingId(null);
-    setDraft(null);
+    // Si el draft está totalmente vacío, cancelar sin más.
+    const empty = !draft.nombre && !draft.email && !draft.telefono && !draft.cargo;
+    if (empty) { cancelEdit(); return; }
+    const updatedList = contactos.map((c) => c.id === editingId ? draft : c);
+    persist(updatedList);
+    // TEST-4.1.a.i — flujo encadenado: tras Guardar abrimos automáticamente
+    // un nuevo formulario vacío para añadir el siguiente contacto. El usuario
+    // pulsa "Cancelar" cuando ya no quiere añadir más.
+    const newC = buildEmptyDraft(updatedList);
+    setContactos([...updatedList, newC]);
+    // Nota: no llamamos onChange aquí porque el draft vacío no se persiste
+    // hasta que se rellene y se guarde. Si el usuario sale del editor sin
+    // guardar el draft vacío, cancelEdit lo limpiará.
+    setEditingId(newC.id);
+    setDraft(newC);
   }
 
   function cancelEdit() {
@@ -738,7 +800,7 @@ type ProyectoRow = {
   fechaCaducidad: string;
 };
 
-function ProyectosSublist({ clienteId, accent }: { clienteId: string; accent: string }) {
+function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: string; clienteName: string; accent: string }) {
   const { link } = useCurrentVertical();
   const [rows, setRows] = useState<ProyectoRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -747,7 +809,7 @@ function ProyectosSublist({ clienteId, accent }: { clienteId: string; accent: st
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   async function load() {
-    if (!clienteId) { setLoading(false); return; }
+    if (!clienteId && !clienteName) { setLoading(false); return; }
     setLoading(true);
     setError("");
     try {
@@ -761,7 +823,15 @@ function ProyectosSublist({ clienteId, accent }: { clienteId: string; accent: st
         return;
       }
       const all: Array<Record<string, unknown>> = Array.isArray(data.rows) ? data.rows : [];
-      const filtered = all.filter((row) => String(row.cliente || "") === clienteId).map((row) => ({
+      // TEST-4.2 — La API /api/erp/options para 'clientes' usa `nombre` como
+      // `value` del dropdown relation, así que `row.cliente` se guarda con el
+      // NOMBRE del cliente, no su id. Filtramos por nombre, con fallback al id
+      // por si en el futuro se migra a id.
+      const filtered = all.filter((row) => {
+        const c = String(row.cliente || "");
+        if (!c) return false;
+        return c === clienteName || c === clienteId;
+      }).map((row) => ({
         id: String(row.id || ""),
         nombre: String(row.nombre || ""),
         cliente: String(row.cliente || ""),
@@ -778,7 +848,7 @@ function ProyectosSublist({ clienteId, accent }: { clienteId: string; accent: st
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [clienteId]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [clienteId, clienteName]);
 
   async function remove(id: string) {
     setBusy(true);
@@ -802,7 +872,9 @@ function ProyectosSublist({ clienteId, accent }: { clienteId: string; accent: st
     }
   }
 
-  const nuevoHref = link("proyectos") + "?prefill_cliente=" + encodeURIComponent(clienteId);
+  // TEST-4.2 — prefill_cliente recibe el NOMBRE del cliente (no el id) porque
+  // la API /api/erp/options usa nombre como `value` del dropdown relation.
+  const nuevoHref = link("proyectos") + "?prefill_cliente=" + encodeURIComponent(clienteName || clienteId);
 
   return (
     <section>
