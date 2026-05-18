@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * Home Dashboard rediseñado (H12-D — según mockup limpio).
@@ -108,10 +109,25 @@ function relativeTime(iso: string): string {
 }
 
 function fmtFecha(d: Date): string {
-  return d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  // TEST-5.G.3 — formateo natural en español: "Lunes, 17 de mayo de 2026"
+  // (solo la primera letra del día de la semana en mayúscula). El
+  // textTransform: capitalize del contenedor capitalizaba TODAS las palabras
+  // dando "Lunes 17 De Mayo De 2026", se ha cambiado a "none" abajo.
+  const s = d.toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string }) {
+  const { link } = useCurrentVertical();
+  // TEST-5.S — Prefijar hrefs absolutos sin vertical (vienen del API
+  // dashboard-sectorial como "/clientes", "/proyectos"...) con el slug
+  // del vertical actual para evitar el redirect a /acceso del middleware.
+  const prefixLink = (href: string): string => {
+    if (!href) return href;
+    if (!href.startsWith("/")) return href;
+    if (href.startsWith("/api/")) return href;
+    return link(href.replace(/^\/+/, ""));
+  };
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [user, setUser] = useState<{ fullName?: string; email?: string } | null>(null);
   const [notifs, setNotifs] = useState<Notification[]>([]);
@@ -156,7 +172,7 @@ export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string 
             Esto es lo más importante de hoy.
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#64748b", fontSize: 13, paddingTop: 4, textTransform: "capitalize" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#64748b", fontSize: 13, paddingTop: 4, textTransform: "none" }}>
           <span>📅</span>
           <span>{fmtFecha(today)}</span>
         </div>
@@ -175,7 +191,7 @@ export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 12 }}>
             {quickActions.length === 0 && loading
               ? Array.from({ length: 4 }).map((_, i) => <QaSkeleton key={i} />)
-              : quickActions.map((qa, i) => <QuickActionTile key={qa.href + i} qa={qa} index={i} />)}
+              : quickActions.map((qa, i) => <QuickActionTile key={qa.href + i} qa={qa} index={i} prefixLink={prefixLink} />)}
           </div>
         </Card>
 
@@ -185,7 +201,7 @@ export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string 
           ) : (
             <div style={{ display: "grid", gap: 10 }}>
               {pending.map((p) => (
-                <Link key={p.key} href={p.href} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none", color: "#0f172a", padding: "4px 2px", fontSize: 13 }}>
+                <Link key={p.key} href={prefixLink(p.href)} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", textDecoration: "none", color: "#0f172a", padding: "4px 2px", fontSize: 13 }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
                     <span style={{ width: 10, height: 10, borderRadius: 999, background: PENDING_DOT[p.tone], flexShrink: 0 }} />
                     <span>{p.label}</span>
@@ -307,12 +323,16 @@ export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string 
 // === Subcomponentes ===
 
 function Card({ title, children, linkLabel, linkHref, accent = "#1d4ed8" }: { title: string; children: React.ReactNode; linkLabel?: string; linkHref?: string; accent?: string }) {
+  const { link } = useCurrentVertical();
+  const finalLinkHref = linkHref && linkHref.startsWith("/") && !linkHref.startsWith("/api/")
+    ? link(linkHref.replace(/^\/+/, ""))
+    : linkHref;
   return (
     <section style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 14, padding: 18 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
         <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{title}</h3>
-        {linkLabel && linkHref ? (
-          <Link href={linkHref} style={{ color: accent, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{linkLabel}</Link>
+        {linkLabel && finalLinkHref ? (
+          <Link href={finalLinkHref} style={{ color: accent, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{linkLabel}</Link>
         ) : null}
       </div>
       {children}
@@ -349,8 +369,23 @@ function KpiCard({ kpi, index, accent }: { kpi: Kpi; index: number; accent: stri
       </div>
     </div>
   );
-  if (kpi.href) return <Link href={kpi.href} style={{ textDecoration: "none", color: "inherit" }} title={kpi.label}>{inner}</Link>;
+  if (kpi.href) {
+    const href = kpi.href.startsWith("/") && !kpi.href.startsWith("/api/")
+      ? "" // se inyecta abajo via KpiLink helper si hace falta
+      : kpi.href;
+    void href;
+    return <KpiLink href={kpi.href}>{inner}</KpiLink>;
+  }
   return inner;
+}
+
+// TEST-5.S — Wrapper que prefija el href con el vertical actual.
+function KpiLink({ href, children }: { href: string; children: React.ReactNode }) {
+  const { link } = useCurrentVertical();
+  const final = href.startsWith("/") && !href.startsWith("/api/")
+    ? link(href.replace(/^\/+/, ""))
+    : href;
+  return <Link href={final} style={{ textDecoration: "none", color: "inherit" }}>{children}</Link>;
 }
 
 function KpiSkeleton() {
@@ -361,10 +396,10 @@ function KpiSkeleton() {
   );
 }
 
-function QuickActionTile({ qa, index }: { qa: QuickAction; index: number }) {
+function QuickActionTile({ qa, index, prefixLink }: { qa: QuickAction; index: number; prefixLink: (h: string) => string }) {
   const tint = QA_TINTS[index % QA_TINTS.length];
   return (
-    <Link href={qa.href} style={{
+    <Link href={prefixLink(qa.href)} style={{
       display: "flex",
       flexDirection: "column",
       alignItems: "center",

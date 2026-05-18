@@ -38,6 +38,8 @@ const MODULE_ORDER = [
   "presupuestos",
   "facturacion",
   "documentos",
+  // TEST-5.S — Reportes en el sidebar (grupo Analítica).
+  "reportes",
   "catalogo-servicios",
   // SCHOOL-03 — módulos extendidos del ERP escolar (orden académico)
   "docentes",
@@ -286,6 +288,7 @@ const FALLBACK_LABELS: Record<string, string> = {
   presupuestos: "Propuestas",
   facturacion: "Facturas",
   documentos: "Documentos",
+  reportes: "Reportes",
   "catalogo-servicios": "Catálogo de servicios",
   asistente: "Asistente",
   equipo: "Equipo",
@@ -328,6 +331,11 @@ const FALLBACK_LABELS: Record<string, string> = {
 // config.modules) pero sí tienen página propia. Los mostramos siempre.
 const VIRTUAL_MODULES = new Set(["produccion"]);
 
+// TEST-5.S — Módulos universales del runtime que están disponibles para
+// CUALQUIER vertical aunque el pack no los enumere (ej. Reportes,
+// Buscar global, etc.). No requieren entrada en config.modules.
+const UNIVERSAL_MODULES = new Set(["reportes"]);
+
 // Módulos que viven SOLO dentro del hub /produccion (tabs internas).
 // El pack los marca como enabled para que existan como módulos del ERP
 // y se persistan registros, pero NO tienen página propia /<key> — el
@@ -344,6 +352,38 @@ const HUB_CHILDREN_MODULES = new Set([
   "mantenimientos",
   "justificantes",
   "descripciones-proyecto",
+]);
+
+// TEST-5.S — Módulos declarados en el pack pero SIN página propia en el
+// runtime (la ruta /[vertical]/<key> no existe). Se ocultan del sidebar
+// para evitar el 404 al pulsar. Lista a revisar cada vez que se cree o
+// se borre una página del runtime.
+const MODULES_WITHOUT_ROUTE = new Set([
+  // Maestros sin página todavía
+  "tarifas-generales",
+  "tarifas-especiales",
+  "clases-condicion",
+  "formas-pago",
+  "cuentas-bancarias",
+  "tipos-cliente",
+  "tipos-servicio",
+  "tipos-urgencia",
+  "actividades-catalogo",
+  "zonas-comerciales",
+  "grupos-empresa",
+  "aplicaciones",
+  // Administración sin página todavía
+  "albaranes",
+  "vencimientos-factura",
+  "bodegas",
+  "kardex",
+  "gastos",
+  "desplazamientos",
+  "puntos-venta",
+  // Analítica sin página todavía
+  "estadistica-ventas",
+  // Operación sin página todavía
+  "avisos-programados",
 ]);
 
 function readQueryParams() {
@@ -466,6 +506,8 @@ export default function TenantSidebar() {
   const seen = new Set<string>();
   for (const key of MODULE_ORDER) {
     if (seen.has(key)) continue;
+    // TEST-5.S — Saltar módulos sin ruta para evitar 404.
+    if (MODULES_WITHOUT_ROUTE.has(key)) continue;
     if (VIRTUAL_MODULES.has(key)) {
       // Solo mostramos producción si el vertical lo soporta. Lo deducimos:
       // si "tareas" o "incidencias" están activas en el pack, hay
@@ -478,6 +520,8 @@ export default function TenantSidebar() {
           (incidencias && incidencias.enabled !== false);
         if (!enabled) continue;
       }
+    } else if (UNIVERSAL_MODULES.has(key)) {
+      // TEST-5.S — Módulos universales siempre visibles, independiente del pack.
     } else if (config) {
       // FIX-SIDEBAR: solo mostramos módulos que el pack del tenant
       // habilita explícitamente. Si el módulo NO está en config.modules
@@ -515,6 +559,8 @@ export default function TenantSidebar() {
       if (!k || seen.has(k)) continue;
       if (VIRTUAL_MODULES.has(k)) continue;
       if (HUB_CHILDREN_MODULES.has(k)) continue;
+      // TEST-5.S — saltar módulos sin ruta real.
+      if (MODULES_WITHOUT_ROUTE.has(k)) continue;
       moduleItems.push({
         href: buildHref("/" + k, params),
         label: labelFor(k),

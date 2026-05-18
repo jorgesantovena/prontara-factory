@@ -537,9 +537,10 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
   tableColumns: [
     // TEST-1.1 — Clientes (columnas visibles en el listado).
     { moduleKey: "clientes", fieldKey: "nombre", label: "Empresa", isPrimary: true },
+    // TEST-5.1.b — La columna "Contacto" ya muestra nombre + email + tel del
+    // preferido en formato enriquecido. Las columnas EMAIL/TELÉFONO sueltas
+    // duplicaban esa información, así que se quitan del listado.
     { moduleKey: "clientes", fieldKey: "contacto", label: "Contacto" },
-    { moduleKey: "clientes", fieldKey: "email", label: "Email" },
-    { moduleKey: "clientes", fieldKey: "telefono", label: "Teléfono" },
     { moduleKey: "clientes", fieldKey: "segmento", label: "Segmento" },
     { moduleKey: "clientes", fieldKey: "responsable", label: "Account manager" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado" },

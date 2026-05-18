@@ -100,7 +100,13 @@ export default function CauListPage() {
               Tickets de soporte de tus clientes sobre las aplicaciones que mantienes.
             </div>
           </div>
-          <Link href={link("kb")} style={btnSec}>📚 Base de conocimiento</Link>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <Link href={link("kb")} style={btnSec}>📚 Base de conocimiento</Link>
+            {/* TEST-5.S — Botón crear ticket que faltaba. */}
+            <Link href={link("tickets")} style={{ background: "#1d4ed8", color: "#ffffff", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
+              + Alta de ticket
+            </Link>
+          </div>
         </div>
 
         {/* KPIs SLA */}

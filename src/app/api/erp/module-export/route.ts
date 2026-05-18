@@ -11,16 +11,27 @@ import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-sto
  * vertical, solo lee el módulo indicado y devuelve sus campos como CSV.
  *
  * Cabecera del CSV: detectada automáticamente uniendo todas las claves
- * que aparecen en los registros (excepto id, createdAt, updatedAt que se
- * añaden al final si están presentes). Esto cubre cualquier estructura
- * sin necesidad de conocer el módulo.
+ * que aparecen en los registros.
  *
- * Reusable como módulo común — no añadir lógica específica de sector aquí.
+ * TEST-5.2 — Mejoras:
+ *  - Omitir `id`, `createdAt`, `updatedAt`, `contactosJson` (datos internos).
+ *  - En `clientes`: expandir contactosJson en 4 columnas calculadas
+ *    (contactoPreferente, emailContacto, telefonoContacto, cargoContacto).
+ *  - Campos con ceros iniciales (codigoPostal, cif, nif) se exportan como
+ *    fórmula `="..."` para que Excel los trate como texto.
+ *
+ * Reusable como módulo común — no añadir lógica específica de sector aquí
+ * salvo las expansiones documentadas arriba.
  */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const HIDDEN_TAIL_COLUMNS = ["id", "createdAt", "updatedAt"];
+// TEST-5.2 — Columnas que no se exportan nunca (datos internos o crudos).
+const HIDDEN_COLUMNS = new Set(["id", "createdAt", "updatedAt", "contactosJson"]);
+
+// Campos donde Excel quita ceros iniciales si los trata como número. Los
+// exportamos como `="valor"` para forzar formato texto.
+const PRESERVE_LEADING_ZEROS = new Set(["codigoPostal", "cif", "nif", "telefono", "tel"]);
 
 function unauthorized() {
   return NextResponse.json(
@@ -37,6 +48,34 @@ function escapeCsvCell(value: string): string {
 
 function buildCsvLine(cells: Array<string | number>): string {
   return cells.map((c) => escapeCsvCell(String(c))).join(",");
+}
+
+// TEST-5.2 — Lee contactosJson y devuelve el contacto preferido (o el primero).
+type ContactoPref = { nombre: string; email: string; telefono: string; cargo: string };
+function preferidoFromContactosJson(raw: unknown): ContactoPref | null {
+  let arr: unknown = raw;
+  if (typeof raw === "string") {
+    try { arr = JSON.parse(raw); } catch { return null; }
+  }
+  if (!Array.isArray(arr) || arr.length === 0) return null;
+  const pref = arr.find((c) => c && typeof c === "object" && (c as Record<string, unknown>).preferido)
+    || arr[0];
+  if (!pref || typeof pref !== "object") return null;
+  const c = pref as Record<string, unknown>;
+  return {
+    nombre: String(c.nombre || ""),
+    email: String(c.email || ""),
+    telefono: String(c.telefono || ""),
+    cargo: String(c.cargo || ""),
+  };
+}
+
+function cellWithLeadingZerosFix(column: string, value: string): string {
+  if (!value) return value;
+  if (!PRESERVE_LEADING_ZEROS.has(column)) return value;
+  // Solo aplicamos la fórmula si el valor tiene un cero inicial o es claramente numérico.
+  if (!/^[0-9+\-\s]/.test(value)) return value;
+  return '="' + value.replace(/"/g, "'") + '"';
 }
 
 export async function GET(request: NextRequest) {
@@ -66,25 +105,42 @@ export async function GET(request: NextRequest) {
 
     const records = await listModuleRecordsAsync(modulo, session.clientId);
 
-    // Detectar columnas: unión de todas las keys excepto las internas que
-    // se añaden al final.
+    // Detectar columnas: unión de todas las keys excepto las HIDDEN.
     const keySet = new Set<string>();
     for (const r of records) {
       for (const k of Object.keys(r || {})) {
-        if (!HIDDEN_TAIL_COLUMNS.includes(k)) keySet.add(k);
+        if (!HIDDEN_COLUMNS.has(k)) keySet.add(k);
       }
     }
-    const visibleColumns = Array.from(keySet).sort();
-    const hiddenPresent = HIDDEN_TAIL_COLUMNS.filter((c) =>
-      records.some((r) => Object.prototype.hasOwnProperty.call(r, c)),
-    );
-    const columns = [...visibleColumns, ...hiddenPresent];
+    const columns = Array.from(keySet).sort();
+
+    // TEST-5.2 — En clientes, añadir columnas calculadas del contacto preferido.
+    const expandContactos = modulo === "clientes";
+    const extraColumns = expandContactos
+      ? ["contactoPreferente", "emailContacto", "telefonoContacto", "cargoContacto"]
+      : [];
+    const allColumns = [...columns, ...extraColumns];
 
     const lines: string[] = [];
-    lines.push(buildCsvLine(columns));
+    lines.push(buildCsvLine(allColumns));
     for (const r of records) {
-      const row = columns.map((c) => String((r as Record<string, string>)[c] ?? ""));
-      lines.push(buildCsvLine(row));
+      const rec = r as Record<string, unknown>;
+      const baseCells = columns.map((c) => {
+        const raw = rec[c];
+        const str = raw == null ? "" : String(raw);
+        return cellWithLeadingZerosFix(c, str);
+      });
+      let extraCells: string[] = [];
+      if (expandContactos) {
+        const pref = preferidoFromContactosJson(rec.contactosJson);
+        extraCells = [
+          pref?.nombre || "",
+          pref?.email || "",
+          pref?.telefono ? cellWithLeadingZerosFix("telefono", pref.telefono) : "",
+          pref?.cargo || "",
+        ];
+      }
+      lines.push(buildCsvLine([...baseCells, ...extraCells]));
     }
 
     const csv = "﻿" + lines.join("\r\n") + "\r\n";

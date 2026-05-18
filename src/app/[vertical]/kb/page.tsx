@@ -57,10 +57,19 @@ export default function KbPage() {
           <span style={{ color: "#0f172a", fontWeight: 600 }}>Base de conocimiento</span>
         </div>
 
-        <h1 style={{ margin: "0 0 4px 0", fontSize: 28, fontWeight: 800, letterSpacing: -0.4 }}>Base de conocimiento</h1>
-        <p style={{ color: "#64748b", fontSize: 13, marginTop: 0, marginBottom: 18 }}>
-          Soluciones reusables. Las creas al cerrar un ticket — la próxima vez que pase lo mismo, lo encuentras aquí.
-        </p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
+          <div>
+            <h1 style={{ margin: "0 0 4px 0", fontSize: 28, fontWeight: 800, letterSpacing: -0.4 }}>Base de conocimiento</h1>
+            <p style={{ color: "#64748b", fontSize: 13, margin: 0 }}>
+              Soluciones reusables. Las creas al cerrar un ticket — la próxima vez que pase lo mismo, lo encuentras aquí.
+            </p>
+          </div>
+          {/* TEST-5.S — Botón "+ Alta de entrada" que dirige al CAU para crear/cerrar
+              un ticket que generará la entrada KB. */}
+          <Link href={link("cau")} style={{ background: "#1d4ed8", color: "#ffffff", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 13, textDecoration: "none", whiteSpace: "nowrap" }} title="Las entradas KB se crean al cerrar un ticket en el CAU">
+            + Alta de entrada
+          </Link>
+        </div>
 
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por título, síntoma, solución o tag…"
           style={{ width: "100%", padding: "10px 14px", border: "1px solid #e2e8f0", borderRadius: 10, fontSize: 13, boxSizing: "border-box", marginBottom: 16 }} />

@@ -369,7 +369,7 @@ export default function ClientesModuleClient(props: ClientesModuleClientProps) {
 
       {schema ? (
         <ModuleForm
-          title={editingRow ? "Editar " + labels.clientSingular : "Nuevo " + labels.clientSingular}
+          title={editingRow ? "Editar " + labels.clientSingular : "Alta de " + labels.clientSingular.toLowerCase()}
           fields={schema.fields}
           initialValues={initialValues}
           submitLabel={editingRow ? "Guardar cambios" : "Crear " + labels.clientSingular}

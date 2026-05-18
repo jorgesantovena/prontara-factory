@@ -771,7 +771,7 @@ function ModuleView({
               fontSize: 13,
             }}
           >
-            + Nuevo
+            + Alta de proyecto
           </button>
         </div>
       </div>

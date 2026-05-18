@@ -222,7 +222,7 @@ export default function ErpRecordEditor({
 
   const titulo = mode === "edit"
     ? String(initialValue?.nombre || initialValue?.titulo || initialValue?.numero || initialValue?.referencia || initialValue?.asunto || "Editar " + singular(moduleLabel))
-    : "Nuevo " + singular(moduleLabel);
+    : "Alta de " + singular(moduleLabel).toLowerCase();
 
   // Sidebar info: solo en edit, calculada de los datos del propio registro
   const showSidebar = mode === "edit" && initialValue;
@@ -886,7 +886,7 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
           </p>
         </div>
         <Link href={nuevoHref} style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
-          + Nuevo proyecto
+          + Alta de proyecto
         </Link>
       </div>
 
@@ -983,13 +983,29 @@ function DocumentosTab({ moduleKey, recordId, mode }: { moduleKey: string; recor
     );
   }
   void moduleKey;
+  // TEST-5.1.c — Usamos <a href> (no <Link>) para esquivar comportamientos
+  // raros del componente Next/Link dentro del <form> del editor que dejaban
+  // el botón sin responder. Damos también más área clicable.
+  const href = link("documentos") + "?ref=" + encodeURIComponent(recordId);
   return (
     <div style={{ padding: 30, textAlign: "center", color: "#64748b", fontSize: 13 }}>
       <div style={{ fontSize: 32, marginBottom: 10 }}>📎</div>
-      <div style={{ marginBottom: 10 }}>Documentos vinculados aparecerán aquí.</div>
-      <Link href={link("documentos?ref=" + recordId)} style={{ color: "#1d4ed8", fontSize: 13, fontWeight: 600 }}>
+      <div style={{ marginBottom: 14 }}>Documentos vinculados aparecerán aquí.</div>
+      <a
+        href={href}
+        style={{
+          display: "inline-block",
+          padding: "8px 16px",
+          background: "#1d4ed8",
+          color: "#ffffff",
+          fontSize: 13,
+          fontWeight: 600,
+          borderRadius: 6,
+          textDecoration: "none",
+        }}
+      >
         Ir a Documentos →
-      </Link>
+      </a>
     </div>
   );
 }

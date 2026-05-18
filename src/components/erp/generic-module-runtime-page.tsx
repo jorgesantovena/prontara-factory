@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import ErpRecordEditor from "@/components/erp/erp-record-editor";
 import TenantShell from "@/components/erp/tenant-shell";
 import ModuleExportButton from "@/components/erp/module-export-button";
@@ -200,7 +201,11 @@ export default function GenericModuleRuntimePage({
   const [bulkError, setBulkError] = useState("");
   const [archiveConfirmOpen, setArchiveConfirmOpen] = useState(false);
   // TEST-2.12 — menú "..." de fila con Editar / Email / Llamar / Eliminar / Copiar.
+  // TEST-5.G.1 — Posición calculada con getBoundingClientRect porque la
+  // tabla vive dentro de un contenedor con overflow:hidden que recortaba el
+  // popover (absolute) cuando había pocas filas. Lo dibujamos como `fixed`.
   const [rowMenuOpenId, setRowMenuOpenId] = useState<string | null>(null);
+  const [rowMenuPos, setRowMenuPos] = useState<{ top: number; right: number } | null>(null);
   // TEST-3.3 — confirm de eliminación (vía tecla Supr o bulk Supr).
   const [deleteSuprOpen, setDeleteSuprOpen] = useState(false);
   // TEST-4.1.b — detección manual de doble-click usando timestamp del último
@@ -208,6 +213,12 @@ export default function GenericModuleRuntimePage({
   // primer doble-click). Threshold 320ms.
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastClickRef = useRef<{ id: string; t: number }>({ id: "", t: 0 });
+  // TEST-5.W — Workflow comercial encadenado. Cuando una oportunidad pasa a
+  // "Ganado" se inicia: oportunidad → cliente → propuesta. El siguiente paso
+  // del wizard se transporta vía query string `wf_next` y se persiste en este
+  // state durante toda la sesión del módulo.
+  const router = useRouter();
+  const [workflowNext, setWorkflowNext] = useState<string | null>(null);
   const [ui, setUi] = useState<{
     label: string;
     emptyState: string;
@@ -288,6 +299,7 @@ export default function GenericModuleRuntimePage({
   // existe al menos un parámetro `prefill_*`, abrimos el editor en modo
   // "create" con esos valores ya rellenos. Útil para flujos como
   // "Nuevo proyecto desde la ficha de Cliente" (prefill_cliente=<id>).
+  // TEST-5.W — También capturamos `wf_next` para el workflow comercial.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -299,14 +311,22 @@ export default function GenericModuleRuntimePage({
         hasAny = true;
       }
     }
+    const wfNext = params.get("wf_next");
+    if (wfNext) setWorkflowNext(wfNext);
     if (hasAny && modalMode === null) {
       setSelected(prefill);
       setModalMode("create");
-      // Limpiamos los prefill_* de la URL para no re-abrir al refrescar.
-      const cleaned = new URLSearchParams(window.location.search);
-      for (const k of Array.from(cleaned.keys())) {
-        if (k.startsWith("prefill_")) cleaned.delete(k);
+    }
+    // Limpiamos los prefill_* y wf_next de la URL para no re-disparar al refrescar.
+    const cleaned = new URLSearchParams(window.location.search);
+    let touched = false;
+    for (const k of Array.from(cleaned.keys())) {
+      if (k.startsWith("prefill_") || k === "wf_next") {
+        cleaned.delete(k);
+        touched = true;
       }
+    }
+    if (touched) {
       const newSearch = cleaned.toString();
       const newUrl = window.location.pathname + (newSearch ? "?" + newSearch : "");
       window.history.replaceState({}, "", newUrl);
@@ -337,8 +357,13 @@ export default function GenericModuleRuntimePage({
   }, [selectedIds, detailOpen, selected, modalMode, bulkModal, archiveConfirmOpen, deleteSuprOpen]);
 
   // Filtrado: query + estadoFilter + segmento + responsable (TEST-1.6).
+  // TEST-5.1.a — La búsqueda antes hacía `Object.values(item).join(" ").includes(q)`,
+  // lo cual buscaba en TODOS los campos del registro (incluido contactosJson
+  // crudo, id, notas, etc.) y producía falsos positivos. Ahora restringimos
+  // la búsqueda a los campos visibles + el contacto preferido (en clientes).
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const columnKeys = (ui.tableColumns || []).map((c) => c.fieldKey);
     return rows.filter((item) => {
       if (estadoFilter && String(item.estado || "").toLowerCase() !== estadoFilter.toLowerCase()) return false;
       if (segmentoFilter) {
@@ -349,10 +374,35 @@ export default function GenericModuleRuntimePage({
         const resp = String(item.responsable || item.asignado || "").toLowerCase();
         if (resp !== responsableFilter.toLowerCase()) return false;
       }
-      if (q && !Object.values(item || {}).join(" ").toLowerCase().includes(q)) return false;
+      if (q) {
+        const parts: string[] = [];
+        // Nombre/título primario
+        parts.push(String(item.nombre || item.titulo || item.numero || item.referencia || item.asunto || ""));
+        // Columnas visibles del listado
+        for (const k of columnKeys) {
+          if (k === "id" || k === "contactosJson") continue;
+          parts.push(String(item[k] || ""));
+        }
+        // Datos del contacto preferido (en clientes)
+        if (moduleKey === "clientes" && item.contactosJson) {
+          try {
+            const raw = typeof item.contactosJson === "string"
+              ? JSON.parse(item.contactosJson)
+              : item.contactosJson;
+            if (Array.isArray(raw)) {
+              const pref = raw.find((c) => c?.preferido) || raw[0];
+              if (pref) {
+                parts.push(String(pref.nombre || ""), String(pref.email || ""), String(pref.telefono || ""), String(pref.cargo || ""));
+              }
+            }
+          } catch { /* ignorar */ }
+        }
+        const haystack = parts.join(" ").toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
       return true;
     });
-  }, [rows, query, estadoFilter, segmentoFilter, responsableFilter]);
+  }, [rows, query, estadoFilter, segmentoFilter, responsableFilter, ui.tableColumns, moduleKey]);
 
   // KPIs derivados de los rows (Total + breakdown por estado).
   const kpis = useMemo(() => {
@@ -498,6 +548,34 @@ export default function GenericModuleRuntimePage({
           onCancel={() => setModalMode(null)}
           onSubmit={async (payload, options) => {
             await saveRecord(payload);
+
+            // TEST-5.W — Workflow comercial encadenado:
+            //   crm.fase === "ganado"  →  abrir editor Cliente con Empresa precargada
+            //   clientes (con wf_next=propuestas)  →  abrir editor Propuesta
+            // Si entra alguno de estos casos, navegamos y NO volvemos a la lista.
+            if (moduleKey === "crm" && String(payload.fase || "").toLowerCase() === "ganado") {
+              const empresa = String(payload.empresa || payload.nombre || "").trim();
+              const contacto = String(payload.contacto || "").trim();
+              const emailV = String(payload.email || "").trim();
+              const telV = String(payload.telefono || "").trim();
+              const qs: string[] = [];
+              if (empresa) qs.push("prefill_nombre=" + encodeURIComponent(empresa));
+              if (contacto) qs.push("prefill_contacto=" + encodeURIComponent(contacto));
+              if (emailV) qs.push("prefill_email=" + encodeURIComponent(emailV));
+              if (telV) qs.push("prefill_telefono=" + encodeURIComponent(telV));
+              qs.push("wf_next=presupuestos");
+              router.push(link("clientes") + "?" + qs.join("&"));
+              return;
+            }
+            if (workflowNext === "presupuestos" && moduleKey === "clientes") {
+              const nombre = String(payload.nombre || "").trim();
+              setWorkflowNext(null);
+              const qs: string[] = [];
+              if (nombre) qs.push("prefill_cliente=" + encodeURIComponent(nombre));
+              router.push(link("presupuestos") + (qs.length ? "?" + qs.join("&") : ""));
+              return;
+            }
+
             if (options?.andNew && modalMode === "create") {
               // Quedarse en modo "create" con form limpio
               setSelected(null);
@@ -541,7 +619,7 @@ export default function GenericModuleRuntimePage({
               onClick={() => { setSelected(null); setModalMode("create"); }}
               style={primaryBtn(accent)}
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Nuevo {singular(ui.label)}
+              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Alta de {singular(ui.label).toLowerCase()}
             </button>
             <ImportWrapper><ModuleImportButton modulo={moduleKey} /></ImportWrapper>
             <ExportWrapper><ModuleExportButton modulo={moduleKey} /></ExportWrapper>
@@ -782,7 +860,7 @@ export default function GenericModuleRuntimePage({
             <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando…</div>
           ) : pageRows.length === 0 ? (
             <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
-              {query || estadoFilter ? "Ningún resultado con los filtros actuales." : ui.emptyState + " Pulsa “+ Nuevo” para empezar."}
+              {query || estadoFilter ? "Ningún resultado con los filtros actuales." : ui.emptyState + " Pulsa “+ Alta de…” para empezar."}
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
@@ -910,57 +988,28 @@ export default function GenericModuleRuntimePage({
                         })}
                         {/* TEST-2.12 — menú "..." consolidado con Editar / Email
                             / Llamar / Eliminar / Copiar. Antes solo abría editor. */}
-                        <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap", position: "relative" }} onClick={(e) => e.stopPropagation()}>
+                        <td style={{ ...tdStyle, textAlign: "right", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
                           {extraRowActions ? extraRowActions(item) : null}
                           <button
                             type="button"
-                            onClick={() => setRowMenuOpenId(rowMenuOpenId === id ? null : id)}
+                            onClick={(e) => {
+                              if (rowMenuOpenId === id) {
+                                setRowMenuOpenId(null);
+                                setRowMenuPos(null);
+                                return;
+                              }
+                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+                              setRowMenuPos({
+                                top: rect.bottom + 6,
+                                right: window.innerWidth - rect.right,
+                              });
+                              setRowMenuOpenId(id);
+                            }}
                             title="Acciones rápidas"
                             style={{ background: "transparent", border: "none", padding: 4, cursor: "pointer", color: "#94a3b8", fontSize: 16 }}
                           >
                             ⋯
                           </button>
-                          {rowMenuOpenId === id ? (
-                            <>
-                              {/* backdrop para cerrar al hacer click fuera */}
-                              <div onClick={() => setRowMenuOpenId(null)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
-                              <div style={{ ...popover(180), zIndex: 41 }}>
-                                <button type="button" style={popoverItemBtn} onClick={() => { setRowMenuOpenId(null); setSelected(item); setModalMode("edit"); }}>
-                                  <span>✎</span><span>Editar</span>
-                                </button>
-                                {item.email ? (
-                                  <a href={"mailto:" + item.email + "?subject=" + encodeURIComponent("Contacto desde " + ui.label)} style={popoverItem} onClick={() => setRowMenuOpenId(null)}>
-                                    <span>✉️</span> Enviar email
-                                  </a>
-                                ) : null}
-                                {item.telefono || item.tel ? (
-                                  <a href={"tel:" + String(item.telefono || item.tel)} style={popoverItem} onClick={() => setRowMenuOpenId(null)}>
-                                    <span>📞</span> Llamar
-                                  </a>
-                                ) : null}
-                                <button type="button" style={popoverItemBtn} onClick={async () => {
-                                  setRowMenuOpenId(null);
-                                  // TEST-3.3 — "Copiar" (antes "Duplicar"): clona payload
-                                  // sin id y abre create con valores precargados.
-                                  const clone: Record<string, string> = {};
-                                  for (const [k, v] of Object.entries(item)) {
-                                    if (k === "id") continue;
-                                    clone[k] = String(v ?? "");
-                                  }
-                                  setSelected(clone);
-                                  setModalMode("create");
-                                }}>
-                                  <span>⎘</span><span>Copiar</span>
-                                </button>
-                                <button type="button" style={{ ...popoverItemBtn, color: "#dc2626" }} onClick={async () => {
-                                  setRowMenuOpenId(null);
-                                  if (confirm("¿Eliminar este " + singular(ui.label) + "?")) await removeRecord(id);
-                                }}>
-                                  <span>🗑</span><span>Eliminar</span>
-                                </button>
-                              </div>
-                            </>
-                          ) : null}
                         </td>
                       </tr>
                     );
@@ -996,6 +1045,65 @@ export default function GenericModuleRuntimePage({
           <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 12, fontSize: 13, marginTop: 12 }}>{error}</div>
         ) : null}
       </div>
+
+      {/* TEST-5.G.1 — Popover de fila renderizado a nivel raíz con position:fixed
+          para que NO lo recorte el overflow:hidden de la tabla. Se posiciona
+          con las coordenadas capturadas en el click del botón ⋯. */}
+      {rowMenuOpenId && rowMenuPos ? (() => {
+        const item = rows.find((r) => String(r.id) === rowMenuOpenId);
+        if (!item) return null;
+        const closeMenu = () => { setRowMenuOpenId(null); setRowMenuPos(null); };
+        return (
+          <>
+            <div onClick={closeMenu} style={{ position: "fixed", inset: 0, zIndex: 1000 }} />
+            <div style={{
+              position: "fixed",
+              top: rowMenuPos.top,
+              right: rowMenuPos.right,
+              minWidth: 180,
+              background: "#ffffff",
+              border: "1px solid #e5e7eb",
+              borderRadius: 10,
+              boxShadow: "0 10px 30px rgba(15,23,42,0.18)",
+              zIndex: 1001,
+              padding: 6,
+            }}>
+              <button type="button" style={popoverItemBtn} onClick={() => { closeMenu(); setSelected(item); setModalMode("edit"); }}>
+                <span>✎</span><span>Editar</span>
+              </button>
+              {item.email ? (
+                <a href={"mailto:" + item.email + "?subject=" + encodeURIComponent("Contacto desde " + ui.label)} style={popoverItem} onClick={closeMenu}>
+                  <span>✉️</span> Enviar email
+                </a>
+              ) : null}
+              {item.telefono || item.tel ? (
+                <a href={"tel:" + String(item.telefono || item.tel)} style={popoverItem} onClick={closeMenu}>
+                  <span>📞</span> Llamar
+                </a>
+              ) : null}
+              <button type="button" style={popoverItemBtn} onClick={async () => {
+                closeMenu();
+                // TEST-3.3 — "Copiar" (antes "Duplicar"): clona payload sin id.
+                const clone: Record<string, string> = {};
+                for (const [k, v] of Object.entries(item)) {
+                  if (k === "id") continue;
+                  clone[k] = String(v ?? "");
+                }
+                setSelected(clone);
+                setModalMode("create");
+              }}>
+                <span>⎘</span><span>Copiar</span>
+              </button>
+              <button type="button" style={{ ...popoverItemBtn, color: "#dc2626" }} onClick={async () => {
+                closeMenu();
+                if (confirm("¿Eliminar este " + singular(ui.label) + "?")) await removeRecord(String(item.id));
+              }}>
+                <span>🗑</span><span>Eliminar</span>
+              </button>
+            </div>
+          </>
+        );
+      })() : null}
 
       {/* Drawer de detalle rápido (TEST-3.3: solo info, sin botones de acción) */}
       {detailOpen && selected ? (

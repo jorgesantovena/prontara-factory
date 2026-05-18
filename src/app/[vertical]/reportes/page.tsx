@@ -153,7 +153,7 @@ export default function ReportesPage() {
           onClick={() => setShowForm(!showForm)}
           style={{ border: "none", background: "#1d4ed8", color: "#ffffff", borderRadius: 8, padding: "10px 18px", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
         >
-          {showForm ? "Cancelar" : "+ Nuevo reporte"}
+          {showForm ? "Cancelar" : "+ Alta de reporte"}
         </button>
       </div>
 

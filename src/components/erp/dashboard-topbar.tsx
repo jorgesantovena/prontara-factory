@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import GlobalCreateButton from "@/components/erp/global-create-button";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * TopBar profesional del ERP (H12-C — rediseñado según mockup).
@@ -21,6 +22,9 @@ type Notification = { id: string; type: string; severity: string; title: string;
 
 export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: string }) {
   const router = useRouter();
+  // TEST-5.S — Prefijar todas las rutas con el vertical para que el form de
+  // búsqueda, Ctrl+K y los links del menú perfil no caigan en /acceso.
+  const { link } = useCurrentVertical();
   const [user, setUser] = useState<{ email: string; fullName?: string; role?: string } | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [activeCompanyId, setActiveCompanyId] = useState<string>("");
@@ -84,7 +88,7 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
   function submitSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!query.trim()) return;
-    router.push("/buscar?q=" + encodeURIComponent(query.trim()));
+    router.push(link("buscar") + "?q=" + encodeURIComponent(query.trim()));
   }
 
   const firstName = user?.fullName?.split(/\s+/)[0] || (user?.email?.split("@")[0] || "");
@@ -213,7 +217,7 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
             <div style={{ position: "absolute", top: "calc(100% + 8px)", right: 0, width: 340, maxHeight: 420, overflowY: "auto", background: "var(--bg-card, #ffffff)", border: "1px solid var(--border, #e5e7eb)", borderRadius: 10, boxShadow: "0 10px 30px rgba(15,23,42,0.12)", zIndex: 50 }}>
               <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--border, #f1f5f9)", fontSize: 11, fontWeight: 700, color: "var(--fg-muted, #475569)", textTransform: "uppercase", letterSpacing: 0.5, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>Notificaciones</span>
-                <Link href="/notificaciones" style={{ color: accent, fontSize: 11, textDecoration: "none", textTransform: "none", letterSpacing: 0 }}>Ver todas</Link>
+                <Link href={link("notificaciones")} style={{ color: accent, fontSize: 11, textDecoration: "none", textTransform: "none", letterSpacing: 0 }}>Ver todas</Link>
               </div>
               {notifs.length === 0 ? (
                 <div style={{ padding: 24, fontSize: 12, color: "var(--fg-muted, #94a3b8)", textAlign: "center" }}>
@@ -298,10 +302,10 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
                 <div style={{ color: "var(--fg-muted, #6b7280)", fontSize: 11, marginTop: 2 }}>{user?.email || ""}</div>
                 {user?.role ? <div style={{ color: "var(--fg-muted, #94a3b8)", fontSize: 10, marginTop: 4, textTransform: "uppercase", letterSpacing: 0.4, fontWeight: 700 }}>{user.role}</div> : null}
               </div>
-              <Link href="/ajustes-cuenta" style={menuItem}>Mi cuenta</Link>
-              <Link href="/ajustes" style={menuItem}>Ajustes del tenant</Link>
-              <Link href="/ajustes-campos" style={menuItem}>Campos personalizados</Link>
-              <Link href="/integraciones" style={menuItem}>Integraciones</Link>
+              <Link href={link("ajustes-cuenta")} style={menuItem}>Mi cuenta</Link>
+              <Link href={link("ajustes")} style={menuItem}>Ajustes del tenant</Link>
+              <Link href={link("ajustes-campos")} style={menuItem}>Campos personalizados</Link>
+              <Link href={link("integraciones")} style={menuItem}>Integraciones</Link>
               <Link href="/logout" style={{ ...menuItem, color: "#dc2626", borderTop: "1px solid var(--border, #f1f5f9)", marginTop: 4, paddingTop: 10 }}>Cerrar sesión</Link>
             </div>
           ) : null}

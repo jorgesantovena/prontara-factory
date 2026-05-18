@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * Atajos de teclado universales (H10-G).
@@ -41,6 +42,9 @@ function isEditable(el: EventTarget | null): boolean {
 
 export default function KeyboardShortcuts() {
   const router = useRouter();
+  // TEST-5.S — Prefijar todas las rutas con el slug del vertical actual
+  // para que Ctrl+K, g+c, etc. no redirijan a /acceso.
+  const { link } = useCurrentVertical();
 
   useEffect(() => {
     let waitingForG = false;
@@ -51,13 +55,18 @@ export default function KeyboardShortcuts() {
       if (gTimer) { clearTimeout(gTimer); gTimer = null; }
     }
 
+    function withVertical(path: string): string {
+      if (!path.startsWith("/")) return path;
+      return link(path.replace(/^\/+/, ""));
+    }
+
     function onKey(e: KeyboardEvent) {
       if (isEditable(e.target)) return;
 
       // Cmd+K / Ctrl+K -> buscador
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        router.push("/buscar");
+        router.push(withVertical("/buscar"));
         return;
       }
 
@@ -73,7 +82,7 @@ export default function KeyboardShortcuts() {
         const target = NAV_MAP[e.key.toLowerCase()];
         if (target) {
           e.preventDefault();
-          router.push(target);
+          router.push(withVertical(target));
         }
         clearG();
         return;
@@ -90,7 +99,7 @@ export default function KeyboardShortcuts() {
       window.removeEventListener("keydown", onKey);
       if (gTimer) clearTimeout(gTimer);
     };
-  }, [router]);
+  }, [router, link]);
 
   return null;
 }
