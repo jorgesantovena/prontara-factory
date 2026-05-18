@@ -35,6 +35,7 @@ const MODULE_ORDER = [
   "crm",
   "proyectos",
   "produccion",
+  "pre-facturacion",
   "presupuestos",
   "facturacion",
   "documentos",
@@ -148,6 +149,7 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   egresados: "operacion",
   // Administración — finanzas y stock (cosas que se tocan a diario/semana)
   presupuestos: "administracion",
+  "pre-facturacion": "administracion",
   facturacion: "administracion",
   albaranes: "administracion",
   "vencimientos-factura": "administracion",
@@ -234,6 +236,7 @@ const MODULE_ICON: Record<string, string> = {
   egresados: "🎓",
   // Administración — finanzas y stock
   presupuestos: "📄",
+  "pre-facturacion": "🧾",
   facturacion: "💶",
   albaranes: "📦",
   "vencimientos-factura": "⏰",
@@ -286,6 +289,7 @@ const FALLBACK_LABELS: Record<string, string> = {
   proyectos: "Proyectos",
   produccion: "Producción",
   presupuestos: "Propuestas",
+  "pre-facturacion": "Pre-facturación",
   facturacion: "Facturas",
   documentos: "Documentos",
   reportes: "Reportes",
@@ -334,7 +338,14 @@ const VIRTUAL_MODULES = new Set(["produccion"]);
 // TEST-5.S — Módulos universales del runtime que están disponibles para
 // CUALQUIER vertical aunque el pack no los enumere (ej. Reportes,
 // Buscar global, etc.). No requieren entrada en config.modules.
-const UNIVERSAL_MODULES = new Set(["reportes"]);
+// TEST-6.4.a — Añadida "pre-facturacion" (vive como sub-ruta de /produccion).
+const UNIVERSAL_MODULES = new Set(["reportes", "pre-facturacion"]);
+
+// TEST-6.4.a — Algunos items del sidebar no usan la convención
+// /<vertical>/<key>. Para esos, se especifica aquí el path final.
+const MODULE_HREF_OVERRIDE: Record<string, string> = {
+  "pre-facturacion": "/produccion/pre-facturacion",
+};
 
 // Módulos que viven SOLO dentro del hub /produccion (tabs internas).
 // El pack los marca como enabled para que existan como módulos del ERP
@@ -535,7 +546,7 @@ export default function TenantSidebar() {
       continue;
     }
     moduleItems.push({
-      href: buildHref("/" + key, params),
+      href: buildHref(MODULE_HREF_OVERRIDE[key] || ("/" + key), params),
       label: labelFor(key),
       moduleKey: key,
       icon: MODULE_ICON[key] || "📌",

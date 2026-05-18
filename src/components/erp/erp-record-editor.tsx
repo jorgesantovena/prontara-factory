@@ -107,16 +107,33 @@ export default function ErpRecordEditor({
   const [dirty, setDirty] = useState(false);
   const [tab, setTab] = useState<TabKey>("general");
   const [favorite, setFavorite] = useState(false);
+  // TEST-6.1.d — link helper para "Convertir en proyecto" desde presupuestos.
+  const { link: vlink } = useCurrentVertical();
 
   // Agrupa fields por tab. "proyectos" y "documentos" son tabs virtuales
   // (no agrupan fields del registro — tienen contenido propio).
+  // TEST-6.1.a — Si un tab no-general acaba con un solo field (caso típico
+  // de "Financiero" con solo "Importe" en propuestas), promovemos ese field
+  // a "general" para no mostrar un tab semi-vacío. Excepción: "contacto" en
+  // clientes, que aunque no tenga fields del pack siempre muestra la sublista.
   const grouped = useMemo(() => {
     const acc: Record<TabKey, UiFieldDefinition[]> = {
       general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], documentos: [],
     };
     for (const f of fields) acc[classifyField(f.key)].push(f);
+    // Collapse de tabs con 1 solo field a "general" (no aplica al propio general,
+    // ni a tabs virtuales, ni a "contacto" cuando es módulo clientes — la
+    // sublista de contactos puede coexistir con el grid de fields).
+    const collapsibles: TabKey[] = ["comercial", "financiero", "notas"];
+    if (!(moduleKey === "clientes")) collapsibles.unshift("contacto");
+    for (const t of collapsibles) {
+      if (acc[t].length === 1) {
+        acc.general.push(acc[t][0]);
+        acc[t] = [];
+      }
+    }
     return acc;
-  }, [fields]);
+  }, [fields, moduleKey]);
 
   // TEST-1.5 — Tabs visibles. "Documentos" solo se muestra si hay otras
   // tabs con fields (no como única tab — antes salía sola si fields=[]).
@@ -135,7 +152,26 @@ export default function ErpRecordEditor({
   // Reset valores al cambiar mode/initialValue/fields
   useEffect(() => {
     const next: Record<string, string> = {};
-    for (const f of fields) next[f.key] = String(initialValue?.[f.key] ?? "");
+    // TEST-6.1.b + 6.2.a — En modo "create", precargar con la fecha de hoy
+    // los campos de fecha "de alta/envío/emisión/inicio" (los que tienen
+    // sentido tomar el día actual por defecto). NO se aplica a
+    // fechaCaducidad / fechaLimite / fechaVencimiento / fechaEntrega etc.,
+    // que se rellenan a futuro.
+    const TODAY_DEFAULT_DATE_FIELDS = new Set([
+      "fechaEnvio", "fechaEmision", "fechaInicio", "fechaAlta", "fechaCreacion",
+      "fecha_alta", "fechaApertura",
+    ]);
+    const todayIso = new Date().toISOString().slice(0, 10);
+    for (const f of fields) {
+      const initVal = initialValue?.[f.key];
+      if (initVal != null && String(initVal) !== "") {
+        next[f.key] = String(initVal);
+      } else if (mode === "create" && f.kind === "date" && TODAY_DEFAULT_DATE_FIELDS.has(f.key)) {
+        next[f.key] = todayIso;
+      } else {
+        next[f.key] = String(initVal ?? "");
+      }
+    }
     setValues(next);
     setDirty(false);
     setError("");
@@ -269,7 +305,33 @@ export default function ErpRecordEditor({
             </span>
           ) : null}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {/* TEST-6.1.d — Convertir en Proyecto: aparece en el editor de
+              presupuestos cuando ya está guardado. Precarga cliente, nombre
+              (concepto/descripción) e importe en el editor de proyectos. */}
+          {moduleKey === "presupuestos" && mode === "edit" ? (
+            <a
+              href={(() => {
+                const qs: string[] = [];
+                const cliente = String(values.cliente || initialValue?.cliente || "").trim();
+                const concepto = String(values.concepto || values.descripcion || values.nombre || initialValue?.concepto || initialValue?.descripcion || "").trim();
+                const importe = String(values.importe || initialValue?.importe || "").trim();
+                if (cliente) qs.push("prefill_cliente=" + encodeURIComponent(cliente));
+                if (concepto) qs.push("prefill_nombre=" + encodeURIComponent(concepto));
+                if (importe) qs.push("prefill_importe=" + encodeURIComponent(importe));
+                return vlink("proyectos") + (qs.length ? "?" + qs.join("&") : "");
+              })()}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: "#16a34a", color: "#ffffff", border: "none",
+                borderRadius: 8, padding: "8px 14px", fontWeight: 700,
+                fontSize: 13, textDecoration: "none",
+              }}
+              title="Crear un proyecto a partir de esta propuesta (cliente e importe precargados)"
+            >
+              ✨ Convertir en proyecto
+            </a>
+          ) : null}
           <button type="button" onClick={onCancel} disabled={busy} style={btnSecondary}>Cancelar</button>
           {mode === "create" ? (
             <button type="button" onClick={() => doSubmit(true)} disabled={busy} style={btnSecondaryAccent(accent)}>
@@ -508,6 +570,19 @@ function FieldInput({ field, value, onChange, options, accent }: {
 }
 
 const chevronBg = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8.5L2 4.5h8z'/%3E%3C/svg%3E\")";
+
+// TEST-6.1.c — Formatea una fecha (ISO o lo que llegue) a DD/MM/AAAA en
+// español. Si no es parseable, devuelve la cadena original.
+function fmtDateEs(v: unknown): string {
+  const s = String(v ?? "").trim();
+  if (!s) return "";
+  // Soporta "YYYY-MM-DD" tal cual sin pasar por Date (evita problemas TZ).
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+  if (m) return m[3] + "/" + m[2] + "/" + m[1];
+  const d = new Date(s);
+  if (isNaN(d.getTime())) return s;
+  return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
 
 // TEST-2.3 + TEST-2.4 — Sublista de Contactos con CRUD.
 // TEST-3.2a — Migrada a modo rejilla (tabla) con acciones por fila:
@@ -928,8 +1003,8 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
                   <td style={subTd}>{p.nombre || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>{p.estado || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>{p.responsable || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                  <td style={subTd}>{p.fechaInicio || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                  <td style={subTd}>{p.fechaCaducidad || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.fechaInicio ? fmtDateEs(p.fechaInicio) : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.fechaCaducidad ? fmtDateEs(p.fechaCaducidad) : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>
                     <div style={{ display: "flex", gap: 4 }}>
                       <Link href={link("proyectos")} style={{ ...subBtn, textDecoration: "none" }} title="Abrir módulo Proyectos para editar">Abrir</Link>
