@@ -313,15 +313,18 @@ export default function GenericModuleRuntimePage({
     }
     const wfNext = params.get("wf_next");
     if (wfNext) setWorkflowNext(wfNext);
-    if (hasAny && modalMode === null) {
-      setSelected(prefill);
+    // TEST-6.3.a — `?action=new` también abre el editor en modo create
+    // (sin prefill). Lo emite EmptyState ("Imputar horas", "Crear cliente"...).
+    const actionNew = params.get("action") === "new";
+    if ((hasAny || actionNew) && modalMode === null) {
+      setSelected(hasAny ? prefill : null);
       setModalMode("create");
     }
-    // Limpiamos los prefill_* y wf_next de la URL para no re-disparar al refrescar.
+    // Limpiamos los prefill_* / wf_next / action de la URL para no re-disparar al refrescar.
     const cleaned = new URLSearchParams(window.location.search);
     let touched = false;
     for (const k of Array.from(cleaned.keys())) {
-      if (k.startsWith("prefill_") || k === "wf_next") {
+      if (k.startsWith("prefill_") || k === "wf_next" || k === "action") {
         cleaned.delete(k);
         touched = true;
       }

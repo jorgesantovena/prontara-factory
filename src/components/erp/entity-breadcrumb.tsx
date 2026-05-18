@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * Breadcrumb homogéneo para las páginas de entidades del ERP.
@@ -14,6 +15,9 @@ import Link from "next/link";
  *
  * El último item se pinta como texto plano. Los previos son links.
  * Si `items.length <= 1` no renderiza nada.
+ *
+ * TEST-6.3.a — Los hrefs pasan por `useCurrentVertical().link()` para que
+ * no caigan al login del middleware cuando vienen sin prefix de vertical.
  */
 
 export type EntityBreadcrumbItem = {
@@ -26,7 +30,14 @@ type Props = {
 };
 
 export default function EntityBreadcrumb({ items }: Props) {
+  const { link } = useCurrentVertical();
   if (!items || items.length <= 1) return null;
+  const prefix = (href: string): string => {
+    if (!href.startsWith("/") || href.startsWith("/api/")) return href;
+    const [path, qs] = href.split("?");
+    const prefixed = link(path.replace(/^\/+/, ""));
+    return qs ? prefixed + "?" + qs : prefixed;
+  };
 
   return (
     <nav
@@ -46,7 +57,7 @@ export default function EntityBreadcrumb({ items }: Props) {
           <span key={index} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             {!isLast && item.href ? (
               <Link
-                href={item.href}
+                href={prefix(item.href)}
                 style={{
                   color: "#4b5563",
                   textDecoration: "none",

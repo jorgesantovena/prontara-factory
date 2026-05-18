@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * Estado vacío reutilizable (H10-H).
@@ -8,6 +9,11 @@ import Link from "next/link";
  * Cuando un listado/módulo está vacío, en vez de "no hay datos" se
  * muestra un mensaje contextual con un CTA primario y otro secundario
  * (típicamente "Crear" + "Importar").
+ *
+ * TEST-6.3.a — Los hrefs del catálogo `emptyStateFor` vienen sin prefix
+ * de vertical (`/actividades?action=new`). El middleware los redirige a
+ * /acceso (login) porque la ruta no existe sin vertical. Aquí los
+ * prefijamos con `useCurrentVertical().link()` antes de usarlos.
  */
 export type EmptyStateProps = {
   emoji?: string;
@@ -24,6 +30,16 @@ export default function EmptyState({
   primary,
   secondary,
 }: EmptyStateProps) {
+  const { link } = useCurrentVertical();
+  const prefix = (href: string): string => {
+    if (!href || !href.startsWith("/") || href.startsWith("/api/")) return href;
+    // Separar pathname y querystring para mantener ?action=new tras el prefix.
+    const [path, qs] = href.split("?");
+    const prefixed = link(path.replace(/^\/+/, ""));
+    return qs ? prefixed + "?" + qs : prefixed;
+  };
+  const primaryHref = primary ? prefix(primary.href) : undefined;
+  const secondaryHref = secondary ? prefix(secondary.href) : undefined;
   return (
     <div style={{
       display: "flex",
@@ -44,13 +60,13 @@ export default function EmptyState({
         <p style={{ fontSize: 14, color: "var(--fg-muted, #475569)", maxWidth: 480, margin: "0 0 20px 0", lineHeight: 1.5 }}>{description}</p>
       ) : null}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-        {primary ? (
-          <Link href={primary.href} style={{ background: "#1d4ed8", color: "#ffffff", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 700, fontSize: 14 }}>
+        {primary && primaryHref ? (
+          <Link href={primaryHref} style={{ background: "#1d4ed8", color: "#ffffff", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 700, fontSize: 14 }}>
             {primary.label}
           </Link>
         ) : null}
-        {secondary ? (
-          <Link href={secondary.href} style={{ background: "transparent", color: "var(--fg, #0f172a)", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600, fontSize: 14, border: "1px solid var(--border, #d1d5db)" }}>
+        {secondary && secondaryHref ? (
+          <Link href={secondaryHref} style={{ background: "transparent", color: "var(--fg, #0f172a)", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600, fontSize: 14, border: "1px solid var(--border, #d1d5db)" }}>
             {secondary.label}
           </Link>
         ) : null}

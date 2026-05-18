@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
  * Botón "+ Crear" global en topbar (H10-E).
@@ -86,6 +87,17 @@ const FALLBACK_OPTIONS = [
 export default function GlobalCreateButton({ accent = "#1d4ed8" }: { accent?: string }) {
   const [open, setOpen] = useState(false);
   const [vertical, setVertical] = useState("");
+  // TEST-6.3.a — Prefijar hrefs con el slug del vertical para que el botón
+  // "+ Crear" del topbar NO redirija al login. Antes el href absoluto
+  // "/actividades?action=new" hacía que el middleware enviara al usuario a
+  // /acceso (que el tester veía como "This page couldn't load").
+  const { link } = useCurrentVertical();
+  const prefix = (href: string): string => {
+    if (!href.startsWith("/") || href.startsWith("/api/")) return href;
+    const [path, qs] = href.split("?");
+    const prefixed = link(path.replace(/^\/+/, ""));
+    return qs ? prefixed + "?" + qs : prefixed;
+  };
 
   useEffect(() => {
     fetch("/api/runtime/tenant-config", { cache: "no-store" })
@@ -123,7 +135,7 @@ export default function GlobalCreateButton({ accent = "#1d4ed8" }: { accent?: st
             {options.map((o, i) => (
               <Link
                 key={i}
-                href={o.href + "?action=new"}
+                href={prefix(o.href + "?action=new")}
                 onClick={() => setOpen(false)}
                 style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 10px", fontSize: 13, color: "var(--fg, #0f172a)", textDecoration: "none", borderRadius: 4 }}
               >
