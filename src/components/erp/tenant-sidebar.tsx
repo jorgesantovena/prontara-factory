@@ -358,6 +358,8 @@ const HUB_CHILDREN_MODULES = new Set([
 // runtime (la ruta /[vertical]/<key> no existe). Se ocultan del sidebar
 // para evitar el 404 al pulsar. Lista a revisar cada vez que se cree o
 // se borre una página del runtime.
+// TEST-5bis — Avisos / Gastos / Vencimientos / Desplazamientos / Empleados
+// ya tienen página placeholder, por eso se han quitado de aquí.
 const MODULES_WITHOUT_ROUTE = new Set([
   // Maestros sin página todavía
   "tarifas-generales",
@@ -374,16 +376,11 @@ const MODULES_WITHOUT_ROUTE = new Set([
   "aplicaciones",
   // Administración sin página todavía
   "albaranes",
-  "vencimientos-factura",
   "bodegas",
   "kardex",
-  "gastos",
-  "desplazamientos",
   "puntos-venta",
   // Analítica sin página todavía
   "estadistica-ventas",
-  // Operación sin página todavía
-  "avisos-programados",
 ]);
 
 function readQueryParams() {

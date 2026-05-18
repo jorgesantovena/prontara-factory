@@ -70,6 +70,17 @@ function preferidoFromContactosJson(raw: unknown): ContactoPref | null {
   };
 }
 
+// TEST-5bis — true si en contactosJson hay AL MENOS uno marcado como preferido
+// (no solo "el primero por defecto").
+function isExplicitPreferido(raw: unknown): boolean {
+  let arr: unknown = raw;
+  if (typeof raw === "string") {
+    try { arr = JSON.parse(raw); } catch { return false; }
+  }
+  if (!Array.isArray(arr)) return false;
+  return arr.some((c) => c && typeof c === "object" && (c as Record<string, unknown>).preferido);
+}
+
 function cellWithLeadingZerosFix(column: string, value: string): string {
   if (!value) return value;
   if (!PRESERVE_LEADING_ZEROS.has(column)) return value;
@@ -114,33 +125,42 @@ export async function GET(request: NextRequest) {
     }
     const columns = Array.from(keySet).sort();
 
-    // TEST-5.2 — En clientes, añadir columnas calculadas del contacto preferido.
-    const expandContactos = modulo === "clientes";
-    const extraColumns = expandContactos
-      ? ["contactoPreferente", "emailContacto", "telefonoContacto", "cargoContacto"]
-      : [];
-    const allColumns = [...columns, ...extraColumns];
+    // TEST-5bis — En clientes, las columnas `contacto`, `email`, `telefono`
+    // del registro se rellenan con los datos del contacto preferido (o el
+    // primero si no hay marcado) cuando estén vacías en el record. Se
+    // añade una columna "Preferente" con "*" si los datos vienen de un
+    // contacto efectivamente marcado como preferido. Antes teníamos 4
+    // columnas adicionales (contactoPreferente, emailContacto, ...) que
+    // duplicaban la información — el tester pidió eliminarlas.
+    const isClientes = modulo === "clientes";
+    const allColumns = isClientes ? [...columns, "preferente"] : columns;
 
     const lines: string[] = [];
     lines.push(buildCsvLine(allColumns));
     for (const r of records) {
       const rec = r as Record<string, unknown>;
+      let pref: ReturnType<typeof preferidoFromContactosJson> = null;
+      let prefMark = "";
+      if (isClientes) {
+        pref = preferidoFromContactosJson(rec.contactosJson);
+        // Marcamos con "*" solo si hay un contacto explícitamente marcado
+        // como preferido en el JSON; si solo cogimos el primero por defecto
+        // (sin nadie marcado), no se marca.
+        if (pref && isExplicitPreferido(rec.contactosJson)) prefMark = "*";
+      }
       const baseCells = columns.map((c) => {
-        const raw = rec[c];
+        let raw = rec[c];
+        // Sincronizar contacto/email/telefono con el preferido si están vacíos.
+        if (isClientes && pref) {
+          if (c === "contacto" && (!raw || String(raw).trim() === "")) raw = pref.nombre;
+          else if (c === "email" && (!raw || String(raw).trim() === "")) raw = pref.email;
+          else if (c === "telefono" && (!raw || String(raw).trim() === "")) raw = pref.telefono;
+        }
         const str = raw == null ? "" : String(raw);
         return cellWithLeadingZerosFix(c, str);
       });
-      let extraCells: string[] = [];
-      if (expandContactos) {
-        const pref = preferidoFromContactosJson(rec.contactosJson);
-        extraCells = [
-          pref?.nombre || "",
-          pref?.email || "",
-          pref?.telefono ? cellWithLeadingZerosFix("telefono", pref.telefono) : "",
-          pref?.cargo || "",
-        ];
-      }
-      lines.push(buildCsvLine([...baseCells, ...extraCells]));
+      const row = isClientes ? [...baseCells, prefMark] : baseCells;
+      lines.push(buildCsvLine(row));
     }
 
     const csv = "﻿" + lines.join("\r\n") + "\r\n";

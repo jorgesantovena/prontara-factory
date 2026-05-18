@@ -63,12 +63,10 @@ export default function KeyboardShortcuts() {
     function onKey(e: KeyboardEvent) {
       if (isEditable(e.target)) return;
 
-      // Cmd+K / Ctrl+K -> buscador
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        router.push(withVertical("/buscar"));
-        return;
-      }
+      // TEST-5bis — Ctrl+K se gestiona EXCLUSIVAMENTE en DashboardTopBar
+      // (focus al search input). Antes ambos componentes escuchaban Ctrl+K
+      // y entraban en conflicto (uno hacía router.push y el otro focus, lo
+      // que terminaba con el usuario sin respuesta visible).
 
       // ? -> ayuda
       if (e.key === "?" && !e.metaKey && !e.ctrlKey && !e.altKey) {

@@ -193,6 +193,15 @@ export default function ErpRecordEditor({
       // el contacto preferido de contactosJson, para que el listado siempre
       // muestre los datos correctos sin importar de dónde vengan.
       const payload: Record<string, string> = { ...values };
+      // TEST-5bis — Defensa: si el usuario abre un cliente que YA TIENE
+      // contactos en BD y no los toca, `values.contactosJson` puede ser
+      // undefined porque no está en `fields`. Forzamos a incluirlo en el
+      // payload desde initialValue para que el guardado del cliente no
+      // se traduzca en "perder" los contactos al sobreescribir el record.
+      if (moduleKey === "clientes" && payload.contactosJson == null && initialValue?.contactosJson != null) {
+        const raw = initialValue.contactosJson;
+        payload.contactosJson = typeof raw === "string" ? raw : JSON.stringify(raw);
+      }
       if (moduleKey === "clientes" && payload.contactosJson) {
         try {
           const raw = typeof payload.contactosJson === "string"
