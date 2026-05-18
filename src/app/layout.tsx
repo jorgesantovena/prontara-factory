@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -95,6 +95,12 @@ export const metadata: Metadata = {
     canonical: SITE_URL,
   },
   manifest: "/manifest.json",
+};
+
+// Next.js 16: themeColor (y viewport, colorScheme) ya no van en `metadata`
+// sino en este export aparte. Cambio cosmético; sin él, Next imprime un
+// warning en consola pero el theme color funciona igual.
+export const viewport: Viewport = {
   themeColor: "#1d4ed8",
 };
 
