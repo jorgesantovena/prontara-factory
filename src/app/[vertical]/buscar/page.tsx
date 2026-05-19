@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 /**
  * Buscador global — búsqueda cross-módulos del ERP (CORE-04).
@@ -24,7 +25,12 @@ const MODULE_LABELS: Record<string, string> = {
 };
 
 export default function BuscarPage() {
-  const [q, setQ] = useState("");
+  // TEST-7.1.a — Leer `?q=` del query string al montar para que la búsqueda
+  // que entra desde el topbar (Ctrl+K + Enter) se ejecute automáticamente.
+  // Antes el state local arrancaba en "" y nunca se sincronizaba con la URL.
+  const searchParams = useSearchParams();
+  const initialQ = String(searchParams?.get("q") || "");
+  const [q, setQ] = useState(initialQ);
   const [results, setResults] = useState<ModuleResults>({});
   const [totalHits, setTotalHits] = useState(0);
   const [loading, setLoading] = useState(false);

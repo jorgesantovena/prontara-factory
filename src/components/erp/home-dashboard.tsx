@@ -213,7 +213,7 @@ export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string 
           )}
         </Card>
 
-        <Card title="Notificaciones" linkLabel="Ver todas" linkHref="/notificaciones" accent={accent}>
+        <Card title="Notificaciones" linkLabel={notifs.length > 0 ? "Ver todas" : undefined} linkHref={notifs.length > 0 ? "/notificaciones" : undefined} accent={accent}>
           {notifs.length === 0 ? (
             <EmptyHint text={loading ? "Cargando…" : "Sin notificaciones."} />
           ) : (
@@ -237,7 +237,7 @@ export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string 
 
       {/* Fila 2 columnas: Actividad reciente | Agenda de hoy */}
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 14 }} className="prontara-home-2col">
-        <Card title="Actividad reciente" linkLabel="Ver toda la actividad" linkHref="/auditoria" accent={accent}>
+        <Card title="Actividad reciente" linkLabel={recentActivity.length > 0 ? "Ver toda la actividad" : undefined} linkHref={recentActivity.length > 0 ? "/auditoria" : undefined} accent={accent}>
           {recentActivity.length === 0 ? (
             <EmptyHint text={loading ? "Cargando…" : "Sin actividad reciente."} />
           ) : (

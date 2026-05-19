@@ -367,32 +367,13 @@ const HUB_CHILDREN_MODULES = new Set([
 
 // TEST-5.S — Módulos declarados en el pack pero SIN página propia en el
 // runtime (la ruta /[vertical]/<key> no existe). Se ocultan del sidebar
-// para evitar el 404 al pulsar. Lista a revisar cada vez que se cree o
-// se borre una página del runtime.
+// para evitar el 404 al pulsar.
 // TEST-5bis — Avisos / Gastos / Vencimientos / Desplazamientos / Empleados
-// ya tienen página placeholder, por eso se han quitado de aquí.
-const MODULES_WITHOUT_ROUTE = new Set([
-  // Maestros sin página todavía
-  "tarifas-generales",
-  "tarifas-especiales",
-  "clases-condicion",
-  "formas-pago",
-  "cuentas-bancarias",
-  "tipos-cliente",
-  "tipos-servicio",
-  "tipos-urgencia",
-  "actividades-catalogo",
-  "zonas-comerciales",
-  "grupos-empresa",
-  "aplicaciones",
-  // Administración sin página todavía
-  "albaranes",
-  "bodegas",
-  "kardex",
-  "puntos-venta",
-  // Analítica sin página todavía
-  "estadistica-ventas",
-]);
+// añadidos con stubs.
+// TEST-7.1.h — Los 17 módulos restantes (maestros, administración y analítica)
+// también tienen stub "En construcción". El set queda vacío de forma
+// intencionada: cada nuevo módulo del pack debe llevar al menos un stub.
+const MODULES_WITHOUT_ROUTE = new Set<string>([]);
 
 function readQueryParams() {
   if (typeof window === "undefined") return { tenant: "", sectorPack: "" };

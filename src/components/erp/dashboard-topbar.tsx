@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import GlobalCreateButton from "@/components/erp/global-create-button";
+// TEST-7.1.b — GlobalCreateButton retirado del topbar (era redundante con
+// el menú lateral, requería mantenimiento manual de la lista y no era
+// exhaustivo). Las altas se hacen desde la sección correspondiente.
 import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
@@ -182,8 +184,7 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
           </div>
         ) : null}
 
-        {/* Botón + Crear global (H10-E) */}
-        <GlobalCreateButton accent={accent} />
+        {/* TEST-7.1.b — Botón "+ Crear" retirado del topbar. */}
 
         {/* Notificaciones */}
         <div style={{ position: "relative" }}>
