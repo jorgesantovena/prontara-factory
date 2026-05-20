@@ -89,6 +89,8 @@ const CLINICA_DENTAL_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "emitida / cobrada / vencida" },
 
     // CRM (oportunidades) — AUDIT-03.
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Posible paciente", kind: "text", required: true, placeholder: "Familia / persona interesada" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "contacto@email.com" },
@@ -138,7 +140,8 @@ const CLINICA_DENTAL_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
 
     // CRM (oportunidades) — AUDIT-03.
-    { moduleKey: "crm", fieldKey: "nombre", label: "Posible paciente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible paciente" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
     { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
@@ -957,6 +960,8 @@ const GIMNASIO_PACK: SectorPackDefinition = {
     ] },
 
     // CRM (Captación) — AUDIT-03.
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Posible socio", kind: "text", required: true, placeholder: "Persona interesada en apuntarse" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "lead@email.com" },
@@ -1006,7 +1011,8 @@ const GIMNASIO_PACK: SectorPackDefinition = {
     { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
 
     // CRM (Captación) — AUDIT-03.
-    { moduleKey: "crm", fieldKey: "nombre", label: "Posible socio", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible socio" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
     { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
@@ -1177,6 +1183,8 @@ const PELUQUERIA_PACK: SectorPackDefinition = {
     ] },
 
     // CRM — AUDIT-03.
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", kind: "text", required: true, placeholder: "Persona interesada" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "lead@email.com" },
@@ -1227,7 +1235,8 @@ const PELUQUERIA_PACK: SectorPackDefinition = {
     { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
 
     // CRM — AUDIT-03.
-    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
     { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
@@ -1403,6 +1412,8 @@ const TALLER_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "emitida / cobrada / vencida" },
 
     // CRM (Captación) — AUDIT-03.
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", kind: "text", required: true, placeholder: "Nombre del interesado" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "lead@email.com" },
@@ -1455,7 +1466,8 @@ const TALLER_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
 
     // CRM (Captación) — AUDIT-03.
-    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
     { moduleKey: "crm", fieldKey: "vehiculo", label: "Vehículo" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
@@ -1683,6 +1695,8 @@ const COLEGIO_PACK: SectorPackDefinition = {
     ] },
 
     // CRM (Admisiones) — AUDIT-02.
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Familia interesada", kind: "text", required: true, placeholder: "Apellidos de la familia" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 ..." },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "familia@email.com" },
@@ -1964,7 +1978,8 @@ const COLEGIO_PACK: SectorPackDefinition = {
     { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
 
     // CRM (Admisiones) — AUDIT-02.
-    { moduleKey: "crm", fieldKey: "nombre", label: "Familia interesada", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Familia interesada" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono" },
     { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
@@ -2423,6 +2438,8 @@ const VETERINARIA_PACK: SectorPackDefinition = {
     ] },
 
     // CRM
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", kind: "text", required: true },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email" },
@@ -2469,7 +2486,8 @@ const VETERINARIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
 
-    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente" },
     { moduleKey: "crm", fieldKey: "mascotaInteres", label: "Motivo" },
     { moduleKey: "crm", fieldKey: "origen", label: "Origen" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
@@ -2602,6 +2620,8 @@ const ABOGADOS_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }, { value: "anulada", label: "Anulada" }] },
     // CRM
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", kind: "text", required: true },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email" },
@@ -2637,7 +2657,8 @@ const ABOGADOS_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
-    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente" },
     { moduleKey: "crm", fieldKey: "asunto", label: "Asunto" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
     { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", isPrimary: true },
@@ -2745,6 +2766,8 @@ const HOSTELERIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true },
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }] },
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Solicitante", kind: "text", required: true },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email" },
@@ -2774,7 +2797,8 @@ const HOSTELERIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
-    { moduleKey: "crm", fieldKey: "nombre", label: "Solicitante", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Solicitante" },
     { moduleKey: "crm", fieldKey: "tipoEvento", label: "Tipo" },
     { moduleKey: "crm", fieldKey: "fecha", label: "Fecha" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
@@ -2871,6 +2895,8 @@ const INMOBILIARIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true },
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }] },
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Interesado", kind: "text", required: true },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email" },
@@ -2902,7 +2928,8 @@ const INMOBILIARIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
-    { moduleKey: "crm", fieldKey: "nombre", label: "Interesado", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Interesado" },
     { moduleKey: "crm", fieldKey: "presupuesto", label: "Presupuesto" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
     { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", isPrimary: true },
@@ -3000,6 +3027,8 @@ const ASESORIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true },
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }] },
+    // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", kind: "text", required: true },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email" },
@@ -3030,7 +3059,8 @@ const ASESORIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
-    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente" },
     { moduleKey: "crm", fieldKey: "necesidad", label: "Necesidad" },
     { moduleKey: "crm", fieldKey: "estado", label: "Estado" },
     { moduleKey: "documentos", fieldKey: "nombre", label: "Documento", isPrimary: true },
