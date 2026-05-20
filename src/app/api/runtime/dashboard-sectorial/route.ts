@@ -106,8 +106,8 @@ export async function GET(request: NextRequest) {
       );
       quickActions.push(
         { href: "/actividades", label: "Parte de horas", icon: "⏱️" },
-        { href: "/facturacion", label: "Trabajar con factura", icon: "💶" },
-        { href: "/presupuestos", label: "Trabajar con propuesta", icon: "📄" },
+        { href: "/facturacion", label: "Trabajar con facturas", icon: "💶" },
+        { href: "/presupuestos", label: "Trabajar con propuestas", icon: "📄" },
         { href: "/produccion/pre-facturacion", label: "Pre-facturación", icon: "📊" },
       );
     } else if (businessType === "clinica-dental" || businessType === "clinica-veterinaria") {
@@ -121,9 +121,9 @@ export async function GET(request: NextRequest) {
         { key: "fact-vencidas", label: "Facturas vencidas", value: String(facturasVencidas.length), helper: importeFacturasPendientes.toFixed(0) + " € pendiente", tone: facturasVencidas.length > 0 ? "bad" : "good", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/proyectos", label: "Trabajar con cita", icon: "📅" },
+        { href: "/proyectos", label: "Trabajar con citas", icon: "📅" },
         { href: "/clientes", label: isVet ? "Nueva mascota" : "Nuevo paciente", icon: "👤" },
-        { href: "/presupuestos", label: "Trabajar con presupuesto", icon: "📄" },
+        { href: "/presupuestos", label: "Trabajar con presupuestos", icon: "📄" },
         { href: "/agenda-hoy", label: "Agenda de hoy", icon: "📋" },
       );
     } else if (businessType === "colegio") {
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
         { key: "fact-vencidas", label: "Cuotas vencidas", value: String(facturasVencidas.length), helper: importeFacturasPendientes.toFixed(0) + " € pendiente", tone: facturasVencidas.length > 0 ? "bad" : "good", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/clientes", label: "Trabajar con alumno", icon: "👤" },
+        { href: "/clientes", label: "Trabajar con alumnos", icon: "👤" },
         { href: "/calificaciones", label: "Cargar notas", icon: "📊" },
         { href: "/asistencia", label: "Pasar lista", icon: "✅" },
         { href: "/comunicaciones", label: "Enviar comunicado", icon: "📢" },
@@ -153,9 +153,9 @@ export async function GET(request: NextRequest) {
         { key: "fact-pendientes", label: "Facturas pendientes", value: importeFacturasPendientes.toFixed(0) + " €", helper: facturasPendientes.length + " facturas", tone: "neutral", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/proyectos", label: "Trabajar con cita", icon: "✂️" },
+        { href: "/proyectos", label: "Trabajar con citas", icon: "✂️" },
         { href: "/caja-rapida", label: "Cobrar", icon: "💳" },
-        { href: "/clientes", label: "Trabajar con cliente", icon: "👤" },
+        { href: "/clientes", label: "Trabajar con clientes", icon: "👤" },
         { href: "/agenda-hoy", label: "Ver agenda", icon: "📅" },
       );
     } else if (businessType === "taller") {
@@ -167,10 +167,10 @@ export async function GET(request: NextRequest) {
         { key: "fact-pendientes", label: "Facturas pendientes", value: importeFacturasPendientes.toFixed(0) + " €", helper: facturasPendientes.length + " sin cobrar", tone: facturasVencidas.length > 0 ? "warn" : "neutral", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/proyectos", label: "Trabajar con orden", icon: "🔧" },
-        { href: "/clientes", label: "Trabajar con vehículo", icon: "🚗" },
-        { href: "/presupuestos", label: "Trabajar con presupuesto", icon: "📄" },
-        { href: "/facturacion", label: "Trabajar con factura", icon: "💶" },
+        { href: "/proyectos", label: "Trabajar con órdenes", icon: "🔧" },
+        { href: "/clientes", label: "Trabajar con vehículos", icon: "🚗" },
+        { href: "/presupuestos", label: "Trabajar con presupuestos", icon: "📄" },
+        { href: "/facturacion", label: "Trabajar con facturas", icon: "💶" },
       );
     } else if (businessType === "hosteleria") {
       const eventos = proyectos.filter((p) => String(p.fecha || "") >= today && String(p.fecha || "") <= en7dias);
@@ -181,9 +181,9 @@ export async function GET(request: NextRequest) {
         { key: "fact-pendientes", label: "Facturas pendientes", value: importeFacturasPendientes.toFixed(0) + " €", helper: facturasPendientes.length + " sin cobrar", tone: "neutral", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/proyectos", label: "Trabajar con evento", icon: "🎉" },
+        { href: "/proyectos", label: "Trabajar con eventos", icon: "🎉" },
         { href: "/caja-rapida", label: "Cobrar", icon: "💳" },
-        { href: "/clientes", label: "Trabajar con cliente", icon: "👤" },
+        { href: "/clientes", label: "Trabajar con clientes", icon: "👤" },
         { href: "/agenda-hoy", label: "Reservas hoy", icon: "📅" },
       );
     } else if (businessType === "inmobiliaria") {
@@ -196,10 +196,10 @@ export async function GET(request: NextRequest) {
         { key: "comisiones", label: "Comisiones pendientes", value: importeFacturasPendientes.toFixed(0) + " €", helper: "Por cobrar", tone: "warn", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/proyectos", label: "Trabajar con inmueble", icon: "🏠" },
-        { href: "/clientes", label: "Trabajar con interesado", icon: "👤" },
-        { href: "/presupuestos", label: "Trabajar con oferta", icon: "💼" },
-        { href: "/facturacion", label: "Trabajar con factura", icon: "💶" },
+        { href: "/proyectos", label: "Trabajar con inmuebles", icon: "🏠" },
+        { href: "/clientes", label: "Trabajar con interesados", icon: "👤" },
+        { href: "/presupuestos", label: "Trabajar con ofertas", icon: "💼" },
+        { href: "/facturacion", label: "Trabajar con facturas", icon: "💶" },
       );
     } else if (businessType === "asesoria") {
       const encargos = proyectos.filter((p) => String(p.estado || "") !== "completado" && String(p.estado || "") !== "cancelado");
@@ -214,9 +214,9 @@ export async function GET(request: NextRequest) {
         { key: "cuotas", label: "Cuotas vencidas", value: String(facturasVencidas.length), helper: importeFacturasPendientes.toFixed(0) + " €", tone: facturasVencidas.length > 0 ? "bad" : "good", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/proyectos", label: "Trabajar con encargo", icon: "📋" },
-        { href: "/clientes", label: "Trabajar con cliente", icon: "👤" },
-        { href: "/facturacion", label: "Trabajar con factura", icon: "💶" },
+        { href: "/proyectos", label: "Trabajar con encargos", icon: "📋" },
+        { href: "/clientes", label: "Trabajar con clientes", icon: "👤" },
+        { href: "/facturacion", label: "Trabajar con facturas", icon: "💶" },
         { href: "/api/erp/modelo-303", label: "Modelo 303", icon: "📊" },
       );
     } else if (businessType === "despacho-abogados") {
@@ -232,8 +232,8 @@ export async function GET(request: NextRequest) {
         { key: "fact-vencidas", label: "Facturas vencidas", value: String(facturasVencidas.length), helper: importeFacturasPendientes.toFixed(0) + " €", tone: facturasVencidas.length > 0 ? "bad" : "good", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/proyectos", label: "Trabajar con caso", icon: "⚖️" },
-        { href: "/clientes", label: "Trabajar con cliente", icon: "👤" },
+        { href: "/proyectos", label: "Trabajar con casos", icon: "⚖️" },
+        { href: "/clientes", label: "Trabajar con clientes", icon: "👤" },
         { href: "/presupuestos", label: "Trabajar con honorarios", icon: "📄" },
         { href: "/documentos", label: "Subir expediente", icon: "📎" },
       );
@@ -246,10 +246,10 @@ export async function GET(request: NextRequest) {
         { key: "fact-pendientes", label: "Facturas pendientes", value: importeFacturasPendientes.toFixed(0) + " €", helper: facturasPendientes.length + " sin cobrar", tone: facturasVencidas.length > 0 ? "warn" : "neutral", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/clientes", label: "Trabajar con cliente", icon: "👤" },
-        { href: "/presupuestos", label: "Trabajar con presupuesto", icon: "📄" },
-        { href: "/facturacion", label: "Trabajar con factura", icon: "💶" },
-        { href: "/tareas", label: "Trabajar con tarea", icon: "✔️" },
+        { href: "/clientes", label: "Trabajar con clientes", icon: "👤" },
+        { href: "/presupuestos", label: "Trabajar con presupuestos", icon: "📄" },
+        { href: "/facturacion", label: "Trabajar con facturas", icon: "💶" },
+        { href: "/tareas", label: "Trabajar con tareas", icon: "✔️" },
       );
     }
 

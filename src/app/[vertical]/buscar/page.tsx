@@ -25,12 +25,17 @@ const MODULE_LABELS: Record<string, string> = {
 };
 
 export default function BuscarPage() {
-  // TEST-7.1.a — Leer `?q=` del query string al montar para que la búsqueda
-  // que entra desde el topbar (Ctrl+K + Enter) se ejecute automáticamente.
-  // Antes el state local arrancaba en "" y nunca se sincronizaba con la URL.
+  // TEST-7.1.a + TEST-8.1.a — Leer `?q=` del query string. Si el usuario
+  // navega a /buscar?q=otracosa estando ya en /buscar, el componente NO se
+  // desmonta y `initialQ` (que solo se aplica al useState inicial) no surte
+  // efecto. Por eso un useEffect adicional resincroniza el state con el
+  // searchParams en cada cambio.
   const searchParams = useSearchParams();
-  const initialQ = String(searchParams?.get("q") || "");
-  const [q, setQ] = useState(initialQ);
+  const urlQ = String(searchParams?.get("q") || "");
+  const [q, setQ] = useState(urlQ);
+  useEffect(() => {
+    setQ(urlQ);
+  }, [urlQ]);
   const [results, setResults] = useState<ModuleResults>({});
   const [totalHits, setTotalHits] = useState(0);
   const [loading, setLoading] = useState(false);

@@ -358,18 +358,23 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
 
     // CRM (oportunidades) — SF-21.
     { moduleKey: "crm", fieldKey: "empresa", label: "Empresa", kind: "text", required: true, placeholder: "Razón social del prospecto" },
-    { moduleKey: "crm", fieldKey: "contacto", label: "Contacto", kind: "text", required: true, placeholder: "Persona con la que tratas" },
+    // TEST-8.1.c — Contacto pasa a opcional. El usuario puede añadir contactos
+    // detallados desde la sublista del tab "Contactos" del editor.
+    { moduleKey: "crm", fieldKey: "contacto", label: "Contacto", kind: "text", placeholder: "Persona con la que tratas" },
     { moduleKey: "crm", fieldKey: "email", label: "Email", kind: "email", placeholder: "contacto@empresa.com" },
     { moduleKey: "crm", fieldKey: "telefono", label: "Teléfono", kind: "tel", placeholder: "+34 600 000 000" },
-    { moduleKey: "crm", fieldKey: "fase", label: "Fase", kind: "status", required: true, placeholder: "lead / contactado / propuesta / negociacion / ganado / perdido", options: [
+    // TEST-8.1.d — Quitada la fase "negociacion" (esa fase ya vive en la Propuesta).
+    { moduleKey: "crm", fieldKey: "fase", label: "Fase", kind: "status", required: true, placeholder: "lead / contactado / propuesta / ganado / perdido", options: [
       { value: "lead", label: "Lead" },
       { value: "contactado", label: "Contactado" },
       { value: "propuesta", label: "Propuesta" },
-      { value: "negociacion", label: "Negociación" },
       { value: "ganado", label: "Ganado" },
       { value: "perdido", label: "Perdido" },
     ] },
     { moduleKey: "crm", fieldKey: "valorEstimado", label: "Valor estimado", kind: "money", placeholder: "Ej. 14500 EUR" },
+    // TEST-8.1.d — Referencia a la propuesta generada cuando la oportunidad
+    // pasa a fase "propuesta". Se actualiza automáticamente.
+    { moduleKey: "crm", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Se rellena al generar la propuesta" },
     { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso", kind: "textarea", placeholder: "Qué hay que hacer a continuación con este prospecto" },
 
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Proyecto", kind: "text", required: true, placeholder: "ERP comercial, mantenimiento anual..." },
@@ -392,6 +397,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "proyectos", fieldKey: "kilometros", label: "Km acumulados", kind: "text", placeholder: "Km imputados a este proyecto (sumatorio de partes)" },
     { moduleKey: "proyectos", fieldKey: "tarifaHoraOverride", label: "Tarifa €/h", kind: "text", placeholder: "Vacío → usa la del catálogo. Numérico → override puntual." },
     { moduleKey: "proyectos", fieldKey: "horasTotales", label: "Horas totales (bolsa)", kind: "text", placeholder: "Solo aplica a codigoTipo=BOLSA — total horas contratadas" },
+    // TEST-8.1.d — Referencia a la propuesta que dio origen al proyecto.
+    { moduleKey: "proyectos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Nº de la propuesta origen" },
     { moduleKey: "proyectos", fieldKey: "notas", label: "Notas", kind: "text", placeholder: "Condiciones específicas, observaciones..." },
 
     { moduleKey: "documentos", fieldKey: "nombre", label: "Entregable", kind: "text", required: true, placeholder: "Acta, backlog, documentación..." },
@@ -400,7 +407,12 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
 
     // Propuestas (presupuestos) — SF-14.
     { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº propuesta", kind: "text", placeholder: "Déjalo vacío y se autoasigna PRES-YYYY-NNN" },
-    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
+    // TEST-8.1.e — Cliente como texto libre (no relación) para el alta
+    // directa: en ese flujo el cliente aún no existe en la base. Cuando la
+    // propuesta nace de una oportunidad ganada, el wizard lo precarga.
+    { moduleKey: "presupuestos", fieldKey: "cliente", label: "Cliente", kind: "text", required: true, placeholder: "Razón social del cliente" },
+    // TEST-8.1.d — Código de la oportunidad de origen (cuando aplique).
+    { moduleKey: "presupuestos", fieldKey: "codigoOportunidad", label: "Código de oportunidad", kind: "text", placeholder: "Se rellena al partir de una oportunidad" },
     { moduleKey: "presupuestos", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Servicio o trabajo propuesto" },
     { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "Ej. 14500 EUR" },
     { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "borrador / pendiente / enviado / negociacion / aceptado / rechazado", options: [

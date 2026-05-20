@@ -234,11 +234,11 @@ export default function ErpRecordEditor({
       // undefined porque no está en `fields`. Forzamos a incluirlo en el
       // payload desde initialValue para que el guardado del cliente no
       // se traduzca en "perder" los contactos al sobreescribir el record.
-      if (moduleKey === "clientes" && payload.contactosJson == null && initialValue?.contactosJson != null) {
+      if ((moduleKey === "clientes" || moduleKey === "crm") && payload.contactosJson == null && initialValue?.contactosJson != null) {
         const raw = initialValue.contactosJson;
         payload.contactosJson = typeof raw === "string" ? raw : JSON.stringify(raw);
       }
-      if (moduleKey === "clientes" && payload.contactosJson) {
+      if ((moduleKey === "clientes" || moduleKey === "crm") && payload.contactosJson) {
         try {
           const raw = typeof payload.contactosJson === "string"
             ? JSON.parse(payload.contactosJson)
@@ -403,12 +403,15 @@ export default function ErpRecordEditor({
               clienteName={String(initialValue?.nombre || "")}
               accent={accent}
             />
-          ) : tab === "contacto" && moduleKey === "clientes" ? (
+          ) : tab === "contacto" && (moduleKey === "clientes" || moduleKey === "crm") ? (
             // TEST-4.1.a.i — En el tab Contactos del cliente solo se muestra
             // la sublista en rejilla. Los antiguos inputs sueltos
             // (Persona de contacto / Email / Teléfono del record) se ocultan
             // para evitar duplicar la entrada de datos; quedan como espejo
             // del contacto preferido y se sincronizan en doSubmit().
+            // TEST-8.1.c — También aplica a CRM (oportunidades): el contacto
+            // del record es opcional y la sublista permite gestionar varios
+            // contactos por prospecto.
             <ContactosSublist
               initialJson={(() => {
                 const raw = values.contactosJson ?? initialValue?.contactosJson;

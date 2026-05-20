@@ -438,9 +438,10 @@ export default function GenericModuleRuntimePage({
   const pageStart = (page - 1) * pageSize;
   const pageRows = filtered.slice(pageStart, pageStart + pageSize);
 
-  async function saveRecord(payload: Record<string, string>) {
+  async function saveRecord(payload: Record<string, string>): Promise<Record<string, string> | null> {
     const tenant = readTenant();
     const sectorPack = readSectorPack();
+    let savedRow: Record<string, string> | null = null;
     if (modalMode === "create") {
       const response = await fetch("/api/erp/module", {
         method: "POST",
@@ -449,6 +450,7 @@ export default function GenericModuleRuntimePage({
       });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || "No se pudo guardar.");
+      savedRow = (data.row || null) as Record<string, string> | null;
     }
     if (modalMode === "edit" && selected?.id) {
       const response = await fetch("/api/erp/module", {
@@ -458,8 +460,10 @@ export default function GenericModuleRuntimePage({
       });
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || "No se pudo actualizar.");
+      savedRow = (data.row || null) as Record<string, string> | null;
     }
     await load();
+    return savedRow;
   }
 
   async function removeRecord(recordId: string) {
@@ -550,33 +554,122 @@ export default function GenericModuleRuntimePage({
           accent={accent}
           onCancel={() => setModalMode(null)}
           onSubmit={async (payload, options) => {
-            await saveRecord(payload);
+            const savedRow = await saveRecord(payload);
+            const savedId = String(savedRow?.id || selected?.id || "");
+            const savedNumero = String(savedRow?.numero || payload.numero || "");
 
-            // TEST-5.W — Workflow comercial encadenado:
-            //   crm.fase === "ganado"  →  abrir editor Cliente con Empresa precargada
-            //   clientes (con wf_next=propuestas)  →  abrir editor Propuesta
-            // Si entra alguno de estos casos, navegamos y NO volvemos a la lista.
-            if (moduleKey === "crm" && String(payload.fase || "").toLowerCase() === "ganado") {
+            const fase = String(payload.fase || "").toLowerCase();
+            const estado = String(payload.estado || "").toLowerCase();
+
+            // TEST-5.W + TEST-8.1.d — Workflow comercial encadenado:
+            //
+            //   crm.fase=propuesta → abrir editor Propuesta con cliente y
+            //     código de oportunidad precargados; al guardar la propuesta
+            //     se actualiza crm.referenciaPropuesta de la oportunidad.
+            //
+            //   crm.fase=ganado → abrir editor Cliente con empresa precargada;
+            //     al guardar el cliente se abre editor Proyecto con
+            //     cliente + referenciaPropuesta precargados.
+            //
+            //   presupuestos.estado=aceptado/rechazado → actualizar
+            //     automáticamente crm.fase de la oportunidad referenciada
+            //     (codigoOportunidad) a ganado/perdido respectivamente.
+
+            // === Transición 1: oportunidad → propuesta ===
+            if (moduleKey === "crm" && fase === "propuesta") {
+              const empresa = String(payload.empresa || payload.nombre || "").trim();
+              const valor = String(payload.valorEstimado || "").trim();
+              const concepto = String(payload.proximoPaso || "").trim().slice(0, 80);
+              const qs: string[] = [];
+              if (empresa) qs.push("prefill_cliente=" + encodeURIComponent(empresa));
+              if (savedId) qs.push("prefill_codigoOportunidad=" + encodeURIComponent(savedId));
+              if (valor) qs.push("prefill_importe=" + encodeURIComponent(valor));
+              if (concepto) qs.push("prefill_concepto=" + encodeURIComponent(concepto));
+              if (savedId) qs.push("wf_back_crm=" + encodeURIComponent(savedId));
+              router.push(link("presupuestos") + "?" + qs.join("&"));
+              return;
+            }
+
+            // === Transición 2: oportunidad → cliente → proyecto (ganado) ===
+            if (moduleKey === "crm" && fase === "ganado") {
               const empresa = String(payload.empresa || payload.nombre || "").trim();
               const contacto = String(payload.contacto || "").trim();
               const emailV = String(payload.email || "").trim();
               const telV = String(payload.telefono || "").trim();
+              const referenciaPropuesta = String(payload.referenciaPropuesta || "").trim();
               const qs: string[] = [];
               if (empresa) qs.push("prefill_nombre=" + encodeURIComponent(empresa));
               if (contacto) qs.push("prefill_contacto=" + encodeURIComponent(contacto));
               if (emailV) qs.push("prefill_email=" + encodeURIComponent(emailV));
               if (telV) qs.push("prefill_telefono=" + encodeURIComponent(telV));
-              qs.push("wf_next=presupuestos");
+              qs.push("wf_next=proyectos");
+              if (referenciaPropuesta) qs.push("wf_referencia_propuesta=" + encodeURIComponent(referenciaPropuesta));
               router.push(link("clientes") + "?" + qs.join("&"));
               return;
             }
-            if (workflowNext === "presupuestos" && moduleKey === "clientes") {
+
+            // === Encadenado cliente → proyecto ===
+            if (workflowNext === "proyectos" && moduleKey === "clientes") {
               const nombre = String(payload.nombre || "").trim();
+              const referencia = typeof window !== "undefined"
+                ? new URLSearchParams(window.location.search).get("wf_referencia_propuesta") || ""
+                : "";
               setWorkflowNext(null);
               const qs: string[] = [];
               if (nombre) qs.push("prefill_cliente=" + encodeURIComponent(nombre));
-              router.push(link("presupuestos") + (qs.length ? "?" + qs.join("&") : ""));
+              if (referencia) qs.push("prefill_referenciaPropuesta=" + encodeURIComponent(referencia));
+              router.push(link("proyectos") + (qs.length ? "?" + qs.join("&") : ""));
               return;
+            }
+
+            // === Transición 3a: propuesta aceptada → oportunidad ganada ===
+            // === Transición 3b: propuesta rechazada → oportunidad perdida ===
+            if (moduleKey === "presupuestos" && (estado === "aceptado" || estado === "rechazado")) {
+              const codigoOport = String(payload.codigoOportunidad || "").trim();
+              if (codigoOport) {
+                const nuevaFase = estado === "aceptado" ? "ganado" : "perdido";
+                try {
+                  await fetch("/api/erp/module", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      module: "crm",
+                      mode: "edit",
+                      recordId: codigoOport,
+                      payload: { fase: nuevaFase, referenciaPropuesta: savedNumero || savedId },
+                      tenant: readTenant(),
+                      sectorPack: readSectorPack(),
+                    }),
+                  });
+                } catch { /* no rompe el flujo si la oportunidad no existe */ }
+              }
+            }
+
+            // === Vuelta CRM: tras crear la propuesta desde una oportunidad,
+            // actualizar la oportunidad con la referenciaPropuesta ===
+            if (moduleKey === "presupuestos" && typeof window !== "undefined") {
+              const wfBack = new URLSearchParams(window.location.search).get("wf_back_crm") || "";
+              if (wfBack) {
+                try {
+                  await fetch("/api/erp/module", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                      module: "crm",
+                      mode: "edit",
+                      recordId: wfBack,
+                      payload: { referenciaPropuesta: savedNumero || savedId },
+                      tenant: readTenant(),
+                      sectorPack: readSectorPack(),
+                    }),
+                  });
+                } catch { /* tolerar fallo */ }
+                // Limpiar wf_back_crm de la URL antes de navegar
+                const cleaned = new URLSearchParams(window.location.search);
+                cleaned.delete("wf_back_crm");
+                router.push(link("crm"));
+                return;
+              }
             }
 
             if (options?.andNew && modalMode === "create") {

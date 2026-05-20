@@ -120,6 +120,9 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar clientes, documentos, productos…"
+          // TEST-8.1.a — focus visible (antes outline:none hacía que el
+          // foco por Ctrl+K no se notara y parecía "no hacer nada").
+          className="prontara-topbar-search"
           style={{
             width: "100%",
             padding: "10px 64px 10px 38px",
@@ -131,6 +134,12 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
             outline: "none",
           }}
         />
+        <style>{`
+          .prontara-topbar-search:focus {
+            border-color: ${accent} !important;
+            box-shadow: 0 0 0 3px ${accent}33 !important;
+          }
+        `}</style>
         <span style={{
           position: "absolute",
           right: 12,
