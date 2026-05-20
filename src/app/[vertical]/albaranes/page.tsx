@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function AlbaranesPage() {
-  return (
-    <SectionPlaceholder
-      title="Albaranes"
-      subtitle="Documentos de entrega previos a la facturación."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="albaranes" href="/albaranes" />;
 }

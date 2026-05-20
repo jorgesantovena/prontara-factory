@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function FormasPagoPage() {
-  return (
-    <SectionPlaceholder
-      title="Formas de pago"
-      subtitle="Métodos disponibles para cobros y pagos (contado, 30 días, etc.)."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="formas-pago" href="/formas-pago" />;
 }

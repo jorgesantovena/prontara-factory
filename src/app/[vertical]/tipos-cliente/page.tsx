@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function TiposClientePage() {
-  return (
-    <SectionPlaceholder
-      title="Tipos de cliente"
-      subtitle="Clasificación de clientes (B2B, B2C, VIP, etc.)."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="tipos-cliente" href="/tipos-cliente" />;
 }

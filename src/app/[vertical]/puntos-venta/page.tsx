@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function PuntosVentaPage() {
-  return (
-    <SectionPlaceholder
-      title="Puntos de venta"
-      subtitle="Cajas / terminales de venta del tenant."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="puntos-venta" href="/puntos-venta" />;
 }

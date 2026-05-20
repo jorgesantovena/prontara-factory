@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function AplicacionesPage() {
-  return (
-    <SectionPlaceholder
-      title="Aplicaciones"
-      subtitle="Productos y aplicaciones que mantienes para tus clientes."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="aplicaciones" href="/aplicaciones" />;
 }

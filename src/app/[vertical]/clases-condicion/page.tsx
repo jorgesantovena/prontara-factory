@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function ClasesCondicionPage() {
-  return (
-    <SectionPlaceholder
-      title="Clases de condición comercial"
-      subtitle="Condiciones de venta agrupadas por tipo de cliente o cuenta."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="clases-condicion" href="/clases-condicion" />;
 }

@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function TarifasEspecialesPage() {
-  return (
-    <SectionPlaceholder
-      title="Tarifas especiales"
-      subtitle="Precios negociados con clientes o segmentos concretos."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="tarifas-especiales" href="/tarifas-especiales" />;
 }

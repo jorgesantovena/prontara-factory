@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function GruposEmpresaPage() {
-  return (
-    <SectionPlaceholder
-      title="Grupos de empresa"
-      subtitle="Agrupación de clientes que pertenecen al mismo grupo empresarial."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="grupos-empresa" href="/grupos-empresa" />;
 }

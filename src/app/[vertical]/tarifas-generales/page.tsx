@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function TarifasGeneralesPage() {
-  return (
-    <SectionPlaceholder
-      title="Tarifas generales"
-      subtitle="Precios estándar del catálogo de servicios y productos."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="tarifas-generales" href="/tarifas-generales" />;
 }

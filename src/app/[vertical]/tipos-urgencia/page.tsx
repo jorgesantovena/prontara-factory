@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function TiposUrgenciaPage() {
-  return (
-    <SectionPlaceholder
-      title="Niveles de urgencia"
-      subtitle="Prioridad y SLA aplicable a tickets / incidencias."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="tipos-urgencia" href="/tipos-urgencia" />;
 }

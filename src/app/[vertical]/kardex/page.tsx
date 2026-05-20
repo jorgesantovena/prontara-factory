@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function KardexPage() {
-  return (
-    <SectionPlaceholder
-      title="Kardex"
-      subtitle="Movimientos de inventario por producto."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="kardex" href="/kardex" />;
 }

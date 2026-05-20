@@ -1,0 +1,44 @@
+name: process-domain-events
+
+# Dispara /api/cron/process-domain-events cada 5 minutos. Sustituye al cron de
+# Vercel, que en plan Hobby solo permite una ejecución al día (ver vercel.json,
+# donde el schedule está fijado a "0 4 * * *" como fallback).
+#
+# Setup necesario (una sola vez):
+#   GitHub repo → Settings → Secrets and variables → Actions → New secret
+#     CRON_SECRET = <mismo valor que la env var en Vercel>
+#     CRON_URL    = https://app.prontara.com/api/cron/process-domain-events
+#
+# El workflow falla silenciosamente si la URL responde !=200, pero loguea
+# el body para diagnóstico desde la UI de Actions.
+
+on:
+  schedule:
+    # cada 5 minutos
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {} # permite disparar a mano desde la UI de Actions
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Tick saga worker
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CRON_URL: ${{ secrets.CRON_URL }}
+        run: |
+          if [ -z "$CRON_SECRET" ] || [ -z "$CRON_URL" ]; then
+            echo "::error::CRON_SECRET o CRON_URL no configurados como GitHub Secret"
+            exit 1
+          fi
+          response=$(curl -s -o /tmp/body -w "%{http_code}" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Accept: application/json" \
+            "$CRON_URL")
+          echo "HTTP $response"
+          cat /tmp/body || true
+          if [ "$response" != "200" ]; then
+            echo "::error::Endpoint devolvió $response"
+            exit 1
+          fi

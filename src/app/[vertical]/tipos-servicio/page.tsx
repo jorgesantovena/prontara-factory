@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function TiposServicioPage() {
-  return (
-    <SectionPlaceholder
-      title="Tipos de servicio"
-      subtitle="Categorías de servicios prestados al cliente."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="tipos-servicio" href="/tipos-servicio" />;
 }

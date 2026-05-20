@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function ActividadesCatalogoPage() {
-  return (
-    <SectionPlaceholder
-      title="Catálogo de actividades"
-      subtitle="Tipos de actividad imputables (desarrollo, soporte, formación, etc.)."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="actividades-catalogo" href="/actividades-catalogo" />;
 }

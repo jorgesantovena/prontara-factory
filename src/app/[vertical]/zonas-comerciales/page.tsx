@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function ZonasComercialesPage() {
-  return (
-    <SectionPlaceholder
-      title="Zonas comerciales"
-      subtitle="Áreas geográficas para asignar comercial y tarifa."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="zonas-comerciales" href="/zonas-comerciales" />;
 }

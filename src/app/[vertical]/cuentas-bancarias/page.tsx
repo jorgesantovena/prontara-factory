@@ -1,10 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function CuentasBancariasPage() {
-  return (
-    <SectionPlaceholder
-      title="Cuentas bancarias"
-      subtitle="Cuentas del tenant para domiciliaciones y remesas SEPA."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="cuentas-bancarias" href="/cuentas-bancarias" />;
 }

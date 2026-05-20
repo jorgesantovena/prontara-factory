@@ -1,11 +1,7 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
+
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
 
 export default function GastosPage() {
-  return (
-    <SectionPlaceholder
-      title="Gastos"
-      subtitle="Registro de gastos operativos y facturas recibidas."
-      hint="Aquí podrás registrar los gastos del negocio (luz, alquiler, materiales, etc.) y subir las facturas recibidas. Mientras tanto puedes anotar gastos puntuales en Compras."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="gastos" href="/gastos" />;
 }
