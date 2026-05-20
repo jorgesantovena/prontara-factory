@@ -219,6 +219,9 @@ export default function GenericModuleRuntimePage({
   // state durante toda la sesión del módulo.
   const router = useRouter();
   const [workflowNext, setWorkflowNext] = useState<string | null>(null);
+  // TEST-8bis.1.b — control fino del editor en el encadenado oportunidad→contacto.
+  const [editorInitialTab, setEditorInitialTab] = useState<string | null>(null);
+  const [editorAutoContact, setEditorAutoContact] = useState(false);
   const [ui, setUi] = useState<{
     label: string;
     emptyState: string;
@@ -552,11 +555,64 @@ export default function GenericModuleRuntimePage({
           initialValue={selected}
           tenant={readTenant() || undefined}
           accent={accent}
-          onCancel={() => setModalMode(null)}
+          initialTab={editorInitialTab || undefined}
+          autoStartContact={editorAutoContact}
+          onCancel={() => {
+            setEditorInitialTab(null);
+            setEditorAutoContact(false);
+            setModalMode(null);
+          }}
           onSubmit={async (payload, options) => {
+            const wasCreating = modalMode === "create";
             const savedRow = await saveRecord(payload);
             const savedId = String(savedRow?.id || selected?.id || "");
             const savedNumero = String(savedRow?.numero || payload.numero || "");
+
+            // TEST-8bis.1.b — Oportunidad recién creada sin contactos: en
+            // lugar de mostrar mensaje "faltan campos", se mantiene el editor
+            // abierto en modo edit con tab=Contactos y un draft activo, para
+            // que el usuario lo rellene de inmediato.
+            if (moduleKey === "crm" && wasCreating) {
+              const hayContactos = (() => {
+                const raw = payload.contactosJson;
+                if (!raw) return false;
+                try {
+                  const arr = typeof raw === "string" ? JSON.parse(raw) : raw;
+                  if (!Array.isArray(arr)) return false;
+                  return arr.some((c) => c && typeof c === "object" && (String(c.nombre || "").trim() || String(c.email || "").trim() || String(c.telefono || "").trim()));
+                } catch { return false; }
+              })();
+              if (!hayContactos && savedRow) {
+                setSelected({ ...payload, ...savedRow });
+                setEditorInitialTab("contacto");
+                setEditorAutoContact(true);
+                setModalMode("edit");
+                return;
+              }
+            }
+            // Si el editor venía con flags forzados (encadenado), resetearlos
+            // para que el siguiente guardado no los arrastre.
+            if (editorInitialTab || editorAutoContact) {
+              setEditorInitialTab(null);
+              setEditorAutoContact(false);
+            }
+
+            // TEST-8bis.1.c.ii — Resuelve el id UUID interno a partir del
+            // código nemotécnico (OP-YYYY-NNN). Se usa en las transiciones
+            // de propuesta→oportunidad para hacer mode=edit por id.
+            const tenant = readTenant();
+            const sectorPack = readSectorPack();
+            async function findCrmIdByNumero(num: string): Promise<string | null> {
+              if (!num) return null;
+              try {
+                const r = await fetch("/api/erp/module?module=crm", { cache: "no-store" });
+                const d = await r.json();
+                if (!r.ok || !d.ok) return null;
+                const rows = (Array.isArray(d.rows) ? d.rows : []) as Array<Record<string, string>>;
+                const found = rows.find((row) => String(row.numero || "") === num);
+                return found ? String(found.id || "") : null;
+              } catch { return null; }
+            }
 
             const fase = String(payload.fase || "").toLowerCase();
             const estado = String(payload.estado || "").toLowerCase();
@@ -582,7 +638,9 @@ export default function GenericModuleRuntimePage({
               const concepto = String(payload.proximoPaso || "").trim().slice(0, 80);
               const qs: string[] = [];
               if (empresa) qs.push("prefill_cliente=" + encodeURIComponent(empresa));
-              if (savedId) qs.push("prefill_codigoOportunidad=" + encodeURIComponent(savedId));
+              // TEST-8bis.1.c.ii — Mostrar el código nemotécnico al usuario,
+              // mantener el id interno aparte para la actualización de vuelta.
+              if (savedNumero) qs.push("prefill_codigoOportunidad=" + encodeURIComponent(savedNumero));
               if (valor) qs.push("prefill_importe=" + encodeURIComponent(valor));
               if (concepto) qs.push("prefill_concepto=" + encodeURIComponent(concepto));
               if (savedId) qs.push("wf_back_crm=" + encodeURIComponent(savedId));
@@ -622,26 +680,62 @@ export default function GenericModuleRuntimePage({
               return;
             }
 
-            // === Transición 3a: propuesta aceptada → oportunidad ganada ===
+            // === Transición 3a: propuesta aceptada → oportunidad ganada → wizard cliente+proyecto ===
             // === Transición 3b: propuesta rechazada → oportunidad perdida ===
             if (moduleKey === "presupuestos" && (estado === "aceptado" || estado === "rechazado")) {
               const codigoOport = String(payload.codigoOportunidad || "").trim();
               if (codigoOport) {
                 const nuevaFase = estado === "aceptado" ? "ganado" : "perdido";
-                try {
-                  await fetch("/api/erp/module", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                      module: "crm",
-                      mode: "edit",
-                      recordId: codigoOport,
-                      payload: { fase: nuevaFase, referenciaPropuesta: savedNumero || savedId },
-                      tenant: readTenant(),
-                      sectorPack: readSectorPack(),
-                    }),
-                  });
-                } catch { /* no rompe el flujo si la oportunidad no existe */ }
+                // TEST-8bis.1.c.ii — codigoOportunidad es el código
+                // nemotécnico (OP-YYYY-NNN); hay que resolverlo al UUID
+                // interno antes de hacer mode=edit por recordId.
+                const oportId = await findCrmIdByNumero(codigoOport);
+                if (oportId) {
+                  try {
+                    await fetch("/api/erp/module", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        module: "crm",
+                        mode: "edit",
+                        recordId: oportId,
+                        payload: { fase: nuevaFase, referenciaPropuesta: savedNumero || savedId },
+                        tenant,
+                        sectorPack,
+                      }),
+                    });
+                  } catch { /* tolerar */ }
+
+                  // TEST-8bis.1.c.i — Si la propuesta acaba ACEPTADA, además
+                  // de marcar la oportunidad como ganada, disparar el wizard
+                  // de Cliente → Proyecto con los datos de la oportunidad
+                  // (mismo comportamiento que si el usuario cambiara la fase
+                  // a Ganado manualmente).
+                  if (estado === "aceptado") {
+                    try {
+                      const r = await fetch("/api/erp/module?module=crm", { cache: "no-store" });
+                      const d = await r.json();
+                      const oport = Array.isArray(d?.rows)
+                        ? (d.rows as Array<Record<string, string>>).find((row) => String(row.id || "") === oportId)
+                        : null;
+                      if (oport) {
+                        const qsW: string[] = [];
+                        const empresa = String(oport.empresa || "").trim();
+                        const contacto = String(oport.contacto || "").trim();
+                        const emailV = String(oport.email || "").trim();
+                        const telV = String(oport.telefono || "").trim();
+                        if (empresa) qsW.push("prefill_nombre=" + encodeURIComponent(empresa));
+                        if (contacto) qsW.push("prefill_contacto=" + encodeURIComponent(contacto));
+                        if (emailV) qsW.push("prefill_email=" + encodeURIComponent(emailV));
+                        if (telV) qsW.push("prefill_telefono=" + encodeURIComponent(telV));
+                        qsW.push("wf_next=proyectos");
+                        qsW.push("wf_referencia_propuesta=" + encodeURIComponent(savedNumero || savedId));
+                        router.push(link("clientes") + "?" + qsW.join("&"));
+                        return;
+                      }
+                    } catch { /* tolerar */ }
+                  }
+                }
               }
             }
 
@@ -659,8 +753,8 @@ export default function GenericModuleRuntimePage({
                       mode: "edit",
                       recordId: wfBack,
                       payload: { referenciaPropuesta: savedNumero || savedId },
-                      tenant: readTenant(),
-                      sectorPack: readSectorPack(),
+                      tenant,
+                      sectorPack,
                     }),
                   });
                 } catch { /* tolerar fallo */ }

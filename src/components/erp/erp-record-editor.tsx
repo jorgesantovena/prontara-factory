@@ -89,6 +89,8 @@ export default function ErpRecordEditor({
   accent = "#1d4ed8",
   onCancel,
   onSubmit,
+  initialTab,
+  autoStartContact,
 }: {
   mode: "create" | "edit";
   moduleKey: string;
@@ -99,6 +101,10 @@ export default function ErpRecordEditor({
   accent?: string;
   onCancel: () => void;
   onSubmit: (payload: Record<string, string>, options?: { andNew?: boolean }) => Promise<void> | void;
+  // TEST-8bis.1.b — Permite al padre forzar tab y autostart de la sublista
+  // de contactos al montar (usado en el encadenado de oportunidades).
+  initialTab?: string;
+  autoStartContact?: boolean;
 }) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [optionsMap, setOptionsMap] = useState<Record<string, OptionItem[]>>({});
@@ -176,9 +182,13 @@ export default function ErpRecordEditor({
     setDirty(false);
     setError("");
     // Tab inicial: primera tab con fields, NUNCA "documentos" como default.
-    setTab(tabsConFields[0] || "general");
+    // TEST-8bis.1.b — si el padre fuerza `initialTab`, se respeta.
+    const valid = initialTab && (Object.keys(TAB_LABELS) as TabKey[]).includes(initialTab as TabKey)
+      ? (initialTab as TabKey)
+      : null;
+    setTab(valid || tabsConFields[0] || "general");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, fields, initialValue]);
+  }, [mode, fields, initialValue, initialTab]);
 
   // Cargar opciones de relación
   useEffect(() => {
@@ -421,6 +431,7 @@ export default function ErpRecordEditor({
               })()}
               onChange={(json) => setField("contactosJson", json)}
               accent={accent}
+              autoStartIfEmpty={autoStartContact === true}
             />
           ) : (
             <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} />
@@ -621,10 +632,13 @@ function normalizeContactos(raw: unknown): Contacto[] {
   return list;
 }
 
-function ContactosSublist({ initialJson, onChange, accent }: {
+function ContactosSublist({ initialJson, onChange, accent, autoStartIfEmpty }: {
   initialJson: string;
   onChange: (json: string) => void;
   accent: string;
+  // TEST-8bis.1.b — Si true y la lista arranca vacía, abrir un draft de
+  // contacto automáticamente al montar. Útil en el encadenado de oportunidades.
+  autoStartIfEmpty?: boolean;
 }) {
   const [contactos, setContactos] = useState<Contacto[]>(() => {
     try { return normalizeContactos(JSON.parse(initialJson || "[]")); }
@@ -634,6 +648,21 @@ function ContactosSublist({ initialJson, onChange, accent }: {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState<Contacto | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // TEST-8bis.1.b — Autostart de un draft si la lista arranca vacía.
+  useEffect(() => {
+    if (autoStartIfEmpty && contactos.length === 0 && editingId === null) {
+      const newC: Contacto = {
+        id: Math.random().toString(36).slice(2, 10),
+        nombre: "", cargo: "", email: "", telefono: "",
+        preferido: true,
+      };
+      setContactos([newC]);
+      setEditingId(newC.id);
+      setDraft(newC);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartIfEmpty]);
 
   // TEST-4.1.a.ii — Resincronizar el state local con initialJson cuando éste
   // cambia (por ejemplo, al recargar el editor con datos frescos del servidor).

@@ -24,7 +24,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { getPersistenceBackend, withPrisma } from "@/lib/persistence/db";
 
-export type SequenceKey = "facturas" | "presupuestos" | "justificantes";
+export type SequenceKey = "facturas" | "presupuestos" | "justificantes" | "oportunidades";
 
 export interface SequenceConfig {
   /** Clave canónica en TenantSequenceCounter.sequenceKey */
@@ -43,6 +43,10 @@ export const SEQUENCE_BY_MODULE_KEY: Record<string, SequenceConfig> = {
   facturacion: { sequenceKey: "facturas", prefix: "FAC", targetField: "numero" },
   presupuestos: { sequenceKey: "presupuestos", prefix: "PRES", targetField: "numero" },
   justificantes: { sequenceKey: "justificantes", prefix: "JUS", targetField: "numero" },
+  // TEST-8bis.1.c.ii — Oportunidades con código nemotécnico OP-YYYY-NNN.
+  // El UUID interno queda como id técnico (Postgres) pero `numero` es el
+  // identificador visible para el usuario.
+  crm: { sequenceKey: "oportunidades", prefix: "OP", targetField: "numero" },
 };
 
 export interface SequenceAllocation {

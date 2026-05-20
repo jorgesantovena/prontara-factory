@@ -357,6 +357,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "notas", label: "Notas internas", kind: "textarea", placeholder: "Observaciones útiles del cliente" },
 
     // CRM (oportunidades) — SF-21.
+    // TEST-8bis.1.c.ii — Código nemotécnico OP-YYYY-NNN autoasignado.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "empresa", label: "Empresa", kind: "text", required: true, placeholder: "Razón social del prospecto" },
     // TEST-8.1.c — Contacto pasa a opcional. El usuario puede añadir contactos
     // detallados desde la sublista del tab "Contactos" del editor.
@@ -558,11 +560,13 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado" },
 
     // CRM (oportunidades) — SF-21.
-    { moduleKey: "crm", fieldKey: "empresa", label: "Empresa", isPrimary: true },
+    // TEST-8bis.1.c.ii — Código nemotécnico como primera columna.
+    { moduleKey: "crm", fieldKey: "numero", label: "Código", isPrimary: true },
+    { moduleKey: "crm", fieldKey: "empresa", label: "Empresa" },
     { moduleKey: "crm", fieldKey: "contacto", label: "Contacto" },
     { moduleKey: "crm", fieldKey: "fase", label: "Fase" },
     { moduleKey: "crm", fieldKey: "valorEstimado", label: "Valor" },
-    { moduleKey: "crm", fieldKey: "proximoPaso", label: "Próximo paso" },
+    { moduleKey: "crm", fieldKey: "referenciaPropuesta", label: "Ref. propuesta" },
 
     { moduleKey: "proyectos", fieldKey: "codigoTipo", label: "Código", isPrimary: true },
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Proyecto" },

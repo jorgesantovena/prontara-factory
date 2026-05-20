@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-// TEST-7.1.b — GlobalCreateButton retirado del topbar (era redundante con
-// el menú lateral, requería mantenimiento manual de la lista y no era
-// exhaustivo). Las altas se hacen desde la sección correspondiente.
+// TEST-7.1.b — GlobalCreateButton retirado del topbar.
+// TEST-8bis.1.a — Buscador global y Ctrl+K también retirados del topbar.
+// El tester no veía respuesta y las búsquedas se hacen ya dentro de cada
+// módulo (el buscador del listado filtra por nombre + contactos + columnas).
+// La página /buscar sigue existiendo, accesible desde el sidebar.
 import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
 /**
@@ -23,9 +24,8 @@ type Company = { id: string; razonSocial: string; cif: string; esEmisorPorDefect
 type Notification = { id: string; type: string; severity: string; title: string; message: string; readAt: string | null; createdAt: string };
 
 export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: string }) {
-  const router = useRouter();
-  // TEST-5.S — Prefijar todas las rutas con el vertical para que el form de
-  // búsqueda, Ctrl+K y los links del menú perfil no caigan en /acceso.
+  // TEST-5.S — Prefijar todas las rutas con el vertical para que los links
+  // del menú perfil no caigan en /acceso.
   const { link } = useCurrentVertical();
   const [user, setUser] = useState<{ email: string; fullName?: string; role?: string } | null>(null);
   const [companies, setCompanies] = useState<Company[]>([]);
@@ -33,13 +33,8 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
   const [notifs, setNotifs] = useState<Notification[]>([]);
   const [showNotifs, setShowNotifs] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
-  const [query, setQuery] = useState("");
-  const [isMac, setIsMac] = useState(false);
-  const searchRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    setIsMac(typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform));
-
     fetch("/api/runtime/session", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
@@ -67,17 +62,6 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
         if (d?.notifications) setNotifs(d.notifications.slice(0, 20));
       })
       .catch(() => undefined);
-
-    // ⌘K / Ctrl+K — focus al buscador
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        searchRef.current?.focus();
-        searchRef.current?.select();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
   }, []);
 
   function changeCompany(id: string) {
@@ -87,16 +71,9 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
     }
   }
 
-  function submitSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-    router.push(link("buscar") + "?q=" + encodeURIComponent(query.trim()));
-  }
-
   const firstName = user?.fullName?.split(/\s+/)[0] || (user?.email?.split("@")[0] || "");
   const unreadCount = notifs.filter((n) => !n.readAt).length;
   const activeCompany = companies.find((c) => c.id === activeCompanyId);
-  const shortcutHint = isMac ? "⌘K" : "Ctrl K";
 
   return (
     <header style={{
@@ -111,48 +88,8 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
       top: 0,
       zIndex: 30,
     }}>
-      {/* Buscador central grande */}
-      <form onSubmit={submitSearch} style={{ flex: 1, maxWidth: 640, display: "flex", alignItems: "center", position: "relative" }}>
-        <span style={{ position: "absolute", left: 14, color: "#94a3b8", fontSize: 14, pointerEvents: "none" }}>🔍</span>
-        <input
-          ref={searchRef}
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar clientes, documentos, productos…"
-          // TEST-8.1.a — focus visible (antes outline:none hacía que el
-          // foco por Ctrl+K no se notara y parecía "no hacer nada").
-          className="prontara-topbar-search"
-          style={{
-            width: "100%",
-            padding: "10px 64px 10px 38px",
-            border: "1px solid var(--border, #e2e8f0)",
-            borderRadius: 10,
-            background: "var(--bg-secondary, #f8fafc)",
-            color: "var(--fg, #0f172a)",
-            fontSize: 13,
-            outline: "none",
-          }}
-        />
-        <style>{`
-          .prontara-topbar-search:focus {
-            border-color: ${accent} !important;
-            box-shadow: 0 0 0 3px ${accent}33 !important;
-          }
-        `}</style>
-        <span style={{
-          position: "absolute",
-          right: 12,
-          padding: "2px 7px",
-          border: "1px solid var(--border, #e2e8f0)",
-          borderRadius: 5,
-          background: "var(--bg, #ffffff)",
-          fontSize: 10,
-          fontWeight: 700,
-          color: "#94a3b8",
-          pointerEvents: "none",
-        }}>{shortcutHint}</span>
-      </form>
+      {/* TEST-8bis.1.a — Buscador retirado del topbar. */}
+      <div style={{ flex: 1 }} />
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexShrink: 0 }}>
         {/* Selector empresa interna */}
