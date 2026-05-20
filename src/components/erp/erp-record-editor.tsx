@@ -316,6 +316,38 @@ export default function ErpRecordEditor({
           ) : null}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {/* TEST-8bis2 — Navegación bidireccional Oportunidad ↔ Propuesta.
+              En crm: si hay referenciaPropuesta, link "Ver propuesta NNN".
+              En presupuestos: si hay codigoOportunidad, link "Ver oportunidad NNN".
+              El destino abre el listado filtrado por ese código para que el
+              usuario pulse y entre a la ficha. */}
+          {moduleKey === "crm" && mode === "edit" && (values.referenciaPropuesta || initialValue?.referenciaPropuesta) ? (
+            <a
+              href={vlink("presupuestos") + "?q=" + encodeURIComponent(String(values.referenciaPropuesta || initialValue?.referenciaPropuesta || ""))}
+              style={crossLinkBtn}
+              title="Abrir la propuesta asociada a esta oportunidad"
+            >
+              → Ver propuesta {String(values.referenciaPropuesta || initialValue?.referenciaPropuesta || "")}
+            </a>
+          ) : null}
+          {moduleKey === "presupuestos" && mode === "edit" && (values.codigoOportunidad || initialValue?.codigoOportunidad) ? (
+            <a
+              href={vlink("crm") + "?q=" + encodeURIComponent(String(values.codigoOportunidad || initialValue?.codigoOportunidad || ""))}
+              style={crossLinkBtn}
+              title="Abrir la oportunidad de origen de esta propuesta"
+            >
+              → Ver oportunidad {String(values.codigoOportunidad || initialValue?.codigoOportunidad || "")}
+            </a>
+          ) : null}
+          {moduleKey === "proyectos" && mode === "edit" && (values.referenciaPropuesta || initialValue?.referenciaPropuesta) ? (
+            <a
+              href={vlink("presupuestos") + "?q=" + encodeURIComponent(String(values.referenciaPropuesta || initialValue?.referenciaPropuesta || ""))}
+              style={crossLinkBtn}
+              title="Abrir la propuesta que dio origen a este proyecto"
+            >
+              → Ver propuesta {String(values.referenciaPropuesta || initialValue?.referenciaPropuesta || "")}
+            </a>
+          ) : null}
           {/* TEST-6.1.d — Convertir en Proyecto: aparece en el editor de
               presupuestos cuando ya está guardado. Precarga cliente, nombre
               (concepto/descripción) e importe en el editor de proyectos. */}
@@ -1253,4 +1285,12 @@ const btnSecondary: React.CSSProperties = {
   padding: "10px 18px", border: "1px solid #e2e8f0", borderRadius: 10,
   background: "#ffffff", color: "#475569",
   fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap",
+};
+
+// TEST-8bis2 — botón link de navegación cruzada entre entidades del workflow.
+const crossLinkBtn: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 6,
+  background: "#0ea5e9", color: "#ffffff", border: "none",
+  borderRadius: 8, padding: "8px 14px", fontWeight: 700,
+  fontSize: 13, textDecoration: "none", whiteSpace: "nowrap",
 };

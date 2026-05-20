@@ -43,7 +43,7 @@ type TableColumnDef = {
   isPrimary?: boolean;
 };
 
-type SavedView = { id: string; name: string; configJson: { filters?: Record<string, string>; query?: string }; esDefault?: boolean };
+type SavedView = { id: string; name: string; configJson: { filters?: Record<string, string | string[]>; query?: string }; esDefault?: boolean };
 
 function readTenant() {
   if (typeof window === "undefined") return "";
@@ -180,11 +180,13 @@ export default function GenericModuleRuntimePage({
   const [modalMode, setModalMode] = useState<"create" | "edit" | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [accent, setAccent] = useState("#1d4ed8");
-  // H12-F nuevo: filtros por columna estado, vistas, columnas visibles, selección, paginación.
-  const [estadoFilter, setEstadoFilter] = useState<string>("");
-  // TEST-1.6 — filtros adicionales y popover unificado.
-  const [segmentoFilter, setSegmentoFilter] = useState<string>("");
-  const [responsableFilter, setResponsableFilter] = useState<string>("");
+  // H12-F + TEST-8bis2 — Filtros multi-select. Cada filtro es ahora un Set
+  // de valores aceptados (en minúscula para comparación case-insensitive).
+  // Set vacío = sin filtro (todos pasan). Selección múltiple permite
+  // combinaciones como "Aceptado + Enviado" o "todos excepto Rechazado".
+  const [estadoFilter, setEstadoFilter] = useState<Set<string>>(new Set());
+  const [segmentoFilter, setSegmentoFilter] = useState<Set<string>>(new Set());
+  const [responsableFilter, setResponsableFilter] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [showViews, setShowViews] = useState(false);
@@ -371,14 +373,17 @@ export default function GenericModuleRuntimePage({
     const q = query.trim().toLowerCase();
     const columnKeys = (ui.tableColumns || []).map((c) => c.fieldKey);
     return rows.filter((item) => {
-      if (estadoFilter && String(item.estado || "").toLowerCase() !== estadoFilter.toLowerCase()) return false;
-      if (segmentoFilter) {
+      // TEST-8bis2 — Filtros multi-select: cada Set permite varios valores.
+      // Set vacío = no filtra. Si tiene valores, el item pasa si su valor
+      // (lowercased) está en el set.
+      if (estadoFilter.size > 0 && !estadoFilter.has(String(item.estado || "").toLowerCase())) return false;
+      if (segmentoFilter.size > 0) {
         const seg = String(item.segmento || item.tipo || "").toLowerCase();
-        if (seg !== segmentoFilter.toLowerCase()) return false;
+        if (!segmentoFilter.has(seg)) return false;
       }
-      if (responsableFilter) {
+      if (responsableFilter.size > 0) {
         const resp = String(item.responsable || item.asignado || "").toLowerCase();
-        if (resp !== responsableFilter.toLowerCase()) return false;
+        if (!responsableFilter.has(resp)) return false;
       }
       if (q) {
         const parts: string[] = [];
@@ -779,11 +784,23 @@ export default function GenericModuleRuntimePage({
     );
   }
 
-  // Filtros activos para chips (TEST-1.6)
+  // Filtros activos para chips (TEST-1.6 + TEST-8bis2 multi-select).
   const activeChips: Array<{ key: string; label: string; onClear: () => void }> = [];
-  if (estadoFilter) activeChips.push({ key: "estado", label: "Estado: " + estadoFilter, onClear: () => setEstadoFilter("") });
-  if (segmentoFilter) activeChips.push({ key: "segmento", label: "Segmento: " + segmentoFilter, onClear: () => setSegmentoFilter("") });
-  if (responsableFilter) activeChips.push({ key: "responsable", label: "Responsable: " + responsableFilter, onClear: () => setResponsableFilter("") });
+  if (estadoFilter.size > 0) activeChips.push({
+    key: "estado",
+    label: "Estado: " + Array.from(estadoFilter).join(", "),
+    onClear: () => setEstadoFilter(new Set()),
+  });
+  if (segmentoFilter.size > 0) activeChips.push({
+    key: "segmento",
+    label: "Segmento: " + Array.from(segmentoFilter).join(", "),
+    onClear: () => setSegmentoFilter(new Set()),
+  });
+  if (responsableFilter.size > 0) activeChips.push({
+    key: "responsable",
+    label: "Responsable: " + Array.from(responsableFilter).join(", "),
+    onClear: () => setResponsableFilter(new Set()),
+  });
   if (query) activeChips.push({ key: "query", label: '"' + query + '"', onClear: () => setQuery("") });
 
   return (
@@ -865,7 +882,7 @@ export default function GenericModuleRuntimePage({
               <div style={popover(300)}>
                 <div style={popoverHeader}>Vistas guardadas</div>
                 {/* TEST-2.10 — explicar diferencia entre "Todos" y vistas personalizadas */}
-                <button type="button" onClick={() => { setEstadoFilter(""); setSegmentoFilter(""); setResponsableFilter(""); setQuery(""); setShowViews(false); }} style={popoverItemBtn} title="Muestra todos los registros sin filtro aplicado">
+                <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setQuery(""); setShowViews(false); }} style={popoverItemBtn} title="Muestra todos los registros sin filtro aplicado">
                   <span>👥</span>
                   <span style={{ flex: 1, textAlign: "left" }}>
                     Todos
@@ -874,15 +891,19 @@ export default function GenericModuleRuntimePage({
                   <span style={popoverCount}>{rows.length}</span>
                 </button>
                 {savedViews.map((v) => {
-                  // Resumir qué filtros guarda la vista
+                  // Resumir qué filtros guarda la vista (TEST-8bis2: arrays).
                   const f = v.configJson?.filters || {};
                   const tags: string[] = [];
-                  if (f.estado) tags.push("estado=" + f.estado);
+                  const estadoVal = f.estado;
+                  if (Array.isArray(estadoVal) && estadoVal.length > 0) tags.push("estado=" + estadoVal.join("|"));
+                  else if (typeof estadoVal === "string" && estadoVal) tags.push("estado=" + estadoVal);
                   if (v.configJson?.query) tags.push('"' + v.configJson.query + '"');
                   const summary = tags.length > 0 ? tags.join(" · ") : "Sin filtros guardados";
                   return (
                     <button key={v.id} type="button" onClick={() => {
-                      if (v.configJson?.filters?.estado) setEstadoFilter(v.configJson.filters.estado);
+                      const ev = v.configJson?.filters?.estado;
+                      if (Array.isArray(ev)) setEstadoFilter(new Set(ev.map((s: unknown) => String(s).toLowerCase())));
+                      else if (typeof ev === "string" && ev) setEstadoFilter(new Set([ev.toLowerCase()]));
                       if (v.configJson?.query) setQuery(v.configJson.query);
                       setShowViews(false);
                     }} style={popoverItemBtn} title={"Aplica los filtros: " + summary}>
@@ -898,7 +919,7 @@ export default function GenericModuleRuntimePage({
                   <button type="button" onClick={async () => {
                     const name = prompt("Nombre de la vista:");
                     if (!name) return;
-                    const body = { moduleKey, name, configJson: { filters: estadoFilter ? { estado: estadoFilter } : {}, query } };
+                    const body = { moduleKey, name, configJson: { filters: estadoFilter.size > 0 ? { estado: Array.from(estadoFilter) } : {}, query } };
                     await fetch("/api/runtime/saved-views", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
                     await loadViews();
                     setShowViews(false);
@@ -910,66 +931,51 @@ export default function GenericModuleRuntimePage({
             ) : null}
           </div>
 
-          {/* TEST-1.6 — Filtros popover real con múltiples dimensiones */}
+          {/* TEST-1.6 + TEST-8bis2 — Filtros multi-select con checkboxes.
+              Cada bloque permite seleccionar varios valores (combinaciones
+              como "Aceptado + Enviado" o "todo excepto Rechazado"). */}
           <div style={{ position: "relative" }}>
             <button type="button" onClick={() => setShowFilters(!showFilters)} style={toolbarBtn}>
               <span>▽</span> Filtros
-              {(estadoFilter || segmentoFilter || responsableFilter) ? (
-                <span style={popoverCount}>{[estadoFilter, segmentoFilter, responsableFilter].filter(Boolean).length}</span>
+              {(estadoFilter.size + segmentoFilter.size + responsableFilter.size) > 0 ? (
+                <span style={popoverCount}>{estadoFilter.size + segmentoFilter.size + responsableFilter.size}</span>
               ) : null}
               <span style={{ fontSize: 9, marginLeft: 4 }}>▾</span>
             </button>
             {showFilters ? (
               <div style={{ ...popover(280), padding: 12 }}>
                 <div style={popoverHeader}>Filtrar registros</div>
-                {/* Estado */}
-                {(() => {
-                  const estados = Array.from(new Set(rows.map((r) => String(r.estado || "")).filter(Boolean))).sort();
-                  if (estados.length === 0) return null;
-                  return (
-                    <div style={{ marginBottom: 10 }}>
-                      <label style={filterLabel}>Estado</label>
-                      <select value={estadoFilter} onChange={(e) => { setEstadoFilter(e.target.value); setPage(1); }} style={filterSelect}>
-                        <option value="">Todos</option>
-                        {estados.map((e) => <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>)}
-                      </select>
-                    </div>
-                  );
-                })()}
-                {/* Segmento / tipo */}
-                {(() => {
-                  const hasField = ui.fields.some((f) => f.key === "segmento" || f.key === "tipo");
-                  if (!hasField) return null;
-                  const segs = Array.from(new Set(rows.map((r) => String(r.segmento || r.tipo || "")).filter(Boolean))).sort();
-                  if (segs.length === 0) return null;
-                  return (
-                    <div style={{ marginBottom: 10 }}>
-                      <label style={filterLabel}>Segmento</label>
-                      <select value={segmentoFilter} onChange={(e) => { setSegmentoFilter(e.target.value); setPage(1); }} style={filterSelect}>
-                        <option value="">Todos</option>
-                        {segs.map((s) => <option key={s} value={s}>{s}</option>)}
-                      </select>
-                    </div>
-                  );
-                })()}
-                {/* Responsable */}
-                {(() => {
-                  const hasField = ui.fields.some((f) => f.key === "responsable" || f.key === "asignado");
-                  if (!hasField) return null;
-                  const resps = Array.from(new Set(rows.map((r) => String(r.responsable || r.asignado || "")).filter(Boolean))).sort();
-                  if (resps.length === 0) return null;
-                  return (
-                    <div style={{ marginBottom: 10 }}>
-                      <label style={filterLabel}>Responsable</label>
-                      <select value={responsableFilter} onChange={(e) => { setResponsableFilter(e.target.value); setPage(1); }} style={filterSelect}>
-                        <option value="">Todos</option>
-                        {resps.map((r) => <option key={r} value={r}>{r}</option>)}
-                      </select>
-                    </div>
-                  );
-                })()}
+                <CheckboxFilterGroup
+                  label="Estado"
+                  values={Array.from(new Set(rows.map((r) => String(r.estado || "")).filter(Boolean))).sort()}
+                  selected={estadoFilter}
+                  onChange={(next) => { setEstadoFilter(next); setPage(1); }}
+                  accent={accent}
+                />
+                <CheckboxFilterGroup
+                  label="Segmento"
+                  values={
+                    ui.fields.some((f) => f.key === "segmento" || f.key === "tipo")
+                      ? Array.from(new Set(rows.map((r) => String(r.segmento || r.tipo || "")).filter(Boolean))).sort()
+                      : []
+                  }
+                  selected={segmentoFilter}
+                  onChange={(next) => { setSegmentoFilter(next); setPage(1); }}
+                  accent={accent}
+                />
+                <CheckboxFilterGroup
+                  label="Responsable"
+                  values={
+                    ui.fields.some((f) => f.key === "responsable" || f.key === "asignado")
+                      ? Array.from(new Set(rows.map((r) => String(r.responsable || r.asignado || "")).filter(Boolean))).sort()
+                      : []
+                  }
+                  selected={responsableFilter}
+                  onChange={(next) => { setResponsableFilter(next); setPage(1); }}
+                  accent={accent}
+                />
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #f1f5f9" }}>
-                  <button type="button" onClick={() => { setEstadoFilter(""); setSegmentoFilter(""); setResponsableFilter(""); }} style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); }} style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     Limpiar
                   </button>
                   <button type="button" onClick={() => setShowFilters(false)} style={{ background: accent, color: "#fff", border: "none", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
@@ -1013,7 +1019,7 @@ export default function GenericModuleRuntimePage({
                 <button type="button" onClick={c.onClear} style={chipClear} aria-label="Quitar filtro">×</button>
               </span>
             ))}
-            <button type="button" onClick={() => { setEstadoFilter(""); setSegmentoFilter(""); setResponsableFilter(""); setQuery(""); }} style={{ background: "transparent", border: "none", color: accent, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setQuery(""); }} style={{ background: "transparent", border: "none", color: accent, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
               Limpiar filtros
             </button>
           </div>
@@ -1050,7 +1056,7 @@ export default function GenericModuleRuntimePage({
             <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando…</div>
           ) : pageRows.length === 0 ? (
             <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
-              {query || estadoFilter ? "Ningún resultado con los filtros actuales." : ui.emptyState + " Pulsa “+ Alta de…” para empezar."}
+              {query || estadoFilter.size > 0 || segmentoFilter.size > 0 || responsableFilter.size > 0 ? "Ningún resultado con los filtros actuales." : ui.emptyState + " Pulsa “+ Alta de…” para empezar."}
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
@@ -1694,6 +1700,62 @@ const chipClear: React.CSSProperties = {
   width: 18, height: 18, borderRadius: 999, background: "transparent",
   border: "none", cursor: "pointer", color: "#64748b", fontSize: 14,
 };
+// TEST-8bis2 — Bloque de filtro con checkboxes multi-select genérico.
+// Recibe la lista de valores posibles, el Set seleccionado (lowercased) y
+// devuelve el nuevo Set vía onChange. Si la lista de valores es vacía, no
+// renderiza nada (no hay opciones para filtrar).
+function CheckboxFilterGroup({
+  label,
+  values,
+  selected,
+  onChange,
+  accent,
+}: {
+  label: string;
+  values: string[];
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
+  accent: string;
+}) {
+  if (values.length === 0) return null;
+  function toggle(v: string) {
+    const key = v.toLowerCase();
+    const next = new Set(selected);
+    if (next.has(key)) next.delete(key); else next.add(key);
+    onChange(next);
+  }
+  function selectAll() { onChange(new Set(values.map((v) => v.toLowerCase()))); }
+  function clearAll() { onChange(new Set()); }
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+        <span style={filterLabel}>{label}</span>
+        <span style={{ fontSize: 10, color: "#94a3b8" }}>
+          {selected.size > 0 ? (
+            <button type="button" onClick={clearAll} style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 10, fontWeight: 600, cursor: "pointer", padding: 0 }}>Limpiar</button>
+          ) : (
+            <button type="button" onClick={selectAll} style={{ background: "transparent", border: "none", color: accent, fontSize: 10, fontWeight: 600, cursor: "pointer", padding: 0 }}>Todos</button>
+          )}
+        </span>
+      </div>
+      <div style={{ display: "grid", gap: 4, maxHeight: 180, overflowY: "auto", padding: "4px 2px", border: "1px solid #e5e7eb", borderRadius: 6 }}>
+        {values.map((v) => {
+          const key = v.toLowerCase();
+          const checked = selected.has(key);
+          return (
+            <label key={v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 6px", borderRadius: 4, cursor: "pointer", fontSize: 13, color: "#0f172a", background: checked ? "#eff6ff" : "transparent" }}>
+              <input type="checkbox" checked={checked} onChange={() => toggle(v)} style={{ cursor: "pointer" }} />
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {v.charAt(0).toUpperCase() + v.slice(1)}
+              </span>
+            </label>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function popover(width: number): React.CSSProperties {
   return {
     position: "absolute", top: "calc(100% + 6px)", right: 0, minWidth: width,
