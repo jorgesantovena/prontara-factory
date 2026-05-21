@@ -35,6 +35,8 @@ type FieldDef = {
   required?: boolean;
   relationModuleKey?: string;
   placeholder?: string;
+  // TEST-10.2/10.9 — opciones de los campos status (vienen del pack/core).
+  options?: Array<{ value: string; label: string }>;
 };
 
 type TableColumnDef = {
@@ -187,6 +189,9 @@ export default function GenericModuleRuntimePage({
   const [estadoFilter, setEstadoFilter] = useState<Set<string>>(new Set());
   const [segmentoFilter, setSegmentoFilter] = useState<Set<string>>(new Set());
   const [responsableFilter, setResponsableFilter] = useState<Set<string>>(new Set());
+  // TEST-10.2.b — Filtro por fecha límite: oculta los registros cuya
+  // fechaLimite sea posterior a la fecha indicada (vacío = sin filtro).
+  const [fechaLimiteMax, setFechaLimiteMax] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [showViews, setShowViews] = useState(false);
@@ -214,7 +219,8 @@ export default function GenericModuleRuntimePage({
   // click. Más fiable que onDoubleClick + setTimeout (que dejaba pasar el
   // primer doble-click). Threshold 320ms.
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastClickRef = useRef<{ id: string; t: number }>({ id: "", t: 0 });
+  // TEST-10.10 — registro pendiente de borrado individual (diálogo propio).
+  const [rowDeleteRec, setRowDeleteRec] = useState<Record<string, string> | null>(null);
   // TEST-5.W — Workflow comercial encadenado. Cuando una oportunidad pasa a
   // "Ganado" se inicia: oportunidad → cliente → propuesta. El siguiente paso
   // del wizard se transporta vía query string `wf_next` y se persiste en este
@@ -411,6 +417,12 @@ export default function GenericModuleRuntimePage({
         const resp = String(item.responsable || item.asignado || "").toLowerCase();
         if (!responsableFilter.has(resp)) return false;
       }
+      // TEST-10.2.b — Filtro por fecha límite: descartar registros con
+      // fechaLimite posterior a la fecha tope indicada.
+      if (fechaLimiteMax) {
+        const fl = String(item.fechaLimite || "").slice(0, 10);
+        if (fl && fl > fechaLimiteMax) return false;
+      }
       if (q) {
         const parts: string[] = [];
         // Nombre/título primario
@@ -439,7 +451,33 @@ export default function GenericModuleRuntimePage({
       }
       return true;
     });
-  }, [rows, query, estadoFilter, segmentoFilter, responsableFilter, ui.tableColumns, moduleKey]);
+  }, [rows, query, estadoFilter, segmentoFilter, responsableFilter, fechaLimiteMax, ui.tableColumns, moduleKey]);
+
+  // TEST-10.4 — Orden por defecto. Si el módulo tiene campo fechaLimite,
+  // ordena por fecha límite ascendente y, a igual fecha, por prioridad
+  // (1-Urgente primero). Tolera datos antiguos con prioridad en texto.
+  const sorted = useMemo(() => {
+    const hasFechaLimite = ui.fields.some((f) => f.key === "fechaLimite");
+    if (!hasFechaLimite) return filtered;
+    const rank = (v: unknown): number => {
+      const s = String(v ?? "").toLowerCase().trim();
+      const n = Number(s);
+      if (Number.isFinite(n) && n > 0) return n;
+      if (s.includes("urgent")) return 1;
+      if (s.includes("alta")) return 3;
+      if (s.includes("media")) return 6;
+      if (s.includes("baja")) return 8;
+      return 99;
+    };
+    return [...filtered].sort((a, b) => {
+      const fa = String(a.fechaLimite || "").slice(0, 10);
+      const fb = String(b.fechaLimite || "").slice(0, 10);
+      if (fa && fb && fa !== fb) return fa < fb ? -1 : 1;
+      if (fa && !fb) return -1;
+      if (!fa && fb) return 1;
+      return rank(a.prioridad) - rank(b.prioridad);
+    });
+  }, [filtered, ui.fields]);
 
   // KPIs derivados de los rows (Total + breakdown por estado).
   const kpis = useMemo(() => {
@@ -467,10 +505,10 @@ export default function GenericModuleRuntimePage({
     return items.slice(0, 5);
   }, [rows]);
 
-  // Paginación
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  // Paginación (TEST-10.4 — sobre la lista ya ordenada).
+  const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const pageStart = (page - 1) * pageSize;
-  const pageRows = filtered.slice(pageStart, pageStart + pageSize);
+  const pageRows = sorted.slice(pageStart, pageStart + pageSize);
 
   async function saveRecord(payload: Record<string, string>): Promise<Record<string, string> | null> {
     const tenant = readTenant();
@@ -536,13 +574,65 @@ export default function GenericModuleRuntimePage({
     await load();
   }
 
-  // Columnas (derivar de fields si pack no trae)
-  const allColumns: TableColumnDef[] = ui.tableColumns.length > 0
-    ? ui.tableColumns
-    : ui.fields.slice(0, 4).map((f) => ({ fieldKey: f.key, label: f.label }));
+  // Columnas — TEST-10.1. El selector "Mostrar columnas" debe ofrecer TODOS
+  // los campos del módulo. `baseColumns` son las visibles por defecto (las que
+  // define el pack/core); el resto de campos se añaden como columnas
+  // disponibles pero ocultas de inicio.
+  const allColumns: TableColumnDef[] = useMemo(() => {
+    const base: TableColumnDef[] = ui.tableColumns.length > 0
+      ? ui.tableColumns
+      : ui.fields.slice(0, 6).map((f) => ({ fieldKey: f.key, label: f.label }));
+    const seen = new Set(base.map((c) => c.fieldKey));
+    const extra: TableColumnDef[] = ui.fields
+      .filter((f) => !seen.has(f.key) && f.key !== "contactosJson" && f.key !== "id")
+      .map((f) => ({ fieldKey: f.key, label: f.label }));
+    return [...base, ...extra];
+  }, [ui.tableColumns, ui.fields]);
   const columns = allColumns.filter((c) => !hiddenCols.has(c.fieldKey));
 
   const titleField = ui.tableColumns.find((c) => c.isPrimary)?.fieldKey || allColumns[0]?.fieldKey || ui.fields[0]?.key || "id";
+
+  // TEST-10.1 — Al cargar el módulo, oculta por defecto las columnas extra
+  // (las que no están en el set base del pack/core). El usuario las activa
+  // desde "Mostrar columnas". Se recalcula solo al cambiar la definición.
+  useEffect(() => {
+    const baseKeys = ui.tableColumns.length > 0
+      ? new Set(ui.tableColumns.map((c) => c.fieldKey))
+      : new Set(ui.fields.slice(0, 6).map((f) => f.key));
+    setHiddenCols(new Set(ui.fields.map((f) => f.key).filter((k) => !baseKeys.has(k))));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ui.tableColumns, ui.fields]);
+
+  // TEST-10.2 / 10.5 / 10.9 — Opciones de un campo (definición del pack/core
+  // + valores presentes en los datos). Se usa en filtros y en "Cambiar estado".
+  function fieldOptions(fieldKey: string): Array<{ value: string; label: string }> {
+    const f = ui.fields.find((x) => x.key === fieldKey);
+    const out: Array<{ value: string; label: string }> = [];
+    const seen = new Set<string>();
+    for (const o of f?.options || []) {
+      const v = String(o.value);
+      const lk = v.toLowerCase();
+      if (seen.has(lk)) continue;
+      seen.add(lk);
+      out.push({ value: v, label: String(o.label || o.value) });
+    }
+    for (const r of rows) {
+      const v = String(r[fieldKey] ?? "").trim();
+      if (v && !seen.has(v.toLowerCase())) {
+        seen.add(v.toLowerCase());
+        out.push({ value: v, label: v });
+      }
+    }
+    return out;
+  }
+  // TEST-10.5 — Devuelve la etiqueta visible de un valor de campo con opciones
+  // (p.ej. prioridad "1" → "Urgente"). Si no hay opción, muestra el valor.
+  function labelForValue(fieldKey: string, rawVal: string): string {
+    const f = ui.fields.find((x) => x.key === fieldKey);
+    if (!f?.options || rawVal === "—") return rawVal;
+    const hit = f.options.find((o) => String(o.value) === rawVal);
+    return hit ? String(hit.label || hit.value) : rawVal;
+  }
 
   function openDetail(item: Record<string, string>) {
     setSelected(item);
@@ -827,6 +917,11 @@ export default function GenericModuleRuntimePage({
     label: "Responsable: " + Array.from(responsableFilter).join(", "),
     onClear: () => setResponsableFilter(new Set()),
   });
+  if (fechaLimiteMax) activeChips.push({
+    key: "fechaLimite",
+    label: "Fecha límite ≤ " + fechaLimiteMax,
+    onClear: () => setFechaLimiteMax(""),
+  });
   if (query) activeChips.push({ key: "query", label: '"' + query + '"', onClear: () => setQuery("") });
 
   return (
@@ -908,7 +1003,7 @@ export default function GenericModuleRuntimePage({
               <div style={popover(300)}>
                 <div style={popoverHeader}>Vistas guardadas</div>
                 {/* TEST-2.10 — explicar diferencia entre "Todos" y vistas personalizadas */}
-                <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setQuery(""); setShowViews(false); }} style={popoverItemBtn} title="Muestra todos los registros sin filtro aplicado">
+                <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setFechaLimiteMax(""); setQuery(""); setShowViews(false); }} style={popoverItemBtn} title="Muestra todos los registros sin filtro aplicado">
                   <span>👥</span>
                   <span style={{ flex: 1, textAlign: "left" }}>
                     Todos
@@ -963,26 +1058,28 @@ export default function GenericModuleRuntimePage({
           <div style={{ position: "relative" }}>
             <button type="button" onClick={() => setShowFilters(!showFilters)} style={toolbarBtn}>
               <span>▽</span> Filtros
-              {(estadoFilter.size + segmentoFilter.size + responsableFilter.size) > 0 ? (
-                <span style={popoverCount}>{estadoFilter.size + segmentoFilter.size + responsableFilter.size}</span>
+              {(estadoFilter.size + segmentoFilter.size + responsableFilter.size + (fechaLimiteMax ? 1 : 0)) > 0 ? (
+                <span style={popoverCount}>{estadoFilter.size + segmentoFilter.size + responsableFilter.size + (fechaLimiteMax ? 1 : 0)}</span>
               ) : null}
               <span style={{ fontSize: 9, marginLeft: 4 }}>▾</span>
             </button>
             {showFilters ? (
               <div style={{ ...popover(280), padding: 12 }}>
                 <div style={popoverHeader}>Filtrar registros</div>
+                {/* TEST-10.2.a — El filtro de Estado ofrece TODOS los estados
+                    definidos en el campo (no solo los presentes en datos). */}
                 <CheckboxFilterGroup
                   label="Estado"
-                  values={Array.from(new Set(rows.map((r) => String(r.estado || "")).filter(Boolean))).sort()}
+                  options={fieldOptions("estado")}
                   selected={estadoFilter}
                   onChange={(next) => { setEstadoFilter(next); setPage(1); }}
                   accent={accent}
                 />
                 <CheckboxFilterGroup
                   label="Segmento"
-                  values={
-                    ui.fields.some((f) => f.key === "segmento" || f.key === "tipo")
-                      ? Array.from(new Set(rows.map((r) => String(r.segmento || r.tipo || "")).filter(Boolean))).sort()
+                  options={
+                    ui.fields.some((f) => f.key === "segmento") ? fieldOptions("segmento")
+                      : ui.fields.some((f) => f.key === "tipo") ? fieldOptions("tipo")
                       : []
                   }
                   selected={segmentoFilter}
@@ -991,17 +1088,30 @@ export default function GenericModuleRuntimePage({
                 />
                 <CheckboxFilterGroup
                   label="Responsable"
-                  values={
-                    ui.fields.some((f) => f.key === "responsable" || f.key === "asignado")
-                      ? Array.from(new Set(rows.map((r) => String(r.responsable || r.asignado || "")).filter(Boolean))).sort()
+                  options={
+                    ui.fields.some((f) => f.key === "responsable") ? fieldOptions("responsable")
+                      : ui.fields.some((f) => f.key === "asignado") ? fieldOptions("asignado")
                       : []
                   }
                   selected={responsableFilter}
                   onChange={(next) => { setResponsableFilter(next); setPage(1); }}
                   accent={accent}
                 />
+                {/* TEST-10.2.b — Filtro por fecha límite (solo si el módulo
+                    tiene ese campo). Omite las tareas con fecha posterior. */}
+                {ui.fields.some((f) => f.key === "fechaLimite") ? (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={filterLabel}>Fecha límite hasta</div>
+                    <input
+                      type="date"
+                      value={fechaLimiteMax}
+                      onChange={(e) => { setFechaLimiteMax(e.target.value); setPage(1); }}
+                      style={{ width: "100%", padding: "6px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
+                    />
+                  </div>
+                ) : null}
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #f1f5f9" }}>
-                  <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); }} style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setFechaLimiteMax(""); }} style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     Limpiar
                   </button>
                   <button type="button" onClick={() => setShowFilters(false)} style={{ background: accent, color: "#fff", border: "none", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
@@ -1045,7 +1155,7 @@ export default function GenericModuleRuntimePage({
                 <button type="button" onClick={c.onClear} style={chipClear} aria-label="Quitar filtro">×</button>
               </span>
             ))}
-            <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setQuery(""); }} style={{ background: "transparent", border: "none", color: accent, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setFechaLimiteMax(""); setQuery(""); }} style={{ background: "transparent", border: "none", color: accent, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
               Limpiar filtros
             </button>
           </div>
@@ -1082,7 +1192,7 @@ export default function GenericModuleRuntimePage({
             <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando…</div>
           ) : pageRows.length === 0 ? (
             <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
-              {query || estadoFilter.size > 0 || segmentoFilter.size > 0 || responsableFilter.size > 0 ? "Ningún resultado con los filtros actuales." : ui.emptyState + " Pulsa “+ Alta de…” para empezar."}
+              {query || estadoFilter.size > 0 || segmentoFilter.size > 0 || responsableFilter.size > 0 || fechaLimiteMax ? "Ningún resultado con los filtros actuales." : ui.emptyState + " Pulsa “+ Alta de…” para empezar."}
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
@@ -1112,27 +1222,23 @@ export default function GenericModuleRuntimePage({
                       <tr
                         key={id}
                         onClick={() => {
-                          // TEST-4.1.b — detección manual con timestamp. Si dos
-                          // clicks llegan sobre la misma fila en < 320ms, se
-                          // interpreta como doble-click y abre el editor. Si
-                          // pasa más de 320ms, abre el drawer (detalle rápido).
-                          const now = Date.now();
-                          const last = lastClickRef.current;
-                          if (last.id === id && now - last.t < 320) {
-                            // doble-click
-                            if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
-                            lastClickRef.current = { id: "", t: 0 };
-                            setSelected(item);
-                            setModalMode("edit");
-                            return;
-                          }
-                          // click simple: registramos y programamos drawer si no llega un segundo click
-                          lastClickRef.current = { id, t: now };
+                          // TEST-10.3 — Click simple: programa abrir el detalle
+                          // rápido. Si llega un doble-click, `onDoubleClick`
+                          // cancela este temporizador y abre el editor. El
+                          // evento nativo onDoubleClick es fiable (respeta la
+                          // velocidad de doble-click del sistema operativo).
                           if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
                           clickTimerRef.current = setTimeout(() => {
                             openDetail(item);
                             clickTimerRef.current = null;
-                          }, 320);
+                          }, 250);
+                        }}
+                        onDoubleClick={() => {
+                          // TEST-10.3 — Doble-click abre el editor. Cancela el
+                          // detalle rápido que el click simple había programado.
+                          if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
+                          setSelected(item);
+                          setModalMode("edit");
                         }}
                         title="Click: detalle rápido — Doble click: editar — Supr: eliminar"
                         style={{
@@ -1202,9 +1308,13 @@ export default function GenericModuleRuntimePage({
                             }
                           }
                           const valStr = val == null || val === "" ? "—" : String(val);
+                          // TEST-10.5 — Para campos con opciones (prioridad,
+                          // estado…) se muestra la etiqueta, no el valor crudo
+                          // (p.ej. prioridad "1" → "Urgente").
+                          const display = labelForValue(col.fieldKey, valStr);
                           return (
                             <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 400 }}>
-                              {renderCell(col.fieldKey, valStr, idx === 0 ? item : null)}
+                              {renderCell(col.fieldKey, display, idx === 0 ? item : null)}
                             </td>
                           );
                         })}
@@ -1316,9 +1426,11 @@ export default function GenericModuleRuntimePage({
               }}>
                 <span>⎘</span><span>Copiar</span>
               </button>
-              <button type="button" style={{ ...popoverItemBtn, color: "#dc2626" }} onClick={async () => {
+              <button type="button" style={{ ...popoverItemBtn, color: "#dc2626" }} onClick={() => {
+                // TEST-10.10 — Diálogo propio (no confirm() del navegador) que
+                // indica QUÉ registro se va a eliminar.
                 closeMenu();
-                if (confirm("¿Eliminar este " + singular(ui.label) + "?")) await removeRecord(String(item.id));
+                setRowDeleteRec(item);
               }}>
                 <span>🗑</span><span>Eliminar</span>
               </button>
@@ -1367,16 +1479,11 @@ export default function GenericModuleRuntimePage({
                 style={{ width: "100%", padding: "10px 12px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 14, marginBottom: 14, boxSizing: "border-box" }}
               >
                 <option value="">— elegir estado —</option>
-                {(() => {
-                  const seen = new Set<string>();
-                  for (const r of rows) {
-                    const v = String(r.estado || "").trim();
-                    if (v) seen.add(v);
-                  }
-                  return Array.from(seen).sort().map((v) => (
-                    <option key={v} value={v}>{v.charAt(0).toUpperCase() + v.slice(1)}</option>
-                  ));
-                })()}
+                {/* TEST-10.9 — Todos los estados definidos en el campo, no
+                    solo los presentes en los datos. */}
+                {fieldOptions("estado").map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
               </select>
             ) : (
               <input
@@ -1455,6 +1562,30 @@ export default function GenericModuleRuntimePage({
         description="Los registros se eliminarán. Esta acción no se puede deshacer."
         mustType="ELIMINAR"
         confirmLabel="Eliminar definitivamente"
+      />
+
+      {/* TEST-10.10 — Borrado de un registro: diálogo propio que nombra el
+          registro (sustituye al confirm() nativo "app.prontara.com dice").
+          Confirmación directa, sin pedir escribir literal. */}
+      <DangerConfirm
+        open={rowDeleteRec !== null}
+        onClose={() => setRowDeleteRec(null)}
+        onConfirm={async () => {
+          if (rowDeleteRec?.id) await removeRecord(String(rowDeleteRec.id));
+          setRowDeleteRec(null);
+        }}
+        title={
+          "¿Eliminar " + singular(ui.label).toLowerCase() +
+          (rowDeleteRec
+            ? ' "' + String(
+                rowDeleteRec[titleField] || rowDeleteRec.titulo || rowDeleteRec.nombre ||
+                rowDeleteRec.numero || rowDeleteRec.asunto || "sin título",
+              ) + '"'
+            : "") + "?"
+        }
+        description="Esta acción no se puede deshacer."
+        requireType={false}
+        confirmLabel="Eliminar"
       />
 
     </TenantShell>
@@ -1592,8 +1723,20 @@ function DetailDrawer({
 }) {
   const titulo = String(record[titleField] || "Sin título");
   const tint = avatarTint(titulo);
-  const estado = String(record.estado || "");
-  const segmento = String(record.tipo || record.segmento || "");
+  // TEST-10.5 — Resuelve la etiqueta de un campo con opciones (prioridad "1"
+  // → "Urgente", estado "en_progreso" → "En progreso").
+  const resolveLabel = (key: string, raw: string): string => {
+    const f = fields.find((x) => x.key === key);
+    if (f?.options && raw) {
+      const hit = f.options.find((o) => String(o.value) === raw);
+      if (hit) return String(hit.label || hit.value);
+    }
+    return raw;
+  };
+  const estado = resolveLabel("estado", String(record.estado || ""));
+  const segmento = record.tipo
+    ? resolveLabel("tipo", String(record.tipo))
+    : resolveLabel("segmento", String(record.segmento || ""));
   const email = String(record.email || "");
   const tel = String(record.telefono || record.tel || "");
   const ciudad = String(record.ciudad || record.localidad || record.lugar || "");
@@ -1644,7 +1787,7 @@ function DetailDrawer({
           {desde ? <DrawerKv label="Cliente desde" value={fmtFecha(desde)} /> : null}
           {ventas ? <DrawerKv label="Ventas totales" value={fmtMoneda(ventas).text} /> : null}
           {saldo ? <DrawerKv label="Saldo pendiente" value={fmtMoneda(saldo).text} valueColor={fmtMoneda(saldo).tone === "bad" ? "#dc2626" : undefined} /> : null}
-          {extras.slice(0, 6).map((f) => <DrawerKv key={f.key} label={f.label} value={String(record[f.key] || "—")} />)}
+          {extras.slice(0, 6).map((f) => <DrawerKv key={f.key} label={f.label} value={resolveLabel(f.key, String(record[f.key] || "")) || "—"} />)}
         </DrawerSection>
       ) : null}
 
@@ -1732,25 +1875,27 @@ const chipClear: React.CSSProperties = {
 // renderiza nada (no hay opciones para filtrar).
 function CheckboxFilterGroup({
   label,
-  values,
+  options,
   selected,
   onChange,
   accent,
 }: {
   label: string;
-  values: string[];
+  // TEST-10.2 — cada opción lleva value (lo que se guarda/compara, en
+  // minúscula) y label (lo que se muestra).
+  options: Array<{ value: string; label: string }>;
   selected: Set<string>;
   onChange: (next: Set<string>) => void;
   accent: string;
 }) {
-  if (values.length === 0) return null;
+  if (options.length === 0) return null;
   function toggle(v: string) {
     const key = v.toLowerCase();
     const next = new Set(selected);
     if (next.has(key)) next.delete(key); else next.add(key);
     onChange(next);
   }
-  function selectAll() { onChange(new Set(values.map((v) => v.toLowerCase()))); }
+  function selectAll() { onChange(new Set(options.map((o) => o.value.toLowerCase()))); }
   function clearAll() { onChange(new Set()); }
   return (
     <div style={{ marginBottom: 10 }}>
@@ -1765,14 +1910,14 @@ function CheckboxFilterGroup({
         </span>
       </div>
       <div style={{ display: "grid", gap: 4, maxHeight: 180, overflowY: "auto", padding: "4px 2px", border: "1px solid #e5e7eb", borderRadius: 6 }}>
-        {values.map((v) => {
-          const key = v.toLowerCase();
+        {options.map((o) => {
+          const key = o.value.toLowerCase();
           const checked = selected.has(key);
           return (
-            <label key={v} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 6px", borderRadius: 4, cursor: "pointer", fontSize: 13, color: "#0f172a", background: checked ? "#eff6ff" : "transparent" }}>
-              <input type="checkbox" checked={checked} onChange={() => toggle(v)} style={{ cursor: "pointer" }} />
+            <label key={o.value} style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 6px", borderRadius: 4, cursor: "pointer", fontSize: 13, color: "#0f172a", background: checked ? "#eff6ff" : "transparent" }}>
+              <input type="checkbox" checked={checked} onChange={() => toggle(o.value)} style={{ cursor: "pointer" }} />
               <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {v.charAt(0).toUpperCase() + v.slice(1)}
+                {o.label.charAt(0).toUpperCase() + o.label.slice(1)}
               </span>
             </label>
           );

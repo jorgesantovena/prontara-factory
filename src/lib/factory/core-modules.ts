@@ -48,9 +48,15 @@ export const CORE_MODULES: SectorPackModule[] = [
 export const CORE_FIELDS: SectorPackField[] = [
   // Tareas
   { moduleKey: "tareas", fieldKey: "titulo", label: "Tarea", kind: "text", required: true, placeholder: "Qué hay que hacer" },
-  { moduleKey: "tareas", fieldKey: "asignado", label: "Asignado a", kind: "text", placeholder: "Quién la ejecuta" },
+  // TEST-10.7 — Empresa: relación con Clientes (antes no existía referencia).
+  { moduleKey: "tareas", fieldKey: "empresa", label: "Empresa", kind: "relation", relationModuleKey: "clientes" },
+  // TEST-10.6 — Asignado a: relación con Empleados (antes texto libre).
+  { moduleKey: "tareas", fieldKey: "asignado", label: "Asignado a", kind: "relation", relationModuleKey: "empleados" },
+  // TEST-10.5 — Prioridad numérica (1-Urgente, 3-Alta, 6-Media, 8-Baja) para
+  // permitir ordenar la lista por prioridad. El value se guarda numérico; el
+  // label es el texto visible.
   { moduleKey: "tareas", fieldKey: "prioridad", label: "Prioridad", kind: "status", required: true, options: [
-    { value: "baja", label: "Baja" }, { value: "media", label: "Media" }, { value: "alta", label: "Alta" }, { value: "urgente", label: "Urgente" },
+    { value: "1", label: "Urgente" }, { value: "3", label: "Alta" }, { value: "6", label: "Media" }, { value: "8", label: "Baja" },
   ] },
   { moduleKey: "tareas", fieldKey: "fechaLimite", label: "Fecha límite", kind: "date" },
   { moduleKey: "tareas", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
@@ -425,6 +431,7 @@ export const CORE_FIELDS: SectorPackField[] = [
 
 export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "tareas", fieldKey: "titulo", label: "Tarea", isPrimary: true },
+  { moduleKey: "tareas", fieldKey: "empresa", label: "Empresa" },
   { moduleKey: "tareas", fieldKey: "asignado", label: "Asignado" },
   { moduleKey: "tareas", fieldKey: "prioridad", label: "Prioridad" },
   { moduleKey: "tareas", fieldKey: "fechaLimite", label: "Límite" },

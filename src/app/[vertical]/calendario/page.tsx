@@ -127,7 +127,10 @@ export default function CalendarioPage() {
     cells.push({ day: d, date: ymd(dt) });
   }
 
-  const monthLabel = cursor.toLocaleDateString("es-ES", { month: "long", year: "numeric" });
+  // TEST-10.8 — Formato "mayo 2026" (mes en minúscula, sin "de"). El locale
+  // es-ES devuelve "mayo de 2026"; componemos mes + año a mano para evitarlo.
+  const monthLabel =
+    cursor.toLocaleDateString("es-ES", { month: "long" }) + " " + cursor.getFullYear();
 
   const allUsers = useMemo(() => {
     const s = new Set<string>();
@@ -146,7 +149,7 @@ export default function CalendarioPage() {
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
         <button type="button" onClick={() => setCursor(addMonths(cursor, -1))} style={btn}>← Mes anterior</button>
-        <strong style={{ fontSize: 16, textTransform: "capitalize", minWidth: 200, textAlign: "center" }}>{monthLabel}</strong>
+        <strong style={{ fontSize: 16, minWidth: 200, textAlign: "center" }}>{monthLabel}</strong>
         <button type="button" onClick={() => setCursor(addMonths(cursor, 1))} style={btn}>Mes siguiente →</button>
         <button type="button" onClick={() => setCursor(startOfMonth(new Date()))} style={{ ...btn, background: "#1d4ed8", color: "#ffffff", borderColor: "#1d4ed8" }}>Hoy</button>
 

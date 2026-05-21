@@ -27,6 +27,7 @@ export default function DangerConfirm({
   description,
   mustType = "ELIMINAR",
   confirmLabel = "Eliminar",
+  requireType = true,
 }: {
   open: boolean;
   onClose: () => void;
@@ -35,6 +36,9 @@ export default function DangerConfirm({
   description?: string;
   mustType?: string;
   confirmLabel?: string;
+  // TEST-10.10 — Si es false, no se pide escribir el literal: confirmación
+  // directa con un botón. Útil para borrados de un solo registro.
+  requireType?: boolean;
 }) {
   const [typed, setTyped] = useState("");
   const [busy, setBusy] = useState(false);
@@ -47,7 +51,7 @@ export default function DangerConfirm({
   }, [open]);
 
   if (!open) return null;
-  const enabled = typed.trim() === mustType.trim();
+  const enabled = requireType ? typed.trim() === mustType.trim() : true;
 
   async function handleConfirm() {
     if (!enabled || busy) return;
@@ -75,25 +79,29 @@ export default function DangerConfirm({
         {description ? (
           <p style={{ margin: "0 0 16px 0", fontSize: 14, color: "var(--fg-muted, #475569)", lineHeight: 1.5 }}>{description}</p>
         ) : null}
-        <p style={{ margin: "0 0 8px 0", fontSize: 13, color: "var(--fg, #0f172a)" }}>
-          Para confirmar, escribe <code style={{ background: "#fef2f2", color: "#991b1b", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>{mustType}</code>
-        </p>
-        <input
-          type="text"
-          value={typed}
-          onChange={(e) => setTyped(e.target.value)}
-          autoFocus
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            border: "1px solid " + (enabled ? "#16a34a" : "var(--border, #d1d5db)"),
-            borderRadius: 6,
-            fontSize: 14,
-            fontFamily: "monospace",
-            boxSizing: "border-box",
-            marginBottom: 16,
-          }}
-        />
+        {requireType ? (
+          <>
+            <p style={{ margin: "0 0 8px 0", fontSize: 13, color: "var(--fg, #0f172a)" }}>
+              Para confirmar, escribe <code style={{ background: "#fef2f2", color: "#991b1b", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>{mustType}</code>
+            </p>
+            <input
+              type="text"
+              value={typed}
+              onChange={(e) => setTyped(e.target.value)}
+              autoFocus
+              style={{
+                width: "100%",
+                padding: "10px 12px",
+                border: "1px solid " + (enabled ? "#16a34a" : "var(--border, #d1d5db)"),
+                borderRadius: 6,
+                fontSize: 14,
+                fontFamily: "monospace",
+                boxSizing: "border-box",
+                marginBottom: 16,
+              }}
+            />
+          </>
+        ) : null}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button type="button" onClick={onClose} style={{ padding: "10px 16px", border: "1px solid var(--border, #d1d5db)", background: "transparent", color: "var(--fg, #0f172a)", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
             Cancelar
