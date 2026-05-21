@@ -675,7 +675,7 @@ export default function TenantSidebar() {
         // Si sidebar colapsada → siempre visible (solo iconos, da igual).
         // Si hay item activo dentro → expandida (no esconder al usuario donde está).
         // Si no, respetar elección del usuario (Maestros arranca false).
-        const isExpanded = collapsed ? true : (hasActiveItem || expandedCats[cat] !== false);
+        const isExpanded = collapsed ? true : expandedCats[cat] !== false;
         return (
           <div key={cat} style={{ marginTop: 10 }}>
             {!collapsed ? (

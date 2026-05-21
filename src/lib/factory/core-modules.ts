@@ -705,7 +705,7 @@ export function applyCoreModulesToConfig<T extends {
     if (!config.fieldsByModule[f.moduleKey]) {
       config.fieldsByModule[f.moduleKey] = [];
     }
-    config.fieldsByModule[f.moduleKey].push(f);
+    config.fieldsByModule[f.moduleKey].push({ ...f, key: f.fieldKey } as typeof f);
   }
   for (const c of CORE_TABLE_COLUMNS) {
     if (disabled.has(c.moduleKey)) continue;

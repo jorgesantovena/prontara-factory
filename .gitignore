@@ -68,3 +68,6 @@ next-env.d.ts
 
 # residual deprecado: Supabase (sustituido por Neon Postgres + Prisma)
 /supabase/
+
+.vercel
+.env*.local

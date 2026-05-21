@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ReportChart from "@/components/erp/report-chart";
+import TenantShell from "@/components/erp/tenant-shell";
 
 /**
  * Página de reportes (DEV-REP).
@@ -140,7 +141,8 @@ export default function ReportesPage() {
   }
 
   return (
-    <main style={{ maxWidth: 1200, margin: "0 auto", padding: 24, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <TenantShell>
+      <div style={{ maxWidth: 1200, margin: "0 auto", fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <div>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: "#0f172a", margin: 0 }}>Reportes</h1>
@@ -340,7 +342,8 @@ export default function ReportesPage() {
           ) : null}
         </section>
       </div>
-    </main>
+      </div>
+    </TenantShell>
   );
 }
 

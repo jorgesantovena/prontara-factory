@@ -158,7 +158,7 @@ function rebuildConfigForTenant(tenant: TenantDefinition): TenantRuntimeConfig {
       if (!fieldsByModule[field.moduleKey]) {
         fieldsByModule[field.moduleKey] = [];
       }
-      fieldsByModule[field.moduleKey].push(field);
+      fieldsByModule[field.moduleKey].push({ ...field, key: field.fieldKey } as typeof field);
     }
   }
 

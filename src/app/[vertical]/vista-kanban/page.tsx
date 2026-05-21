@@ -25,11 +25,18 @@ export default function VistaKanbanPage() {
   const [dragRowId, setDragRowId] = useState<string | null>(null);
   const [dropEstado, setDropEstado] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const sp = new URLSearchParams(window.location.search);
+    const m = (sp.get("moduleKey") || sp.get("module") || "").trim();
+    if (m) setModuleKey(m);
+  }, []);
+
   async function load() {
     setLoading(true);
     setError("");
     try {
-      const r = await fetch("/api/erp/module?moduleKey=" + moduleKey, { cache: "no-store" });
+      const r = await fetch("/api/erp/module?module=" + moduleKey, { cache: "no-store" });
       const data = await r.json();
       if (r.ok && data.ok) setRows((data.rows || []) as Row[]);
       else setError(data.error || "Error.");
@@ -64,8 +71,8 @@ export default function VistaKanbanPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mode: "update",
-          moduleKey,
+          mode: "edit",
+          module: moduleKey,
           recordId: rowId,
           payload: { ...row, estado: nuevoEstado },
         }),
@@ -97,7 +104,8 @@ export default function VistaKanbanPage() {
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16 }}>
         <label style={{ fontSize: 13, color: "#475569" }}>Módulo:</label>
         <select value={moduleKey} onChange={(e) => setModuleKey(e.target.value)} style={ipt}>
-          {COMMON_MODULES.map((m) => <option key={m} value={m}>{m}</option>)}
+          {(COMMON_MODULES.includes(moduleKey) ? COMMON_MODULES : [moduleKey, ...COMMON_MODULES])
+            .map((m) => <option key={m} value={m}>{m}</option>)}
         </select>
         <button type="button" onClick={load} style={btn}>↻ Recargar</button>
       </div>

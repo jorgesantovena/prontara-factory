@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import TenantShell from "@/components/erp/tenant-shell";
 
 type AssistantAnswer = {
   title: string;
@@ -172,16 +173,14 @@ export default function AsistentePage() {
   }
 
   return (
-    <main
-      style={{
-        padding: 24,
-        display: "grid",
-        gap: 20,
-        fontFamily: "Arial, sans-serif",
-        background: "#f8fafc",
-        minHeight: "100vh",
-      }}
-    >
+    <TenantShell>
+      <div
+        style={{
+          display: "grid",
+          gap: 20,
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
       <section
         style={{
           border: "1px solid #e5e7eb",
@@ -329,7 +328,8 @@ export default function AsistentePage() {
           </button>
         </div>
       </section>
-    </main>
+      </div>
+    </TenantShell>
   );
 }
 

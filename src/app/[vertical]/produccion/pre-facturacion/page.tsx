@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import TenantShell from "@/components/erp/tenant-shell";
 
 /**
  * Pre-facturación estilo SISPYME (H7-S2).
@@ -60,7 +61,8 @@ export default function PreFacturacionPage() {
   const visibles = lineas.filter((l) => estadoFiltro === "todos" || l.estado === estadoFiltro);
 
   return (
-    <main style={{ maxWidth: 1400, margin: "0 auto", padding: 24, fontFamily: "system-ui, -apple-system, sans-serif" }}>
+    <TenantShell>
+      <div style={{ maxWidth: 1400, margin: "0 auto", fontFamily: "system-ui, -apple-system, sans-serif" }}>
       <h1 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>Servicios facturables</h1>
       <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 16 }}>
         Pre-facturación del periodo. Compara horas trabajadas, contra cuota y a facturar para cada cliente.
@@ -138,7 +140,8 @@ export default function PreFacturacionPage() {
           </tbody>
         </table>
       </div>
-    </main>
+      </div>
+    </TenantShell>
   );
 }
 

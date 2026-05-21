@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import type { ModuleField, ModuleRecord, ModuleSchema } from "@/lib/erp/module-schemas";
+import TenantShell from "@/components/erp/tenant-shell";
 
 type ModuleApiResponse = {
   ok?: boolean;
@@ -495,7 +496,8 @@ export default function ModuleCrudPage(props: ModuleCrudPageProps) {
   }
 
   return (
-    <main style={{ padding: 24, fontFamily: "Arial, sans-serif", maxWidth: 1500, margin: "0 auto" }}>
+    <TenantShell>
+      <div style={{ fontFamily: "Arial, sans-serif", maxWidth: 1500, margin: "0 auto" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", marginBottom: 18 }}>
         <div>
           <Link href="/" style={{ textDecoration: "none" }}>
@@ -763,6 +765,7 @@ export default function ModuleCrudPage(props: ModuleCrudPageProps) {
           )}
         </section>
       </div>
-    </main>
+      </div>
+    </TenantShell>
   );
 }

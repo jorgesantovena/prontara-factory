@@ -52,7 +52,7 @@ const TAB_LABELS: Record<TabKey, string> = {
 };
 
 function classifyField(key: string): TabKey {
-  const k = key.toLowerCase();
+  const k = String(key ?? "").toLowerCase();
   // TEST-2.5 — dirección, población, CP, provincia, país NO van en
   // "contacto" sino en "general" (son datos de la empresa/cliente, no
   // del interlocutor humano que es un contacto independiente).
@@ -323,7 +323,7 @@ export default function ErpRecordEditor({
               usuario pulse y entre a la ficha. */}
           {moduleKey === "crm" && mode === "edit" && (values.referenciaPropuesta || initialValue?.referenciaPropuesta) ? (
             <a
-              href={vlink("presupuestos") + "?q=" + encodeURIComponent(String(values.referenciaPropuesta || initialValue?.referenciaPropuesta || ""))}
+              href={vlink("presupuestos") + "?ver=" + encodeURIComponent(String(values.referenciaPropuesta || initialValue?.referenciaPropuesta || ""))}
               style={crossLinkBtn}
               title="Abrir la propuesta asociada a esta oportunidad"
             >
@@ -332,7 +332,7 @@ export default function ErpRecordEditor({
           ) : null}
           {moduleKey === "presupuestos" && mode === "edit" && (values.codigoOportunidad || initialValue?.codigoOportunidad) ? (
             <a
-              href={vlink("crm") + "?q=" + encodeURIComponent(String(values.codigoOportunidad || initialValue?.codigoOportunidad || ""))}
+              href={vlink("crm") + "?ver=" + encodeURIComponent(String(values.codigoOportunidad || initialValue?.codigoOportunidad || ""))}
               style={crossLinkBtn}
               title="Abrir la oportunidad de origen de esta propuesta"
             >
@@ -341,7 +341,7 @@ export default function ErpRecordEditor({
           ) : null}
           {moduleKey === "proyectos" && mode === "edit" && (values.referenciaPropuesta || initialValue?.referenciaPropuesta) ? (
             <a
-              href={vlink("presupuestos") + "?q=" + encodeURIComponent(String(values.referenciaPropuesta || initialValue?.referenciaPropuesta || ""))}
+              href={vlink("presupuestos") + "?ver=" + encodeURIComponent(String(values.referenciaPropuesta || initialValue?.referenciaPropuesta || ""))}
               style={crossLinkBtn}
               title="Abrir la propuesta que dio origen a este proyecto"
             >

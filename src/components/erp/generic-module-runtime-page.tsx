@@ -364,6 +364,32 @@ export default function GenericModuleRuntimePage({
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedIds, detailOpen, selected, modalMode, bulkModal, archiveConfirmOpen, deleteSuprOpen]);
 
+  // TEST-9.1 — Navegacion cruzada: ?ver=<numero|id> abre el detalle rapido.
+  const verHandledRef = useRef(false);
+  useEffect(() => {
+    if (verHandledRef.current) return;
+    if (typeof window === "undefined") return;
+    if (busy) return;
+    const ver = new URLSearchParams(window.location.search).get("ver");
+    if (!ver) { verHandledRef.current = true; return; }
+    verHandledRef.current = true;
+    const target = rows.find(
+      (r) => String(r.numero || "") === ver || String(r.id || "") === ver,
+    );
+    if (target) {
+      setSelected(target);
+      setDetailOpen(true);
+    }
+    const cleaned = new URLSearchParams(window.location.search);
+    cleaned.delete("ver");
+    const newSearch = cleaned.toString();
+    window.history.replaceState(
+      {},
+      "",
+      window.location.pathname + (newSearch ? "?" + newSearch : ""),
+    );
+  }, [busy, rows]);
+
   // Filtrado: query + estadoFilter + segmento + responsable (TEST-1.6).
   // TEST-5.1.a — La búsqueda antes hacía `Object.values(item).join(" ").includes(q)`,
   // lo cual buscaba en TODOS los campos del registro (incluido contactosJson
