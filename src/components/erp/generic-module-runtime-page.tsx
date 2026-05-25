@@ -198,6 +198,12 @@ export default function GenericModuleRuntimePage({
   const [showColumns, setShowColumns] = useState(false);
   const [showMore, setShowMore] = useState(false);
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set());
+  // TEST-10.11 — Selección de columnas con draft + "Aplicar". El usuario
+  // marca/desmarca en `draftHiddenCols` y solo al pulsar "Aplicar" se
+  // sincroniza a `hiddenCols` y se persiste en localStorage por tenant+módulo
+  // para que la elección se conserve al volver al módulo o navegar a otro
+  // del mismo vertical.
+  const [draftHiddenCols, setDraftHiddenCols] = useState<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -592,16 +598,39 @@ export default function GenericModuleRuntimePage({
 
   const titleField = ui.tableColumns.find((c) => c.isPrimary)?.fieldKey || allColumns[0]?.fieldKey || ui.fields[0]?.key || "id";
 
-  // TEST-10.1 — Al cargar el módulo, oculta por defecto las columnas extra
-  // (las que no están en el set base del pack/core). El usuario las activa
-  // desde "Mostrar columnas". Se recalcula solo al cambiar la definición.
+  // TEST-10.11 — Clave de persistencia por tenant+módulo para la selección
+  // de columnas visibles. Si no hay tenant en la URL, usa "default".
+  function colsStorageKey(): string {
+    const tenant = readTenant();
+    return "prontara:cols:" + (tenant || "default") + ":" + moduleKey;
+  }
+
+  // TEST-10.1 / TEST-10.11 — Al cargar el módulo, decide qué columnas ocultar:
+  //   1) Si hay preferencia guardada en localStorage para este tenant+módulo,
+  //      úsala (filtrando claves que ya no existen en la definición).
+  //   2) Si no, oculta las columnas extra (las que no están en el set base
+  //      del pack/core). Se recalcula al cambiar la definición o el módulo.
   useEffect(() => {
     const baseKeys = ui.tableColumns.length > 0
       ? new Set(ui.tableColumns.map((c) => c.fieldKey))
       : new Set(ui.fields.slice(0, 6).map((f) => f.key));
+    const validKeys = new Set(ui.fields.map((f) => f.key));
+    if (typeof window !== "undefined") {
+      try {
+        const raw = window.localStorage.getItem(colsStorageKey());
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) {
+            const stored = new Set(arr.map(String).filter((k) => validKeys.has(k)));
+            setHiddenCols(stored);
+            return;
+          }
+        }
+      } catch { /* localStorage no disponible: caemos al default */ }
+    }
     setHiddenCols(new Set(ui.fields.map((f) => f.key).filter((k) => !baseKeys.has(k))));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ui.tableColumns, ui.fields]);
+  }, [ui.tableColumns, ui.fields, moduleKey]);
 
   // TEST-10.2 / 10.5 / 10.9 — Opciones de un campo (definición del pack/core
   // + valores presentes en los datos). Se usa en filtros y en "Cambiar estado".
@@ -1122,25 +1151,87 @@ export default function GenericModuleRuntimePage({
             ) : null}
           </div>
 
-          {/* Columnas visibles */}
+          {/* Columnas visibles — TEST-10.11. Draft + Aplicar: el usuario
+              marca/desmarca columnas, opcionalmente usa "Seleccionar todos",
+              y al pulsar "Aplicar" la elección se aplica al listado y se
+              guarda en localStorage para conservarse entre navegaciones. */}
           <div style={{ position: "relative" }}>
-            <button type="button" onClick={() => setShowColumns(!showColumns)} style={toolbarBtn}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!showColumns) setDraftHiddenCols(new Set(hiddenCols));
+                setShowColumns(!showColumns);
+              }}
+              style={toolbarBtn}
+            >
               <span>▦</span> Columnas <span style={{ fontSize: 9, marginLeft: 4 }}>▾</span>
             </button>
             {showColumns ? (
-              <div style={popover(220)}>
+              <div style={popover(240)}>
                 <div style={popoverHeader}>Mostrar columnas</div>
+                {(() => {
+                  const total = allColumns.length;
+                  const visiblesEnDraft = allColumns.filter((c) => !draftHiddenCols.has(c.fieldKey)).length;
+                  const todosMarcados = visiblesEnDraft === total && total > 0;
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (todosMarcados) {
+                          setDraftHiddenCols(new Set(allColumns.map((c) => c.fieldKey)));
+                        } else {
+                          setDraftHiddenCols(new Set());
+                        }
+                      }}
+                      style={{ ...popoverItemBtn, fontWeight: 700, color: accent, borderBottom: "1px solid #f1f5f9", borderRadius: 0 }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={todosMarcados}
+                        ref={(el) => { if (el) el.indeterminate = visiblesEnDraft > 0 && !todosMarcados; }}
+                        readOnly
+                        style={{ pointerEvents: "none" }}
+                      />
+                      <span>Seleccionar todos</span>
+                    </button>
+                  );
+                })()}
                 {allColumns.map((c) => {
-                  const visible = !hiddenCols.has(c.fieldKey);
+                  const visible = !draftHiddenCols.has(c.fieldKey);
                   return (
                     <button key={c.fieldKey} type="button" onClick={() => {
-                      setHiddenCols((prev) => { const n = new Set(prev); if (visible) n.add(c.fieldKey); else n.delete(c.fieldKey); return n; });
+                      setDraftHiddenCols((prev) => { const n = new Set(prev); if (visible) n.add(c.fieldKey); else n.delete(c.fieldKey); return n; });
                     }} style={popoverItemBtn}>
                       <input type="checkbox" checked={visible} readOnly style={{ pointerEvents: "none" }} />
                       <span>{c.label}</span>
                     </button>
                   );
                 })}
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 6, paddingTop: 8, borderTop: "1px solid #f1f5f9" }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowColumns(false)}
+                    style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: "6px 10px" }}
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const next = new Set(draftHiddenCols);
+                      setHiddenCols(next);
+                      if (typeof window !== "undefined") {
+                        try {
+                          window.localStorage.setItem(colsStorageKey(), JSON.stringify(Array.from(next)));
+                        } catch { /* localStorage lleno o bloqueado: aplicar sin persistir */ }
+                      }
+                      setShowColumns(false);
+                    }}
+                    style={{ background: accent, color: "#fff", border: "none", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Aplicar
+                  </button>
+                </div>
               </div>
             ) : null}
           </div>
