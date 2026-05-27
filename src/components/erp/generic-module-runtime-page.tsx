@@ -37,6 +37,11 @@ type FieldDef = {
   placeholder?: string;
   // TEST-10.2/10.9 — opciones de los campos status (vienen del pack/core).
   options?: Array<{ value: string; label: string }>;
+  // TEST-11 — flags del rediseño del Parte de horas (ver SectorPackField).
+  readOnly?: boolean;
+  inheritFrom?: { from: string; field: string };
+  computed?: { type: "duration"; from: string; to: string };
+  visibleWhen?: { field: string; equals: string | string[] };
 };
 
 type TableColumnDef = {
@@ -192,6 +197,17 @@ export default function GenericModuleRuntimePage({
   // TEST-10.2.b — Filtro por fecha límite: oculta los registros cuya
   // fechaLimite sea posterior a la fecha indicada (vacío = sin filtro).
   const [fechaLimiteMax, setFechaLimiteMax] = useState("");
+  // TEST-11 — Filtros pedidos por Pedro en Parte de horas. Aparecen solo si
+  // el módulo tiene los campos correspondientes:
+  //   - clienteQuery / proyectoQuery: búsqueda textual sobre los campos
+  //     `cliente` y `proyecto` (relación → guarda nombre o id).
+  //   - fechaMin / fechaMax: rango sobre el campo `fecha`.
+  // El filtro Empleado reutiliza `responsableFilter` resolviendo el campo
+  // a `empleado`/`asignado`/`responsable` según exista (helper personaField).
+  const [clienteQuery, setClienteQuery] = useState("");
+  const [proyectoQuery, setProyectoQuery] = useState("");
+  const [fechaMin, setFechaMin] = useState("");
+  const [fechaMax, setFechaMax] = useState("");
   const [showFilters, setShowFilters] = useState(false);
   const [savedViews, setSavedViews] = useState<SavedView[]>([]);
   const [showViews, setShowViews] = useState(false);
@@ -407,6 +423,16 @@ export default function GenericModuleRuntimePage({
   // lo cual buscaba en TODOS los campos del registro (incluido contactosJson
   // crudo, id, notas, etc.) y producía falsos positivos. Ahora restringimos
   // la búsqueda a los campos visibles + el contacto preferido (en clientes).
+  // TEST-11 — Helper: qué campo del módulo representa "persona/empleado"
+  // (para el filtro de Empleado del Parte de horas y compat con módulos
+  // antiguos que usan "responsable"/"asignado").
+  const personaFieldKey = useMemo(() => {
+    if (ui.fields.some((f) => f.key === "empleado")) return "empleado";
+    if (ui.fields.some((f) => f.key === "asignado")) return "asignado";
+    if (ui.fields.some((f) => f.key === "responsable")) return "responsable";
+    return null;
+  }, [ui.fields]);
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const columnKeys = (ui.tableColumns || []).map((c) => c.fieldKey);
@@ -420,14 +446,32 @@ export default function GenericModuleRuntimePage({
         if (!segmentoFilter.has(seg)) return false;
       }
       if (responsableFilter.size > 0) {
-        const resp = String(item.responsable || item.asignado || "").toLowerCase();
-        if (!responsableFilter.has(resp)) return false;
+        // TEST-11 — Usa el campo persona detectado (empleado / asignado /
+        // responsable) en vez de mirar siempre responsable+asignado.
+        const personaVal = personaFieldKey
+          ? String(item[personaFieldKey] || "").toLowerCase()
+          : String(item.responsable || item.asignado || "").toLowerCase();
+        if (!responsableFilter.has(personaVal)) return false;
       }
       // TEST-10.2.b — Filtro por fecha límite: descartar registros con
       // fechaLimite posterior a la fecha tope indicada.
       if (fechaLimiteMax) {
         const fl = String(item.fechaLimite || "").slice(0, 10);
         if (fl && fl > fechaLimiteMax) return false;
+      }
+      // TEST-11 — Filtros nuevos del Parte de horas.
+      if (clienteQuery) {
+        const c = String(item.cliente || "").toLowerCase();
+        if (!c.includes(clienteQuery.toLowerCase())) return false;
+      }
+      if (proyectoQuery) {
+        const p = String(item.proyecto || "").toLowerCase();
+        if (!p.includes(proyectoQuery.toLowerCase())) return false;
+      }
+      if (fechaMin || fechaMax) {
+        const f = String(item.fecha || "").slice(0, 10);
+        if (fechaMin && f && f < fechaMin) return false;
+        if (fechaMax && f && f > fechaMax) return false;
       }
       if (q) {
         const parts: string[] = [];
@@ -457,7 +501,7 @@ export default function GenericModuleRuntimePage({
       }
       return true;
     });
-  }, [rows, query, estadoFilter, segmentoFilter, responsableFilter, fechaLimiteMax, ui.tableColumns, moduleKey]);
+  }, [rows, query, estadoFilter, segmentoFilter, responsableFilter, fechaLimiteMax, clienteQuery, proyectoQuery, fechaMin, fechaMax, personaFieldKey, ui.tableColumns, moduleKey]);
 
   // TEST-10.4 — Orden por defecto. Si el módulo tiene campo fechaLimite,
   // ordena por fecha límite ascendente y, a igual fecha, por prioridad
@@ -519,6 +563,24 @@ export default function GenericModuleRuntimePage({
   async function saveRecord(payload: Record<string, string>): Promise<Record<string, string> | null> {
     const tenant = readTenant();
     const sectorPack = readSectorPack();
+    // TEST-11 — Compat backward del Parte de horas (actividades). El
+    // formulario nuevo usa `empleado` / `tiempoHoras` (hh:mm), pero muchos
+    // lectores backend (bolsa-saldo, billing-preview, prefacturacion,
+    // daily-activity, etc.) leen `persona` / `horas` (decimal). Espejamos
+    // los valores nuevos a las claves legacy antes de persistir.
+    if (moduleKey === "actividades") {
+      const next: Record<string, string> = { ...payload };
+      if (next.empleado && !next.persona) next.persona = next.empleado;
+      if (next.tiempoHoras && !next.horas) {
+        const [hh = "0", mm = "0"] = String(next.tiempoHoras).split(":");
+        const decimal = parseInt(hh, 10) + parseInt(mm, 10) / 60;
+        if (Number.isFinite(decimal) && decimal > 0) {
+          next.horas = decimal.toFixed(2);
+        }
+      }
+      if (next.actividad && !next.tipoTrabajo) next.tipoTrabajo = next.actividad;
+      payload = next;
+    }
     let savedRow: Record<string, string> | null = null;
     if (modalMode === "create") {
       const response = await fetch("/api/erp/module", {
@@ -697,9 +759,13 @@ export default function GenericModuleRuntimePage({
           moduleLabel={ui.label}
           fields={ui.fields as Array<{
             key: string; label: string;
-            kind: "text" | "email" | "tel" | "textarea" | "date" | "number" | "money" | "status" | "relation";
+            kind: "text" | "email" | "tel" | "textarea" | "date" | "time" | "number" | "money" | "status" | "relation";
             required?: boolean; relationModuleKey?: string; placeholder?: string;
             options?: Array<{ value: string; label: string }>;
+            readOnly?: boolean;
+            inheritFrom?: { from: string; field: string };
+            computed?: { type: "duration"; from: string; to: string };
+            visibleWhen?: { field: string; equals: string | string[] };
           }>}
           // TEST-2.12 Duplicar — pasar selected también en create-from-duplicate.
           initialValue={selected}
@@ -951,6 +1017,27 @@ export default function GenericModuleRuntimePage({
     label: "Fecha límite ≤ " + fechaLimiteMax,
     onClear: () => setFechaLimiteMax(""),
   });
+  // TEST-11 — Chips de los nuevos filtros del Parte de horas.
+  if (clienteQuery) activeChips.push({
+    key: "clienteQuery",
+    label: "Cliente: " + clienteQuery,
+    onClear: () => setClienteQuery(""),
+  });
+  if (proyectoQuery) activeChips.push({
+    key: "proyectoQuery",
+    label: "Proyecto: " + proyectoQuery,
+    onClear: () => setProyectoQuery(""),
+  });
+  if (fechaMin) activeChips.push({
+    key: "fechaMin",
+    label: "Desde " + fechaMin,
+    onClear: () => setFechaMin(""),
+  });
+  if (fechaMax) activeChips.push({
+    key: "fechaMax",
+    label: "Hasta " + fechaMax,
+    onClear: () => setFechaMax(""),
+  });
   if (query) activeChips.push({ key: "query", label: '"' + query + '"', onClear: () => setQuery("") });
 
   return (
@@ -1032,7 +1119,7 @@ export default function GenericModuleRuntimePage({
               <div style={popover(300)}>
                 <div style={popoverHeader}>Vistas guardadas</div>
                 {/* TEST-2.10 — explicar diferencia entre "Todos" y vistas personalizadas */}
-                <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setFechaLimiteMax(""); setQuery(""); setShowViews(false); }} style={popoverItemBtn} title="Muestra todos los registros sin filtro aplicado">
+                <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setFechaLimiteMax(""); setClienteQuery(""); setProyectoQuery(""); setFechaMin(""); setFechaMax(""); setQuery(""); setShowViews(false); }} style={popoverItemBtn} title="Muestra todos los registros sin filtro aplicado">
                   <span>👥</span>
                   <span style={{ flex: 1, textAlign: "left" }}>
                     Todos
@@ -1087,8 +1174,8 @@ export default function GenericModuleRuntimePage({
           <div style={{ position: "relative" }}>
             <button type="button" onClick={() => setShowFilters(!showFilters)} style={toolbarBtn}>
               <span>▽</span> Filtros
-              {(estadoFilter.size + segmentoFilter.size + responsableFilter.size + (fechaLimiteMax ? 1 : 0)) > 0 ? (
-                <span style={popoverCount}>{estadoFilter.size + segmentoFilter.size + responsableFilter.size + (fechaLimiteMax ? 1 : 0)}</span>
+              {(estadoFilter.size + segmentoFilter.size + responsableFilter.size + (fechaLimiteMax ? 1 : 0) + (clienteQuery ? 1 : 0) + (proyectoQuery ? 1 : 0) + (fechaMin ? 1 : 0) + (fechaMax ? 1 : 0)) > 0 ? (
+                <span style={popoverCount}>{estadoFilter.size + segmentoFilter.size + responsableFilter.size + (fechaLimiteMax ? 1 : 0) + (clienteQuery ? 1 : 0) + (proyectoQuery ? 1 : 0) + (fechaMin ? 1 : 0) + (fechaMax ? 1 : 0)}</span>
               ) : null}
               <span style={{ fontSize: 9, marginLeft: 4 }}>▾</span>
             </button>
@@ -1116,16 +1203,63 @@ export default function GenericModuleRuntimePage({
                   accent={accent}
                 />
                 <CheckboxFilterGroup
-                  label="Responsable"
-                  options={
-                    ui.fields.some((f) => f.key === "responsable") ? fieldOptions("responsable")
-                      : ui.fields.some((f) => f.key === "asignado") ? fieldOptions("asignado")
-                      : []
-                  }
+                  // TEST-11 — Etiqueta "Empleado" cuando el módulo tiene
+                  // ese campo (Parte de horas), si no mantiene "Responsable".
+                  label={personaFieldKey === "empleado" ? "Empleado" : "Responsable"}
+                  options={personaFieldKey ? fieldOptions(personaFieldKey) : []}
                   selected={responsableFilter}
                   onChange={(next) => { setResponsableFilter(next); setPage(1); }}
                   accent={accent}
                 />
+                {/* TEST-11 — Filtros de búsqueda (Cliente / Proyecto) y de
+                    rango de fechas (Fecha desde / Fecha hasta), solo si el
+                    módulo tiene los campos correspondientes. */}
+                {ui.fields.some((f) => f.key === "cliente") ? (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={filterLabel}>Cliente</div>
+                    <input
+                      type="text"
+                      value={clienteQuery}
+                      onChange={(e) => { setClienteQuery(e.target.value); setPage(1); }}
+                      placeholder="Buscar por cliente…"
+                      style={{ width: "100%", padding: "6px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
+                    />
+                  </div>
+                ) : null}
+                {ui.fields.some((f) => f.key === "proyecto") ? (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={filterLabel}>Proyecto</div>
+                    <input
+                      type="text"
+                      value={proyectoQuery}
+                      onChange={(e) => { setProyectoQuery(e.target.value); setPage(1); }}
+                      placeholder="Buscar por proyecto…"
+                      style={{ width: "100%", padding: "6px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
+                    />
+                  </div>
+                ) : null}
+                {ui.fields.some((f) => f.key === "fecha") ? (
+                  <div style={{ marginBottom: 10, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <div style={filterLabel}>Fecha desde</div>
+                      <input
+                        type="date"
+                        value={fechaMin}
+                        onChange={(e) => { setFechaMin(e.target.value); setPage(1); }}
+                        style={{ width: "100%", padding: "6px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
+                      />
+                    </div>
+                    <div>
+                      <div style={filterLabel}>Fecha hasta</div>
+                      <input
+                        type="date"
+                        value={fechaMax}
+                        onChange={(e) => { setFechaMax(e.target.value); setPage(1); }}
+                        style={{ width: "100%", padding: "6px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
+                      />
+                    </div>
+                  </div>
+                ) : null}
                 {/* TEST-10.2.b — Filtro por fecha límite (solo si el módulo
                     tiene ese campo). Omite las tareas con fecha posterior. */}
                 {ui.fields.some((f) => f.key === "fechaLimite") ? (
@@ -1140,7 +1274,7 @@ export default function GenericModuleRuntimePage({
                   </div>
                 ) : null}
                 <div style={{ display: "flex", justifyContent: "space-between", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid #f1f5f9" }}>
-                  <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setFechaLimiteMax(""); }} style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setFechaLimiteMax(""); setClienteQuery(""); setProyectoQuery(""); setFechaMin(""); setFechaMax(""); }} style={{ background: "transparent", border: "none", color: "#64748b", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                     Limpiar
                   </button>
                   <button type="button" onClick={() => setShowFilters(false)} style={{ background: accent, color: "#fff", border: "none", padding: "6px 14px", borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
@@ -1246,7 +1380,7 @@ export default function GenericModuleRuntimePage({
                 <button type="button" onClick={c.onClear} style={chipClear} aria-label="Quitar filtro">×</button>
               </span>
             ))}
-            <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setFechaLimiteMax(""); setQuery(""); }} style={{ background: "transparent", border: "none", color: accent, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+            <button type="button" onClick={() => { setEstadoFilter(new Set()); setSegmentoFilter(new Set()); setResponsableFilter(new Set()); setFechaLimiteMax(""); setClienteQuery(""); setProyectoQuery(""); setFechaMin(""); setFechaMax(""); setQuery(""); }} style={{ background: "transparent", border: "none", color: accent, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
               Limpiar filtros
             </button>
           </div>
@@ -1283,7 +1417,7 @@ export default function GenericModuleRuntimePage({
             <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando…</div>
           ) : pageRows.length === 0 ? (
             <div style={{ padding: 60, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
-              {query || estadoFilter.size > 0 || segmentoFilter.size > 0 || responsableFilter.size > 0 || fechaLimiteMax ? "Ningún resultado con los filtros actuales." : ui.emptyState + " Pulsa “+ Alta de…” para empezar."}
+              {query || estadoFilter.size > 0 || segmentoFilter.size > 0 || responsableFilter.size > 0 || fechaLimiteMax || clienteQuery || proyectoQuery || fechaMin || fechaMax ? "Ningún resultado con los filtros actuales." : ui.emptyState + " Pulsa “+ Alta de…” para empezar."}
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>

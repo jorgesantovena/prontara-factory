@@ -22,7 +22,9 @@ import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
  * que lo usa (generic-module-runtime-page) pueda swap directo.
  */
 
-type FieldKind = "text" | "email" | "tel" | "textarea" | "date" | "number" | "money" | "status" | "relation";
+// TEST-11 — añadido "time" (hh:mm) y flags readOnly / inheritFrom /
+// computed / visibleWhen para el rediseño del Parte de horas.
+type FieldKind = "text" | "email" | "tel" | "textarea" | "date" | "time" | "number" | "money" | "status" | "relation";
 
 type UiFieldDefinition = {
   key: string;
@@ -32,6 +34,19 @@ type UiFieldDefinition = {
   relationModuleKey?: string;
   placeholder?: string;
   options?: Array<{ value: string; label: string }>;
+  // TEST-11 — Marca el campo como solo-salida (heredado, calculado o
+  // actualizado por proceso): se renderiza deshabilitado.
+  readOnly?: boolean;
+  // TEST-11 — Cuando el usuario elige el valor del campo `from` (debe ser
+  // una relación), el editor lee el registro destino y copia `field` en
+  // este campo. Ej.: cliente ← proyecto.cliente, km ← cliente.kilometrosBase.
+  inheritFrom?: { from: string; field: string };
+  // TEST-11 — Cálculo automático. Soportado: { type: "duration", from, to }
+  // produce "hh:mm" entre dos horas. Usado en Tiempo del Parte de horas.
+  computed?: { type: "duration"; from: string; to: string };
+  // TEST-11 — Visibilidad condicional: el campo solo se muestra si otro
+  // campo del registro tiene uno de los valores indicados.
+  visibleWhen?: { field: string; equals: string | string[] };
 };
 
 type OptionItem = { value: string; label: string };
@@ -126,7 +141,17 @@ export default function ErpRecordEditor({
     const acc: Record<TabKey, UiFieldDefinition[]> = {
       general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], documentos: [],
     };
-    for (const f of fields) acc[classifyField(f.key)].push(f);
+    // TEST-11 — En el Parte de horas (actividades) el orden EXACTO de
+    // campos que define el sector pack importa (Empleado → Fecha → Hora
+    // desde → Hora hasta → Tiempo → Lugar → Proyecto → Cliente → ...).
+    // Si dejamos que `classifyField` reparta por tabs, "tarifa" y similares
+    // se irían a Financiero y se rompería el orden. Forzamos todo a
+    // "general" para respetar el orden del pack.
+    const forceSingleTab = moduleKey === "actividades";
+    for (const f of fields) {
+      const tab = forceSingleTab ? "general" : classifyField(f.key);
+      acc[tab].push(f);
+    }
     // Collapse de tabs con 1 solo field a "general" (no aplica al propio general,
     // ni a tabs virtuales, ni a "contacto" cuando es módulo clientes — la
     // sublista de contactos puede coexistir con el grid de fields).
@@ -166,6 +191,8 @@ export default function ErpRecordEditor({
     const TODAY_DEFAULT_DATE_FIELDS = new Set([
       "fechaEnvio", "fechaEmision", "fechaInicio", "fechaAlta", "fechaCreacion",
       "fecha_alta", "fechaApertura",
+      // TEST-11 — Parte de horas: "fecha" del registro asume HOY por defecto.
+      "fecha",
     ]);
     const todayIso = new Date().toISOString().slice(0, 10);
     for (const f of fields) {
@@ -213,9 +240,117 @@ export default function ErpRecordEditor({
     return () => { cancelled = true; };
   }, [fields, tenant]);
 
+  // TEST-11 — Caché de records relacionados que ya hemos pedido para
+  // resolver herencia (proyecto → cliente / facturable / tipoFacturacion /
+  // tarifaHora; cliente → kilometrosBase). Evita re-fetch en cada cambio.
+  const [relatedRecordsCache, setRelatedRecordsCache] = useState<
+    Record<string, Record<string, Record<string, string>>>
+  >({});
+
+  async function loadRelatedRecord(modKey: string, recordId: string): Promise<Record<string, string> | null> {
+    if (!modKey || !recordId) return null;
+    const cached = relatedRecordsCache[modKey]?.[recordId];
+    if (cached) return cached;
+    try {
+      const url = "/api/erp/module?module=" + encodeURIComponent(modKey) +
+        (tenant ? "&tenant=" + encodeURIComponent(tenant) : "");
+      const r = await fetch(url, { cache: "no-store" });
+      const d = await r.json();
+      if (!r.ok || !d.ok || !Array.isArray(d.rows)) return null;
+      const record = (d.rows as Array<Record<string, string>>).find(
+        (row) => String(row.id || "") === recordId,
+      );
+      if (!record) return null;
+      setRelatedRecordsCache((c) => ({
+        ...c,
+        [modKey]: { ...(c[modKey] || {}), [recordId]: record },
+      }));
+      return record;
+    } catch {
+      return null;
+    }
+  }
+
+  // TEST-11 — Calcula duración entre dos horas "hh:mm" o "hh:mm:ss" y la
+  // devuelve formateada "hh:mm". Si alguna falta o el rango es negativo,
+  // devuelve "" para no enseñar basura al usuario.
+  function computeDuration(desde: string, hasta: string): string {
+    if (!desde || !hasta) return "";
+    const toMin = (s: string): number => {
+      const [hh = "0", mm = "0"] = String(s).split(":");
+      return parseInt(hh, 10) * 60 + parseInt(mm, 10);
+    };
+    const diff = toMin(hasta) - toMin(desde);
+    if (!Number.isFinite(diff) || diff <= 0) return "";
+    const hh = Math.floor(diff / 60).toString().padStart(2, "0");
+    const mm = (diff % 60).toString().padStart(2, "0");
+    return hh + ":" + mm;
+  }
+
   function setField(key: string, value: string) {
-    setValues((v) => ({ ...v, [key]: value }));
+    setValues((v) => {
+      const next: Record<string, string> = { ...v, [key]: value };
+      // TEST-11 — Recalcular campos computed.duration cuya from/to es `key`.
+      for (const f of fields) {
+        if (f.computed?.type === "duration" && (f.computed.from === key || f.computed.to === key)) {
+          const desde = f.computed.from === key ? value : (next[f.computed.from] || "");
+          const hasta = f.computed.to === key ? value : (next[f.computed.to] || "");
+          next[f.key] = computeDuration(desde, hasta);
+        }
+      }
+      return next;
+    });
     setDirty(true);
+
+    // TEST-11 — Herencia: si el campo modificado es una relación y otros
+    // campos tienen inheritFrom.from = key, cargar el record destino y
+    // copiar los campos heredados al state.
+    const sourceField = fields.find((f) => f.key === key);
+    if (sourceField?.kind === "relation" && sourceField.relationModuleKey && value) {
+      const heredables = fields.filter((f) => f.inheritFrom?.from === key);
+      if (heredables.length > 0) {
+        loadRelatedRecord(sourceField.relationModuleKey, value).then((record) => {
+          if (!record) return;
+          setValues((v) => {
+            const next: Record<string, string> = { ...v };
+            for (const f of heredables) {
+              const incoming = String(record[f.inheritFrom!.field] || "");
+              next[f.key] = incoming;
+              // Cascada: si lo heredado dispara otro inheritFrom (p.ej.
+              // cliente → km), recalcular en una segunda pasada simple.
+              for (const child of fields) {
+                if (child.inheritFrom?.from === f.key && incoming) {
+                  // Se delega a la siguiente carga; cargamos su record si es
+                  // relación, si no, omitimos (km es number no relación).
+                }
+              }
+            }
+            return next;
+          });
+          // Encadenado cliente → km (kilometrosBase). Tras heredar cliente
+          // desde proyecto, intentar cargar el record del cliente y aplicar
+          // los inheritFrom que dependan de `cliente`.
+          (async () => {
+            for (const f of heredables) {
+              if (f.kind !== "relation" || !f.relationModuleKey) continue;
+              const childHeredables = fields.filter((c) => c.inheritFrom?.from === f.key);
+              if (childHeredables.length === 0) continue;
+              const incoming = String(record[f.inheritFrom!.field] || "");
+              if (!incoming) continue;
+              const childRecord = await loadRelatedRecord(f.relationModuleKey, incoming);
+              if (!childRecord) continue;
+              setValues((v) => {
+                const nx: Record<string, string> = { ...v };
+                for (const c of childHeredables) {
+                  nx[c.key] = String(childRecord[c.inheritFrom!.field] || "");
+                }
+                return nx;
+              });
+            }
+          })();
+        });
+      }
+    }
   }
 
   async function doSubmit(andNew: boolean = false) {
@@ -499,9 +634,18 @@ function FieldGrid({ fields, values, setField, optionsMap, accent }: {
   if (fields.length === 0) {
     return <div style={{ padding: 30, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No hay campos en esta sección.</div>;
   }
+  // TEST-11 — Filtrar campos cuya condición visibleWhen no se cumpla
+  // (p. ej. Km solo aparece si Lugar = "casa_cliente").
+  const visibleFields = fields.filter((f) => {
+    if (!f.visibleWhen) return true;
+    const actual = String(values[f.visibleWhen.field] || "");
+    const esperado = f.visibleWhen.equals;
+    if (Array.isArray(esperado)) return esperado.includes(actual);
+    return esperado === actual;
+  });
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="prontara-field-grid">
-      {fields.map((f) => {
+      {visibleFields.map((f) => {
         const isWide = f.kind === "textarea";
         return (
           <div key={f.key} style={{ gridColumn: isWide ? "1 / -1" : undefined }}>
@@ -525,10 +669,14 @@ function FieldInput({ field, value, onChange, options, accent }: {
   options?: OptionItem[];
   accent: string;
 }) {
+  // TEST-11 — Pista visual de campos solo-lectura (heredados / calculados /
+  // actualizados por un proceso): fondo gris claro y candado en la etiqueta.
+  const isReadOnly = !!field.readOnly;
   const labelEl = (
     <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
       {field.label}
       {field.required ? <span style={{ color: "#dc2626", marginLeft: 4 }}>*</span> : null}
+      {isReadOnly ? <span style={{ color: "#94a3b8", marginLeft: 6, fontWeight: 400 }} title="Campo de solo lectura (heredado, calculado o de proceso)">🔒</span> : null}
     </label>
   );
   const baseStyle: React.CSSProperties = {
@@ -536,12 +684,13 @@ function FieldInput({ field, value, onChange, options, accent }: {
     padding: "10px 12px",
     border: "1px solid #e2e8f0",
     borderRadius: 8,
-    background: "#ffffff",
-    color: "#0f172a",
+    background: isReadOnly ? "#f1f5f9" : "#ffffff",
+    color: isReadOnly ? "#475569" : "#0f172a",
     fontSize: 13,
     fontFamily: "inherit",
     boxSizing: "border-box",
     outline: "none",
+    cursor: isReadOnly ? "not-allowed" : undefined,
   };
 
   let inputEl: React.ReactNode;
@@ -553,13 +702,15 @@ function FieldInput({ field, value, onChange, options, accent }: {
         onChange={(e) => onChange(e.target.value)}
         placeholder={field.placeholder}
         rows={4}
+        readOnly={isReadOnly}
+        disabled={isReadOnly}
         style={{ ...baseStyle, resize: "vertical", minHeight: 80 }}
       />
     );
   } else if (field.kind === "status" && (field.options?.length || options?.length)) {
     const opts = field.options || options || [];
     inputEl = (
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...baseStyle, appearance: "none", paddingRight: 28, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "10px" }}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} disabled={isReadOnly} style={{ ...baseStyle, appearance: "none", paddingRight: 28, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "10px" }}>
         <option value="">— Selecciona —</option>
         {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -567,7 +718,7 @@ function FieldInput({ field, value, onChange, options, accent }: {
   } else if (field.kind === "relation") {
     const opts = options || [];
     inputEl = (
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...baseStyle, appearance: "none", paddingRight: 28, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "10px" }}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} disabled={isReadOnly} style={{ ...baseStyle, appearance: "none", paddingRight: 28, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "10px" }}>
         <option value="">— Selecciona —</option>
         {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -582,27 +733,34 @@ function FieldInput({ field, value, onChange, options, accent }: {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={field.placeholder || "0,00"}
+          readOnly={isReadOnly}
+          disabled={isReadOnly}
           style={{ ...baseStyle, paddingLeft: 28 }}
         />
       </div>
     );
   } else if (field.kind === "date") {
     inputEl = (
-      <input type="date" value={value} onChange={(e) => onChange(e.target.value)} style={baseStyle} />
+      <input type="date" value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} style={baseStyle} />
+    );
+  } else if (field.kind === "time") {
+    // TEST-11 — Input nativo hh:mm para Hora desde / Hora hasta.
+    inputEl = (
+      <input type="time" step={60} value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} placeholder={field.placeholder || "hh:mm"} style={baseStyle} />
     );
   } else if (field.kind === "tel") {
     inputEl = (
       <div style={{ display: "flex", gap: 6 }}>
         <span style={{ display: "inline-flex", alignItems: "center", padding: "0 10px", border: "1px solid #e2e8f0", borderRadius: 8, background: "#f8fafc", fontSize: 13, color: "#475569" }}>🇪🇸</span>
-        <input type="tel" value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder || "+34 600 000 000"} style={baseStyle} />
+        <input type="tel" value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} placeholder={field.placeholder || "+34 600 000 000"} style={baseStyle} />
       </div>
     );
   } else if (field.kind === "email") {
-    inputEl = <input type="email" value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} style={baseStyle} />;
+    inputEl = <input type="email" value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} placeholder={field.placeholder} style={baseStyle} />;
   } else if (field.kind === "number") {
-    inputEl = <input type="number" value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} style={baseStyle} />;
+    inputEl = <input type="number" value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} placeholder={field.placeholder} style={baseStyle} />;
   } else {
-    inputEl = <input type="text" value={value} onChange={(e) => onChange(e.target.value)} placeholder={field.placeholder} style={baseStyle} />;
+    inputEl = <input type="text" value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} placeholder={field.placeholder} style={baseStyle} />;
   }
 
   void accent;

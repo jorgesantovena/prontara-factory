@@ -357,6 +357,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     ] },
     { moduleKey: "clientes", fieldKey: "responsable", label: "Account manager", kind: "text", placeholder: "Quién lleva la cuenta internamente" },
     { moduleKey: "clientes", fieldKey: "fechaAlta", label: "Cliente desde", kind: "date" },
+    // TEST-11 — Km hasta el cliente. Origen del Km heredado del parte de
+    // horas cuando Lugar=Casa cliente.
+    { moduleKey: "clientes", fieldKey: "kilometrosBase", label: "Km hasta el cliente", kind: "number", placeholder: "Km del trayecto oficina → casa del cliente (ida)" },
     { moduleKey: "clientes", fieldKey: "notas", label: "Notas internas", kind: "textarea", placeholder: "Observaciones útiles del cliente" },
 
     // CRM (oportunidades) — SF-21.
@@ -392,6 +395,14 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "pausado", label: "Pausado" },
       { value: "finalizado", label: "Finalizado" },
       { value: "expirado", label: "Expirado" },
+    ] },
+    // TEST-11 — Método de facturación que se hereda al Parte de horas.
+    { moduleKey: "proyectos", fieldKey: "tipoFacturacion", label: "Método facturación", kind: "status", placeholder: "Cómo se factura este proyecto", options: [
+      { value: "fija", label: "Tarifa fija" },
+      { value: "contra-bolsa", label: "Contra bolsa de horas" },
+      { value: "fuera-bolsa", label: "Fuera de bolsa" },
+      { value: "por-hito", label: "Por hito" },
+      { value: "no-facturable", label: "No facturable" },
     ] },
     { moduleKey: "proyectos", fieldKey: "facturable", label: "Facturable", kind: "status", required: true, placeholder: "si / no — heredado del tipo, sobrescribible", options: [
       { value: "si", label: "Sí" },
@@ -446,26 +457,64 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "fechaVencimiento", label: "Vencimiento", kind: "date" },
     { moduleKey: "facturacion", fieldKey: "notas", label: "Notas", kind: "textarea", placeholder: "Observaciones internas sobre la factura" },
 
-    // Parte de horas (actividades) — campos explícitos.
-    { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", kind: "date", required: true, placeholder: "YYYY-MM-DD" },
-    { moduleKey: "actividades", fieldKey: "persona", label: "Persona", kind: "text", required: true, placeholder: "Quien imputa las horas" },
-    { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto", kind: "relation", required: true, relationModuleKey: "proyectos" },
-    { moduleKey: "actividades", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Qué se hizo en este tramo" },
-    { moduleKey: "actividades", fieldKey: "horas", label: "Horas", kind: "text", required: true, placeholder: "Decimal: 0.5, 1, 4, 7.5..." },
-    { moduleKey: "actividades", fieldKey: "kilometros", label: "Km", kind: "text", placeholder: "Km recorridos imputables al cliente" },
-    { moduleKey: "actividades", fieldKey: "tipoTrabajo", label: "Tipo de trabajo", kind: "text", placeholder: "desarrollo / análisis / soporte / qa / reunion / documentacion" },
-    { moduleKey: "actividades", fieldKey: "facturable", label: "Facturable", kind: "status", placeholder: "si / no — heredado del proyecto", options: [
+    // TEST-11 — Parte de horas (actividades) rediseñado por Pedro.
+    // Orden EXACTO del formulario, claves de campos heredados/calculados/condicionales:
+    //   - readOnly: el editor lo muestra deshabilitado (Cliente, Tiempo,
+    //     Facturable, Método facturación, Facturado, Factura nº).
+    //   - inheritFrom: el editor lo autorrellena al elegir la relación
+    //     fuente (Cliente / Facturable / Método / Tarifa ← Proyecto;
+    //     Km ← Cliente).
+    //   - computed.duration: el editor calcula al cambiar from/to.
+    //   - visibleWhen: el editor oculta el campo si la condición no se da
+    //     (Km solo si Lugar=Casa cliente).
+    { moduleKey: "actividades", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados", placeholder: "Quien imputa las horas" },
+    { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", kind: "date", required: true, placeholder: "YYYY-MM-DD (por defecto HOY)" },
+    { moduleKey: "actividades", fieldKey: "horaDesde", label: "Hora desde", kind: "time", required: true, placeholder: "hh:mm" },
+    { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hora hasta", kind: "time", required: true, placeholder: "hh:mm" },
+    { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "Tiempo", kind: "text", readOnly: true, computed: { type: "duration", from: "horaDesde", to: "horaHasta" }, placeholder: "Se calcula: Hora hasta − Hora desde" },
+    { moduleKey: "actividades", fieldKey: "lugar", label: "Lugar", kind: "status", required: true, options: [
+      { value: "oficina", label: "Oficina" },
+      { value: "teletrabajo", label: "Teletrabajo" },
+      { value: "casa_cliente", label: "Casa cliente" },
+      { value: "desplazamiento", label: "Desplazamiento" },
+    ] },
+    { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto", kind: "relation", required: true, relationModuleKey: "proyectos", placeholder: "Selecciona el proyecto al que se imputa" },
+    { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes", readOnly: true, inheritFrom: { from: "proyecto", field: "cliente" }, placeholder: "Heredado del proyecto" },
+    { moduleKey: "actividades", fieldKey: "facturable", label: "Facturable", kind: "status", readOnly: true, inheritFrom: { from: "proyecto", field: "facturable" }, placeholder: "Heredado del proyecto", options: [
       { value: "si", label: "Sí" },
       { value: "no", label: "No" },
     ] },
-    { moduleKey: "actividades", fieldKey: "tarifaHora", label: "Tarifa €/h", kind: "text", placeholder: "Heredada del proyecto/catálogo. Sobrescribible aquí." },
-    { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado", kind: "status", placeholder: "si / no — se marca al generar factura", options: [
+    { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Método facturación", kind: "status", readOnly: true, inheritFrom: { from: "proyecto", field: "tipoFacturacion" }, placeholder: "Heredado del proyecto", options: [
+      { value: "fija", label: "Tarifa fija" },
+      { value: "contra-bolsa", label: "Contra bolsa de horas" },
+      { value: "fuera-bolsa", label: "Fuera de bolsa" },
+      { value: "por-hito", label: "Por hito" },
+      { value: "no-facturable", label: "No facturable" },
+    ] },
+    { moduleKey: "actividades", fieldKey: "tarifaHora", label: "Tarifa €/h", kind: "text", inheritFrom: { from: "proyecto", field: "tarifaHoraOverride" }, placeholder: "Heredada del proyecto, editable aquí si procede" },
+    { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado", kind: "status", readOnly: true, placeholder: "Se actualiza con el proceso de facturación", options: [
       { value: "si", label: "Sí" },
       { value: "no", label: "No" },
     ] },
-    { moduleKey: "actividades", fieldKey: "facturaNumero", label: "Factura nº", kind: "text", placeholder: "Número de la factura donde se incluyó" },
-    { moduleKey: "actividades", fieldKey: "tareaRelacionada", label: "Tarea", kind: "text", placeholder: "Tarea asociada (opcional)" },
-    { moduleKey: "actividades", fieldKey: "notas", label: "Notas", kind: "text", placeholder: "Observaciones internas" },
+    { moduleKey: "actividades", fieldKey: "facturaNumero", label: "Factura nº", kind: "text", readOnly: true, placeholder: "Se actualiza con el proceso de facturación" },
+    { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad", kind: "status", required: true, placeholder: "Tipo de trabajo realizado", options: [
+      { value: "desarrollo", label: "Desarrollo" },
+      { value: "analisis", label: "Análisis" },
+      { value: "soporte", label: "Soporte" },
+      { value: "reunion", label: "Reunión" },
+      { value: "documentacion", label: "Documentación" },
+      { value: "qa", label: "QA / Pruebas" },
+      { value: "despliegue", label: "Despliegue" },
+      { value: "formacion", label: "Formación" },
+    ] },
+    { moduleKey: "actividades", fieldKey: "concepto", label: "Concepto", kind: "textarea", required: true, placeholder: "Descripción libre del trabajo realizado" },
+    { moduleKey: "actividades", fieldKey: "km", label: "Km", kind: "number", inheritFrom: { from: "cliente", field: "kilometrosBase" }, visibleWhen: { field: "lugar", equals: "casa_cliente" }, placeholder: "Heredado del cliente (visible solo si Lugar = Casa cliente)" },
+    { moduleKey: "actividades", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+      { value: "pendiente", label: "Pendiente" },
+      { value: "validada", label: "Validada" },
+      { value: "facturada", label: "Facturada" },
+      { value: "rechazada", label: "Rechazada" },
+    ] },
 
     // Catálogo de servicios — campos del tipo de servicio.
     {
@@ -605,15 +654,17 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "cau", fieldKey: "asignado", label: "Asignado" },
     { moduleKey: "cau", fieldKey: "estado", label: "Estado" },
 
+    // TEST-11 — Parte de horas: columnas exactas pedidas por Pedro.
     { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", isPrimary: true },
-    { moduleKey: "actividades", fieldKey: "persona", label: "Persona" },
+    { moduleKey: "actividades", fieldKey: "empleado", label: "Empleado" },
+    { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente" },
+    { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad" },
     { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto" },
     { moduleKey: "actividades", fieldKey: "concepto", label: "Concepto" },
-    { moduleKey: "actividades", fieldKey: "horas", label: "Horas" },
-    { moduleKey: "actividades", fieldKey: "kilometros", label: "Km" },
-    { moduleKey: "actividades", fieldKey: "facturable", label: "Facturable" },
-    { moduleKey: "actividades", fieldKey: "tarifaHora", label: "€/h" },
-    { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado" },
+    { moduleKey: "actividades", fieldKey: "horaDesde", label: "Desde" },
+    { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hasta" },
+    { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "Tiempo" },
+    { moduleKey: "actividades", fieldKey: "estado", label: "Estado" },
 
     // Propuestas (presupuestos) — SF-14.
     { moduleKey: "presupuestos", fieldKey: "numero", label: "Nº", isPrimary: true },

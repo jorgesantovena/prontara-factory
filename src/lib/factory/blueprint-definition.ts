@@ -59,11 +59,17 @@ export type BlueprintFieldConfig = {
   moduleKey: string;
   fieldKey: string;
   label: string;
-  kind: "text" | "email" | "tel" | "textarea" | "date" | "number" | "money" | "status" | "relation";
+  // TEST-11 — añadido "time" (hh:mm).
+  kind: "text" | "email" | "tel" | "textarea" | "date" | "time" | "number" | "money" | "status" | "relation";
   required?: boolean;
   relationModuleKey?: string;
   placeholder?: string;
   options?: BlueprintFieldOption[];
+  // TEST-11 — Ver SectorPackField para semántica completa.
+  readOnly?: boolean;
+  inheritFrom?: { from: string; field: string };
+  computed?: { type: "duration"; from: string; to: string };
+  visibleWhen?: { field: string; equals: string | string[] };
 };
 
 export type BlueprintDemoDataConfig = {

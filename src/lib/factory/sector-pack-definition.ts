@@ -16,11 +16,42 @@ export type SectorPackField = {
   moduleKey: string;
   fieldKey: string;
   label: string;
-  kind: "text" | "email" | "tel" | "textarea" | "date" | "number" | "money" | "status" | "relation";
+  // TEST-11 — añadidos "time" (hh:mm), kind nativo para horas del día.
+  kind: "text" | "email" | "tel" | "textarea" | "date" | "time" | "number" | "money" | "status" | "relation";
   required?: boolean;
   relationModuleKey?: string;
   placeholder?: string;
   options?: SectorPackFieldOption[];
+  /**
+   * TEST-11 — Marca el campo como solo-salida en el editor: el usuario lo
+   * ve pero no lo puede editar. Usado para:
+   *   - Campos heredados de otra entidad (Cliente / Facturable / Método
+   *     facturación / Tarifa heredados del Proyecto en parte de horas).
+   *   - Campos calculados (Tiempo = Hora hasta − Hora desde).
+   *   - Campos actualizados por un proceso (Facturado / Factura nº).
+   */
+  readOnly?: boolean;
+  /**
+   * TEST-11 — Herencia automática desde una relación. Cuando el usuario
+   * elige el valor del campo `from` (que debe ser una relación), el editor
+   * carga el registro destino y copia su campo `field` en este campo.
+   * Ejemplo: en actividades, `cliente` se hereda con
+   *   { from: "proyecto", field: "cliente" }.
+   */
+  inheritFrom?: { from: string; field: string };
+  /**
+   * TEST-11 — Cálculo automático del valor del campo a partir de otros del
+   * mismo registro. Soportados:
+   *   - { type: "duration", from: "horaInicio", to: "horaFin" }
+   *     produce "hh:mm" entre las dos horas (Tiempo = Hora hasta − Hora desde).
+   */
+  computed?: { type: "duration"; from: string; to: string };
+  /**
+   * TEST-11 — Visibilidad condicional. El campo solo se renderiza en el
+   * editor cuando otro campo del registro tiene uno de los valores
+   * indicados. Ejemplo: Km solo si Lugar = "casa_cliente".
+   */
+  visibleWhen?: { field: string; equals: string | string[] };
 };
 
 export type SectorPackTableColumn = {
