@@ -46,6 +46,26 @@ export async function GET(request: NextRequest) {
           };
         }
 
+        // TEST-11 bis-3 — Catálogo de actividades: value = codigo (que es
+        // el primary del módulo), label = "codigo · nombre" para que el
+        // dropdown del Parte de horas sea legible.
+        if (moduleKey === "actividades-catalogo") {
+          return {
+            value: String(item.codigo || ""),
+            label: String(item.codigo || "") + (item.nombre ? " · " + String(item.nombre) : ""),
+          };
+        }
+
+        // TEST-11 bis-5 — Empleados: value = nombre (legible) en lugar de
+        // id. Coherente con clientes/proyectos para que los filtros y la
+        // columna Empleado del listado muestren el nombre, no el UUID.
+        if (moduleKey === "empleados") {
+          return {
+            value: String(item.nombre || ""),
+            label: String(item.nombre || ""),
+          };
+        }
+
         return {
           value: String(item.id || ""),
           label: String(item.nombre || item.numero || item.contacto || item.id || ""),

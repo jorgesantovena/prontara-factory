@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 
@@ -299,9 +299,9 @@ export default function ErpRecordEditor({
       const rows = d.rows as Array<Record<string, string>>;
       const record = rows.find((row) => String(row.id || "") === ref)
         || rows.find((row) => String(row.nombre || "") === ref)
+        || rows.find((row) => String(row.codigo || "") === ref)
         || rows.find((row) => String(row.numero || "") === ref)
-        || rows.find((row) => String(row.titulo || "") === ref)
-        || rows.find((row) => String(row.codigo || "") === ref);
+        || rows.find((row) => String(row.titulo || "") === ref);
       if (!record) return null;
       setRelatedRecordsCache((c) => ({
         ...c,
@@ -748,12 +748,30 @@ function FieldInput({ field, value, onChange, options, accent }: {
     );
   } else if (field.kind === "relation") {
     const opts = options || [];
-    inputEl = (
-      <select value={value} onChange={(e) => onChange(e.target.value)} disabled={isReadOnly} style={{ ...baseStyle, appearance: "none", paddingRight: 28, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "10px" }}>
-        <option value="">— Selecciona —</option>
-        {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    );
+    // TEST-11 bis-2 — Si el campo es readOnly (heredado), el <select disabled>
+    // mostraba "— Selecciona —" cuando el value heredado no estaba todavía en
+    // las options cargadas async (o no se cargan). Renderizar como input text
+    // del valor heredado tal cual: el dropdown no aporta nada en readOnly.
+    if (isReadOnly) {
+      // Intentamos resolver el label si el value coincide con una option;
+      // si no, mostramos el value crudo (que ya suele ser el nombre legible
+      // como "Acme Labs" por el contrato de /api/erp/options).
+      const matched = opts.find((o) => o.value === value);
+      const display = matched?.label || value || "";
+      inputEl = (
+        <input type="text" value={display} readOnly disabled style={baseStyle} />
+      );
+    } else {
+      inputEl = (
+        <RelationCombobox
+          value={value}
+          options={opts}
+          onChange={onChange}
+          placeholder={field.placeholder || "Buscar y seleccionar..."}
+          baseStyle={baseStyle}
+        />
+      );
+    }
   } else if (field.kind === "money") {
     inputEl = (
       <div style={{ position: "relative" }}>
@@ -805,6 +823,103 @@ function FieldInput({ field, value, onChange, options, accent }: {
 }
 
 const chevronBg = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath fill='%2364748b' d='M6 8.5L2 4.5h8z'/%3E%3C/svg%3E\")";
+
+// TEST-11 bis-1 — Combobox con búsqueda para campos de relación. Reemplaza
+// al <select> nativo cuando hay muchas opciones (proyectos, clientes,
+// empleados...) y filtrar tecleando es más útil que scrollear. Muestra el
+// label asociado al value actual, abre lista al hacer foco, filtra mientras
+// se teclea y permite limpiar con × o Esc.
+function RelationCombobox({
+  value, options, onChange, placeholder, baseStyle,
+}: {
+  value: string;
+  options: OptionItem[];
+  onChange: (v: string) => void;
+  placeholder: string;
+  baseStyle: React.CSSProperties;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Cuando cambia el value externo (p.ej. herencia, prefill), reflejar
+  // el label en el input. Si el valor no coincide con ninguna opción
+  // (todavía no cargadas), mostrar el value crudo.
+  useEffect(() => {
+    const matched = options.find((o) => o.value === value);
+    setQuery(matched?.label || value || "");
+  }, [value, options]);
+
+  // Cerrar al click fuera.
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+        // Si el query no coincide con ninguna opción, restaurar al label del value.
+        const matched = options.find((o) => o.value === value);
+        setQuery(matched?.label || value || "");
+      }
+    }
+    if (open) document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open, options, value]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q || q === (options.find((o) => o.value === value)?.label || value || "").toLowerCase()) {
+      return options.slice(0, 50);
+    }
+    return options.filter((o) => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)).slice(0, 50);
+  }, [query, options, value]);
+
+  return (
+    <div ref={containerRef} style={{ position: "relative" }}>
+      <input
+        type="text"
+        value={query}
+        placeholder={placeholder}
+        onChange={(e) => { setQuery(e.target.value); setOpen(true); }}
+        onFocus={() => setOpen(true)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") { setOpen(false); (e.currentTarget as HTMLInputElement).blur(); }
+        }}
+        style={{ ...baseStyle, paddingRight: 56 }}
+      />
+      {value ? (
+        <button
+          type="button"
+          onClick={() => { onChange(""); setQuery(""); setOpen(false); }}
+          title="Limpiar"
+          style={{ position: "absolute", right: 32, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", cursor: "pointer", color: "#94a3b8", fontSize: 16, padding: 0 }}
+        >
+          ×
+        </button>
+      ) : null}
+      <span style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "#64748b", fontSize: 10, pointerEvents: "none" }}>▾</span>
+      {open ? (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, maxHeight: 240, overflowY: "auto", background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 8, boxShadow: "0 10px 30px rgba(15,23,42,0.12)", zIndex: 60 }}>
+          {filtered.length === 0 ? (
+            <div style={{ padding: "10px 12px", fontSize: 12, color: "#94a3b8" }}>Sin resultados.</div>
+          ) : (
+            filtered.map((o) => {
+              const isSel = o.value === value;
+              return (
+                <button
+                  key={o.value}
+                  type="button"
+                  onClick={() => { onChange(o.value); setQuery(o.label); setOpen(false); }}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "8px 12px", fontSize: 13, color: "#0f172a", background: isSel ? "#eff6ff" : "transparent", border: "none", cursor: "pointer", fontWeight: isSel ? 600 : 400 }}
+                >
+                  {o.label}
+                </button>
+              );
+            })
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
 
 // TEST-6.1.c — Formatea una fecha (ISO o lo que llegue) a DD/MM/AAAA en
 // español. Si no es parseable, devuelve la cadena original.
