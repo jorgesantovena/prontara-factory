@@ -17,6 +17,21 @@ type OptionItem = {
   label: string;
 };
 
+// TEST-11 — Calcula duración entre dos horas "hh:mm" y la devuelve
+// formateada "hh:mm". Mismo helper que erp-record-editor.tsx.
+function computeDuration(desde: string, hasta: string): string {
+  if (!desde || !hasta) return "";
+  const toMin = (s: string): number => {
+    const [hh = "0", mm = "0"] = String(s).split(":");
+    return parseInt(hh, 10) * 60 + parseInt(mm, 10);
+  };
+  const diff = toMin(hasta) - toMin(desde);
+  if (!Number.isFinite(diff) || diff <= 0) return "";
+  const hh = Math.floor(diff / 60).toString().padStart(2, "0");
+  const mm = (diff % 60).toString().padStart(2, "0");
+  return hh + ":" + mm;
+}
+
 export default function ErpRecordModal({
   open,
   mode,
@@ -40,16 +55,43 @@ export default function ErpRecordModal({
   const [optionsMap, setOptionsMap] = useState<Record<string, OptionItem[]>>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // TEST-11 — cache de records relacionados para resolver herencia
+  // (proyecto → cliente / facturable / tipoFacturacion / tarifaHora;
+  // cliente → kilometrosBase). Igual que en ErpRecordEditor.
+  const [relatedCache, setRelatedCache] = useState<Record<string, Record<string, Record<string, string>>>>({});
 
   useEffect(() => {
     if (!open) return;
+    // TEST-11 — fecha = HOY por defecto en create para campos típicos.
+    const TODAY_DEFAULT_DATE_FIELDS = new Set([
+      "fechaEnvio", "fechaEmision", "fechaInicio", "fechaAlta", "fechaCreacion",
+      "fecha_alta", "fechaApertura", "fecha",
+    ]);
+    const todayIso = new Date().toISOString().slice(0, 10);
     const next: Record<string, string> = {};
     for (const field of fields) {
-      next[field.key] = String(initialValue?.[field.key] || "");
+      const initVal = initialValue?.[field.key];
+      if (initVal != null && String(initVal) !== "") {
+        next[field.key] = String(initVal);
+      } else if (mode === "create" && field.kind === "date" && TODAY_DEFAULT_DATE_FIELDS.has(field.key)) {
+        next[field.key] = todayIso;
+      } else {
+        next[field.key] = "";
+      }
+    }
+    // TEST-11 — Recalcular computed.duration en carga inicial.
+    for (const f of fields) {
+      if (f.computed?.type === "duration") {
+        const current = String(next[f.key] || "").trim();
+        if (!current) {
+          const dur = computeDuration(String(next[f.computed.from] || ""), String(next[f.computed.to] || ""));
+          if (dur) next[f.key] = dur;
+        }
+      }
     }
     setValues(next);
     setError("");
-  }, [open, fields, initialValue]);
+  }, [open, fields, initialValue, mode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -89,8 +131,11 @@ export default function ErpRecordModal({
     };
   }, [open, fields, tenant]);
 
+  // TEST-11 — La validación de "required" solo aplica a campos visibles
+  // (visibleWhen) y NO read-only/heredados (cuyo valor lo establece el
+  // sistema, no el usuario).
   const requiredFields = useMemo(
-    () => fields.filter((field) => field.required),
+    () => fields.filter((field) => field.required && !field.readOnly),
     [fields],
   );
 
@@ -100,6 +145,13 @@ export default function ErpRecordModal({
     setError("");
 
     for (const field of requiredFields) {
+      // Si el campo no está visible por visibleWhen, no es obligatorio.
+      if (field.visibleWhen) {
+        const actual = String(values[field.visibleWhen.field] || "");
+        const expected = field.visibleWhen.equals;
+        const visible = Array.isArray(expected) ? expected.includes(actual) : actual === expected;
+        if (!visible) continue;
+      }
       if (!String(values[field.key] || "").trim()) {
         setError("Completa el campo obligatorio: " + field.label);
         setBusy(false);
@@ -117,11 +169,89 @@ export default function ErpRecordModal({
     }
   }
 
+  // TEST-11 — Lookup en cache + fallback id/nombre/numero/titulo/codigo
+  // (mismo criterio que /api/erp/options).
+  async function loadRelatedRecord(modKey: string, ref: string): Promise<Record<string, string> | null> {
+    if (!modKey || !ref) return null;
+    const cached = relatedCache[modKey]?.[ref];
+    if (cached) return cached;
+    try {
+      const url = "/api/erp/module?module=" + encodeURIComponent(modKey) +
+        (tenant ? "&tenant=" + encodeURIComponent(tenant) : "");
+      const r = await fetch(url, { cache: "no-store" });
+      const d = await r.json();
+      if (!r.ok || !d.ok || !Array.isArray(d.rows)) return null;
+      const rows = d.rows as Array<Record<string, string>>;
+      const record = rows.find((row) => String(row.id || "") === ref)
+        || rows.find((row) => String(row.nombre || "") === ref)
+        || rows.find((row) => String(row.numero || "") === ref)
+        || rows.find((row) => String(row.titulo || "") === ref)
+        || rows.find((row) => String(row.codigo || "") === ref);
+      if (!record) return null;
+      setRelatedCache((c) => ({ ...c, [modKey]: { ...(c[modKey] || {}), [ref]: record } }));
+      return record;
+    } catch {
+      return null;
+    }
+  }
+
   function updateField(key: string, value: string) {
-    setValues((current) => ({
-      ...current,
-      [key]: value,
-    }));
+    setValues((current) => {
+      const next: Record<string, string> = { ...current, [key]: value };
+      // TEST-11 — Recalcular computed.duration cuando from o to cambian.
+      for (const f of fields) {
+        if (f.computed?.type === "duration" && (f.computed.from === key || f.computed.to === key)) {
+          const desde = f.computed.from === key ? value : (next[f.computed.from] || "");
+          const hasta = f.computed.to === key ? value : (next[f.computed.to] || "");
+          next[f.key] = computeDuration(desde, hasta);
+        }
+      }
+      return next;
+    });
+
+    // TEST-11 — Herencia: si el campo modificado es relation y otros tienen
+    // inheritFrom.from = key, cargar el record destino y copiar campos.
+    const sourceField = fields.find((f) => f.key === key);
+    if (sourceField?.kind === "relation" && sourceField.relationModuleKey && value) {
+      const heredables = fields.filter((f) => f.inheritFrom?.from === key);
+      if (heredables.length > 0) {
+        loadRelatedRecord(sourceField.relationModuleKey, value).then((record) => {
+          if (!record) return;
+          setValues((v) => {
+            const nx: Record<string, string> = { ...v };
+            for (const f of heredables) nx[f.key] = String(record[f.inheritFrom!.field] || "");
+            return nx;
+          });
+          // Cascada heredable → su propia relación → siguiente nivel.
+          (async () => {
+            for (const f of heredables) {
+              if (f.kind !== "relation" || !f.relationModuleKey) continue;
+              const childHeredables = fields.filter((c) => c.inheritFrom?.from === f.key);
+              if (childHeredables.length === 0) continue;
+              const incoming = String(record[f.inheritFrom!.field] || "");
+              if (!incoming) continue;
+              const childRecord = await loadRelatedRecord(f.relationModuleKey, incoming);
+              if (!childRecord) continue;
+              setValues((v) => {
+                const nx: Record<string, string> = { ...v };
+                for (const c of childHeredables) nx[c.key] = String(childRecord[c.inheritFrom!.field] || "");
+                return nx;
+              });
+            }
+          })();
+        });
+      }
+    }
+  }
+
+  // TEST-11 — `visibleWhen` evalúa si un campo se renderiza según el valor
+  // de otro campo del mismo record.
+  function isVisible(field: UiFieldDefinition): boolean {
+    if (!field.visibleWhen) return true;
+    const actual = String(values[field.visibleWhen.field] || "");
+    const expected = field.visibleWhen.equals;
+    if (Array.isArray(expected)) return expected.includes(actual);
+    return actual === expected;
   }
 
   // Footer del slide-over con los botones de acción.
@@ -174,7 +304,21 @@ export default function ErpRecordModal({
       footer={footer}
     >
       <form id="erp-record-form" onSubmit={submit} style={{ display: "grid", gap: 14 }}>
-        {fields.map((field) => (
+        {fields.filter(isVisible).map((field) => {
+          // TEST-11 — readOnly: input deshabilitado y estilo atenuado.
+          const ro = !!field.readOnly;
+          const inputStyleBase = {
+            width: "100%",
+            padding: "10px 12px",
+            border: "1px solid #d1d5db",
+            borderRadius: 8,
+            fontSize: 14,
+            boxSizing: "border-box" as const,
+            background: ro ? "#f3f4f6" : "#ffffff",
+            color: ro ? "#6b7280" : "#111827",
+            cursor: ro ? "not-allowed" : "auto",
+          };
+          return (
           <label key={field.key} style={{ display: "grid", gap: 6 }}>
             <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
               {field.label}
@@ -187,30 +331,15 @@ export default function ErpRecordModal({
                 onChange={(event) => updateField(field.key, event.target.value)}
                 rows={4}
                 placeholder={field.placeholder || ""}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  fontSize: 14,
-                  resize: "vertical",
-                  fontFamily: "inherit",
-                  boxSizing: "border-box",
-                }}
+                disabled={ro}
+                style={{ ...inputStyleBase, resize: "vertical", fontFamily: "inherit" }}
               />
             ) : field.kind === "relation" ? (
               <select
                 value={values[field.key] || ""}
                 onChange={(event) => updateField(field.key, event.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  fontSize: 14,
-                  background: "#ffffff",
-                  boxSizing: "border-box",
-                }}
+                disabled={ro}
+                style={inputStyleBase}
               >
                 <option value="">— Selecciona —</option>
                 {(optionsMap[field.key] || []).map((option) => (
@@ -223,15 +352,8 @@ export default function ErpRecordModal({
               <select
                 value={values[field.key] || ""}
                 onChange={(event) => updateField(field.key, event.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  fontSize: 14,
-                  background: "#ffffff",
-                  boxSizing: "border-box",
-                }}
+                disabled={ro}
+                style={inputStyleBase}
               >
                 <option value="">— Selecciona —</option>
                 {field.options.map((option) => (
@@ -247,23 +369,21 @@ export default function ErpRecordModal({
                     ? "email"
                     : field.kind === "date"
                       ? "date"
-                      : field.kind === "tel"
-                        ? "tel"
-                        : field.kind === "number"
-                          ? "number"
-                          : "text"
+                      // TEST-11 — kind:"time" → input nativo hh:mm.
+                      : field.kind === "time"
+                        ? "time"
+                        : field.kind === "tel"
+                          ? "tel"
+                          : field.kind === "number"
+                            ? "number"
+                            : "text"
                 }
                 value={values[field.key] || ""}
                 onChange={(event) => updateField(field.key, event.target.value)}
                 placeholder={field.placeholder || ""}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: 8,
-                  fontSize: 14,
-                  boxSizing: "border-box",
-                }}
+                readOnly={ro}
+                disabled={ro}
+                style={inputStyleBase}
               />
             )}
 
@@ -271,7 +391,8 @@ export default function ErpRecordModal({
               <span style={{ fontSize: 11, color: "#9ca3af" }}>{field.placeholder}</span>
             ) : null}
           </label>
-        ))}
+          );
+        })}
 
         {error ? (
           <div

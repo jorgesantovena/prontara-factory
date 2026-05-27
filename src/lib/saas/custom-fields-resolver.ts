@@ -42,16 +42,25 @@ export async function getCustomFieldsAsync(clientId: string): Promise<SectorPack
     });
   });
 
+  // TEST-11 — Conjunto canónico de `kind` admitidos para SectorPackField.
+  // Cualquier valor extraño que pudiera quedar en BD (por una versión
+  // anterior o por un edit manual al JSON) se normaliza a "text" para no
+  // romper el renderer del editor.
+  const VALID_KINDS = new Set<SectorPackField["kind"]>([
+    "text", "email", "tel", "textarea", "date", "time", "number", "money", "status", "relation",
+  ]);
   return ((rows as DbCustomField[]) || []).map((r) => {
     const optionsRaw = r.optionsJson;
     const options = Array.isArray(optionsRaw)
       ? (optionsRaw as Array<{ value: string; label: string }>)
       : undefined;
+    const kindCandidate = r.kind as SectorPackField["kind"];
+    const kind: SectorPackField["kind"] = VALID_KINDS.has(kindCandidate) ? kindCandidate : "text";
     return {
       moduleKey: r.moduleKey,
       fieldKey: r.fieldKey,
       label: r.label,
-      kind: r.kind as SectorPackField["kind"],
+      kind,
       required: r.required,
       placeholder: r.placeholder || undefined,
       options: options && options.length > 0 ? options : undefined,

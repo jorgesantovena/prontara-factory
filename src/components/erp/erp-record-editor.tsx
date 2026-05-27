@@ -66,6 +66,23 @@ const TAB_LABELS: Record<TabKey, string> = {
   documentos: "Documentos",
 };
 
+// TEST-11 — Calcula duración entre dos horas "hh:mm" o "hh:mm:ss" y la
+// devuelve formateada "hh:mm". Si alguna falta o el rango es negativo,
+// devuelve "" para no enseñar basura al usuario. Helper a nivel de módulo
+// para que pueda usarse tanto en el reset useEffect como en setField.
+function computeDurationStatic(desde: string, hasta: string): string {
+  if (!desde || !hasta) return "";
+  const toMin = (s: string): number => {
+    const [hh = "0", mm = "0"] = String(s).split(":");
+    return parseInt(hh, 10) * 60 + parseInt(mm, 10);
+  };
+  const diff = toMin(hasta) - toMin(desde);
+  if (!Number.isFinite(diff) || diff <= 0) return "";
+  const hh = Math.floor(diff / 60).toString().padStart(2, "0");
+  const mm = (diff % 60).toString().padStart(2, "0");
+  return hh + ":" + mm;
+}
+
 function classifyField(key: string): TabKey {
   const k = String(key ?? "").toLowerCase();
   // TEST-2.5 — dirección, población, CP, provincia, país NO van en
@@ -205,6 +222,21 @@ export default function ErpRecordEditor({
         next[f.key] = String(initVal ?? "");
       }
     }
+    // TEST-11 fix #9 — Recalcular campos computed.duration en la carga
+    // inicial. Si un registro viene de BD/import con horaDesde/horaHasta
+    // pero tiempoHoras vacío, queremos verlo lleno desde el primer render
+    // sin esperar a que el usuario teclee algo.
+    for (const f of fields) {
+      if (f.computed?.type === "duration") {
+        const current = String(next[f.key] || "").trim();
+        if (!current) {
+          const desde = String(next[f.computed.from] || "");
+          const hasta = String(next[f.computed.to] || "");
+          const computed = computeDurationStatic(desde, hasta);
+          if (computed) next[f.key] = computed;
+        }
+      }
+    }
     setValues(next);
     setDirty(false);
     setError("");
@@ -247,9 +279,9 @@ export default function ErpRecordEditor({
     Record<string, Record<string, Record<string, string>>>
   >({});
 
-  async function loadRelatedRecord(modKey: string, recordId: string): Promise<Record<string, string> | null> {
-    if (!modKey || !recordId) return null;
-    const cached = relatedRecordsCache[modKey]?.[recordId];
+  async function loadRelatedRecord(modKey: string, recordRef: string): Promise<Record<string, string> | null> {
+    if (!modKey || !recordRef) return null;
+    const cached = relatedRecordsCache[modKey]?.[recordRef];
     if (cached) return cached;
     try {
       const url = "/api/erp/module?module=" + encodeURIComponent(modKey) +
@@ -257,13 +289,23 @@ export default function ErpRecordEditor({
       const r = await fetch(url, { cache: "no-store" });
       const d = await r.json();
       if (!r.ok || !d.ok || !Array.isArray(d.rows)) return null;
-      const record = (d.rows as Array<Record<string, string>>).find(
-        (row) => String(row.id || "") === recordId,
-      );
+      // TEST-11 fix #1 — `/api/erp/options` devuelve como `value` el campo
+      // principal del registro: `nombre` para clientes/proyectos, `numero`
+      // para presupuestos, `id` para el resto. Cuando aquí recibimos el
+      // valor que el dropdown guardó, hay que buscar por TODOS esos campos,
+      // no solo por id. Si no, la herencia (cliente, facturable, tarifa,
+      // km) nunca se activa porque el find devolvía siempre undefined.
+      const ref = String(recordRef);
+      const rows = d.rows as Array<Record<string, string>>;
+      const record = rows.find((row) => String(row.id || "") === ref)
+        || rows.find((row) => String(row.nombre || "") === ref)
+        || rows.find((row) => String(row.numero || "") === ref)
+        || rows.find((row) => String(row.titulo || "") === ref)
+        || rows.find((row) => String(row.codigo || "") === ref);
       if (!record) return null;
       setRelatedRecordsCache((c) => ({
         ...c,
-        [modKey]: { ...(c[modKey] || {}), [recordId]: record },
+        [modKey]: { ...(c[modKey] || {}), [recordRef]: record },
       }));
       return record;
     } catch {
@@ -271,21 +313,10 @@ export default function ErpRecordEditor({
     }
   }
 
-  // TEST-11 — Calcula duración entre dos horas "hh:mm" o "hh:mm:ss" y la
-  // devuelve formateada "hh:mm". Si alguna falta o el rango es negativo,
-  // devuelve "" para no enseñar basura al usuario.
-  function computeDuration(desde: string, hasta: string): string {
-    if (!desde || !hasta) return "";
-    const toMin = (s: string): number => {
-      const [hh = "0", mm = "0"] = String(s).split(":");
-      return parseInt(hh, 10) * 60 + parseInt(mm, 10);
-    };
-    const diff = toMin(hasta) - toMin(desde);
-    if (!Number.isFinite(diff) || diff <= 0) return "";
-    const hh = Math.floor(diff / 60).toString().padStart(2, "0");
-    const mm = (diff % 60).toString().padStart(2, "0");
-    return hh + ":" + mm;
-  }
+  // TEST-11 — Alias local que apunta a la helper de módulo (declarada al
+  // final del fichero como function expression no hoisted). Mantengo el
+  // nombre `computeDuration` para no cambiar todos los call-sites.
+  const computeDuration = computeDurationStatic;
 
   function setField(key: string, value: string) {
     setValues((v) => {

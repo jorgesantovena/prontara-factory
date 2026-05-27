@@ -164,6 +164,26 @@ function avatarTint(seed: string) {
 
 const PAGE_SIZES = [10, 25, 50, 100];
 
+// TEST-11 — Compat backward del Parte de horas (actividades). El formulario
+// nuevo guarda `empleado`/`tiempoHoras` (hh:mm)/`actividad`; muchos lectores
+// backend (bolsa-saldo, billing-preview, prefacturacion, daily-activity)
+// siguen leyendo `persona`/`horas` (decimal)/`tipoTrabajo`. Espejamos los
+// valores nuevos a las claves legacy antes de persistir. Se usa tanto en
+// saveRecord (formulario) como en bulkUpdate.
+function applyActivitiesLegacyShim(payload: Record<string, string>): Record<string, string> {
+  const next: Record<string, string> = { ...payload };
+  if (next.empleado && !next.persona) next.persona = next.empleado;
+  if (next.tiempoHoras && !next.horas) {
+    const [hh = "0", mm = "0"] = String(next.tiempoHoras).split(":");
+    const decimal = parseInt(hh, 10) + parseInt(mm, 10) / 60;
+    if (Number.isFinite(decimal) && decimal > 0) {
+      next.horas = decimal.toFixed(2);
+    }
+  }
+  if (next.actividad && !next.tipoTrabajo) next.tipoTrabajo = next.actividad;
+  return next;
+}
+
 export default function GenericModuleRuntimePage({
   moduleKey,
   href,
@@ -563,23 +583,10 @@ export default function GenericModuleRuntimePage({
   async function saveRecord(payload: Record<string, string>): Promise<Record<string, string> | null> {
     const tenant = readTenant();
     const sectorPack = readSectorPack();
-    // TEST-11 — Compat backward del Parte de horas (actividades). El
-    // formulario nuevo usa `empleado` / `tiempoHoras` (hh:mm), pero muchos
-    // lectores backend (bolsa-saldo, billing-preview, prefacturacion,
-    // daily-activity, etc.) leen `persona` / `horas` (decimal). Espejamos
-    // los valores nuevos a las claves legacy antes de persistir.
+    // TEST-11 — Compat backward del Parte de horas (actividades). Aplicado
+    // tanto aquí (save individual) como en bulkUpdate.
     if (moduleKey === "actividades") {
-      const next: Record<string, string> = { ...payload };
-      if (next.empleado && !next.persona) next.persona = next.empleado;
-      if (next.tiempoHoras && !next.horas) {
-        const [hh = "0", mm = "0"] = String(next.tiempoHoras).split(":");
-        const decimal = parseInt(hh, 10) + parseInt(mm, 10) / 60;
-        if (Number.isFinite(decimal) && decimal > 0) {
-          next.horas = decimal.toFixed(2);
-        }
-      }
-      if (next.actividad && !next.tipoTrabajo) next.tipoTrabajo = next.actividad;
-      payload = next;
+      payload = applyActivitiesLegacyShim(payload);
     }
     let savedRow: Record<string, string> | null = null;
     if (modalMode === "create") {
@@ -630,7 +637,12 @@ export default function GenericModuleRuntimePage({
     for (const id of ids) {
       const existing = rows.find((r) => r.id === id);
       if (!existing) continue;
-      const payload = { ...existing, [field]: value };
+      let payload: Record<string, string> = { ...existing, [field]: value };
+      // TEST-11 — Aplicar el shim también en bulk para no dejar registros
+      // inconsistentes (empleado vs persona, tiempoHoras vs horas).
+      if (moduleKey === "actividades") {
+        payload = applyActivitiesLegacyShim(payload);
+      }
       const response = await fetch("/api/erp/module", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -683,8 +695,20 @@ export default function GenericModuleRuntimePage({
         if (raw) {
           const arr = JSON.parse(raw);
           if (Array.isArray(arr)) {
-            const stored = new Set(arr.map(String).filter((k) => validKeys.has(k)));
-            setHiddenCols(stored);
+            // Filtra claves obsoletas (campos que ya no existen en el schema).
+            const filtered = arr.map(String).filter((k) => validKeys.has(k));
+            // TEST-11 fix #8 — Si tras el filtrado quedaron 0 claves Y el
+            // array original NO estaba vacío, significa que TODAS las
+            // preferencias guardadas eran de campos obsoletos (típico tras
+            // un rediseño de schema: el usuario tenía urgencia/descripcion
+            // ocultos, ya no existen). Caemos al default en vez de mostrar
+            // todas las columnas. Si el array original SÍ estaba vacío,
+            // respetamos la elección "ver todo".
+            if (filtered.length === 0 && arr.length > 0) {
+              setHiddenCols(new Set(ui.fields.map((f) => f.key).filter((k) => !baseKeys.has(k))));
+              return;
+            }
+            setHiddenCols(new Set(filtered));
             return;
           }
         }
@@ -2179,11 +2203,6 @@ const popoverCount: React.CSSProperties = {
 const filterLabel: React.CSSProperties = {
   display: "block", fontSize: 11, fontWeight: 700, color: "#64748b",
   textTransform: "uppercase", letterSpacing: 0.4, marginBottom: 4,
-};
-const filterSelect: React.CSSProperties = {
-  width: "100%", padding: "6px 10px", border: "1px solid #e2e8f0",
-  borderRadius: 6, fontSize: 13, color: "#0f172a", background: "#fff",
-  boxSizing: "border-box",
 };
 const thStyle: React.CSSProperties = {
   textAlign: "left", padding: "12px 14px",

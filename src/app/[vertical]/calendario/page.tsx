@@ -30,7 +30,11 @@ type Item = {
 const SOURCES: Array<{ moduleKey: string; dateField: string; titleField: string; userField?: string; label: string; color: string }> = [
   { moduleKey: "tareas", dateField: "fechaLimite", titleField: "titulo", userField: "asignado", label: "Tarea", color: "#1d4ed8" },
   { moduleKey: "reservas", dateField: "fecha", titleField: "recurso", userField: "solicitante", label: "Reserva", color: "#7c3aed" },
-  { moduleKey: "actividades", dateField: "fecha", titleField: "concepto", userField: "responsable", label: "Actividad", color: "#16a34a" },
+  // TEST-11 — tras el rediseño Parte de horas, el campo del responsable es
+  // `empleado` (relation a empleados), no `responsable`. Antes del cambio
+  // el filtro por usuario en el calendario quedaba vacío para todas las
+  // nuevas imputaciones en cualquier vertical.
+  { moduleKey: "actividades", dateField: "fecha", titleField: "concepto", userField: "empleado", label: "Actividad", color: "#16a34a" },
   { moduleKey: "citas", dateField: "fecha", titleField: "motivo", userField: "profesional", label: "Cita", color: "#0891b2" },
   { moduleKey: "eventos", dateField: "fecha", titleField: "nombre", userField: "responsable", label: "Evento", color: "#ea580c" },
   { moduleKey: "caja", dateField: "fecha", titleField: "concepto", userField: "cajero", label: "Caja", color: "#db2777" },

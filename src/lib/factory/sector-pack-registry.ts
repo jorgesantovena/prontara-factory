@@ -8,6 +8,10 @@ const CLINICA_DENTAL_PACK: SectorPackDefinition = {
   sector: "salud",
   businessType: "clinica-dental",
   description: "ERP sectorial para clínicas dentales pequeñas: pacientes, citas, presupuestos firmados, tratamientos en marcha, RX y consentimientos digitales.",
+  // TEST-11 — Parte de horas (módulo CORE `actividades`) tiene semántica
+  // de software factory (proyecto, tarifa €/h, facturación contra bolsa).
+  // No tiene sentido en una clínica dental, así que lo desactivamos.
+  disabledCoreModules: ["actividades"],
   branding: {
     displayName: "Prontara Dental",
     shortName: "PD",
@@ -791,56 +795,65 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { codigo: "INC-2026-008", titulo: "Error 500 al intentar borrar línea de pedido", proyecto: "ERP comercial Acme — Fase 2", reportadoPor: "Usuario admin Acme", asignado: "Pablo", severidad: "media", tipo: "bug", estado: "abierta", version: "v1.2.0", fechaApertura: "2026-04-26", descripcion: "Al intentar borrar la última línea de un pedido, el servidor devuelve 500.", solucion: "" },
     ]},
     { moduleKey: "actividades", records: [
-      // ===== H7-S6 Demo escenario Delca (réplica del PDF de SISPYME) =====
-      // Bolsa Mant. Nivel 1: 10h/año contratadas
-      { fecha: "2026-03-09", empleado: "MRU", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "33", actividadCodigo: "33", horaDesde: "08:30", horaHasta: "09:30", tiempoHoras: "1.00", lugar: "oficina", descripcion: "Pedidos compra EDI. Ajustar formatos EDIVERSA - Proveedor EDE", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Mario", horas: "1.00", facturable: "no", tarifaHora: "55" },
-      { fecha: "2026-01-09", empleado: "JJ", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "11:10", horaHasta: "15:00", tiempoHoras: "3.83", lugar: "oficina", descripcion: "Cierre mensual. Cálculo de compras varios servidas", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Julio", horas: "3.83", facturable: "no", tarifaHora: "55" },
-      { fecha: "2026-01-12", empleado: "JJ", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "15:00", horaHasta: "16:45", tiempoHoras: "1.75", lugar: "oficina", descripcion: "Cierre mensual. Cálculo de compras varios servidas", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Julio", horas: "1.75", facturable: "no", tarifaHora: "55" },
-      { fecha: "2026-02-23", empleado: "JJ", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "15:15", horaHasta: "17:15", tiempoHoras: "2.00", lugar: "teletrabajo", descripcion: "Adaptación V7 para facturación electrónica con Indra (IndraFE)", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Julio", horas: "2.00", facturable: "no", tarifaHora: "55" },
-      { fecha: "2026-03-06", empleado: "MRU", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "11:30", horaHasta: "15:30", tiempoHoras: "4.00", lugar: "oficina", descripcion: "Pedidos compra EDI. Ajustar formatos EDIVERSA - Proveedor EDE", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Mario", horas: "4.00", facturable: "no", tarifaHora: "55" },
-      { fecha: "2026-01-02", empleado: "JJ", cliente: "Almacenes Delca SA", proyecto: "Soporte a usuarios", actividad: "49", actividadCodigo: "49", horaDesde: "10:30", horaHasta: "10:45", tiempoHoras: "0.25", lugar: "teletrabajo", descripcion: "Con Angel Cuesta. Obtener listado de sumas y saldos", tipoFacturacion: "contra-bolsa", estado: "validada", persona: "Julio", horas: "0.25", facturable: "no", tarifaHora: "55" },
-      { fecha: "2026-04-08", empleado: "MRU", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "37", actividadCodigo: "37", horaDesde: "12:00", horaHasta: "17:30", tiempoHoras: "5.50", lugar: "oficina", descripcion: "Proceso inicial de limpieza de LOG's", tipoFacturacion: "fuera-bolsa", estado: "validada", persona: "Mario", horas: "5.50", facturable: "si", tarifaHora: "55", notas: "Fuera de bolsa — facturable aparte" },
-      { fecha: "2026-01-02", empleado: "MAR", cliente: "Almacenes Delca SA", proyecto: "Movilidad almacén (Kit digital)", actividad: "37", actividadCodigo: "37", horaDesde: "07:30", horaHasta: "14:30", tiempoHoras: "7.00", lugar: "cliente", descripcion: "Tablet picking", tipoFacturacion: "fuera-bolsa", estado: "validada", persona: "Marcos", horas: "7.00", facturable: "si", tarifaHora: "60" },
-      { fecha: "2026-01-05", empleado: "MAR", cliente: "Almacenes Delca SA", proyecto: "Movilidad almacén (Kit digital)", actividad: "37", actividadCodigo: "37", horaDesde: "09:30", horaHasta: "15:30", tiempoHoras: "6.00", lugar: "cliente", descripcion: "Tablet Picking", tipoFacturacion: "fuera-bolsa", estado: "validada", persona: "Marcos", horas: "6.00", facturable: "si", tarifaHora: "60" },
+      // TEST-11 — Demo SF normalizado al nuevo modelo Parte de horas:
+      // empleado/fecha/horaDesde/horaHasta/tiempoHoras (hh:mm)/lugar (de
+      // las options nuevas: oficina|teletrabajo|casa_cliente|desplazamiento)
+      // /proyecto/cliente/facturable/tipoFacturacion/tarifaHora/facturado/
+      // facturaNumero/actividad/concepto/km/estado. Sin campos legacy
+      // (persona/horas/tipoTrabajo/notas/descripcion/actividadCodigo) que
+      // ya no existen en el schema y dejaban celdas vacías o pills sin label.
 
-      // ===== Acme Labs — Fase 2 (facturable, presupuesto cerrado: NO se factura por horas, va al hito) =====
-      { fecha: "2026-04-21", persona: "Pablo", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Implementar API REST de pedidos", concepto: "Diseño endpoints + validaciones", horas: "6", kilometros: "0", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "Cubierto por presupuesto cerrado de Fase 2." },
-      { fecha: "2026-04-22", persona: "Pablo", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Implementar API REST de pedidos", concepto: "Implementación CRUD pedidos", horas: "6", kilometros: "0", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "" },
-      { fecha: "2026-04-22", persona: "Laura", proyecto: "ERP comercial Acme — Fase 2", tareaRelacionada: "Diseñar modelo de datos del módulo de pedidos", concepto: "Cierre de modelo + revisión con cliente", horas: "4", kilometros: "120", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "analisis", notas: "Reunión presencial en Acme." },
-      // ===== Acme Labs — SOP (facturable por horas) =====
-      { fecha: "2026-04-15", persona: "Pablo", proyecto: "Soporte usuarios Acme", tareaRelacionada: "", concepto: "Resolver dudas funcionales sobre módulo facturación", horas: "1.5", kilometros: "0", facturable: "si", tarifaHora: "55", facturado: "si", facturaNumero: "FAC-TECH-035", tipoTrabajo: "soporte", notas: "" },
-      { fecha: "2026-04-22", persona: "Pablo", proyecto: "Soporte usuarios Acme", tareaRelacionada: "", concepto: "Diagnóstico problema de impresión en cliente concreto", horas: "2", kilometros: "0", facturable: "si", tarifaHora: "55", facturado: "no", facturaNumero: "", tipoTrabajo: "soporte", notas: "Pendiente de facturar este mes." },
-      // ===== Acme Labs — EVOLU mensual =====
-      { fecha: "2026-04-18", persona: "Laura", proyecto: "Evolutivo sprint mensual Acme", tareaRelacionada: "", concepto: "Mejora pantalla pedidos según feedback usuario", horas: "8", kilometros: "0", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "" },
-      { fecha: "2026-04-25", persona: "Laura", proyecto: "Evolutivo sprint mensual Acme", tareaRelacionada: "", concepto: "Filtros avanzados en listado clientes", horas: "6", kilometros: "60", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "Visita a Acme para validar UX." },
+      // ===== H7-S6 Delca (réplica del PDF de SISPYME) =====
+      { fecha: "2026-03-09", empleado: "Mario", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "desarrollo", horaDesde: "08:30", horaHasta: "09:30", tiempoHoras: "01:00", lugar: "oficina", concepto: "Pedidos compra EDI. Ajustar formatos EDIVERSA - Proveedor EDE", tipoFacturacion: "contra-bolsa", facturable: "no", tarifaHora: "55", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-01-09", empleado: "Julio", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "desarrollo", horaDesde: "11:10", horaHasta: "15:00", tiempoHoras: "03:50", lugar: "oficina", concepto: "Cierre mensual. Cálculo de compras varios servidas", tipoFacturacion: "contra-bolsa", facturable: "no", tarifaHora: "55", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-01-12", empleado: "Julio", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "desarrollo", horaDesde: "15:00", horaHasta: "16:45", tiempoHoras: "01:45", lugar: "oficina", concepto: "Cierre mensual. Cálculo de compras varios servidas", tipoFacturacion: "contra-bolsa", facturable: "no", tarifaHora: "55", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-02-23", empleado: "Julio", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "desarrollo", horaDesde: "15:15", horaHasta: "17:15", tiempoHoras: "02:00", lugar: "teletrabajo", concepto: "Adaptación V7 para facturación electrónica con Indra (IndraFE)", tipoFacturacion: "contra-bolsa", facturable: "no", tarifaHora: "55", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-03-06", empleado: "Mario", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "desarrollo", horaDesde: "11:30", horaHasta: "15:30", tiempoHoras: "04:00", lugar: "oficina", concepto: "Pedidos compra EDI. Ajustar formatos EDIVERSA - Proveedor EDE", tipoFacturacion: "contra-bolsa", facturable: "no", tarifaHora: "55", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-01-02", empleado: "Julio", cliente: "Almacenes Delca SA", proyecto: "Soporte a usuarios", actividad: "soporte", horaDesde: "10:30", horaHasta: "10:45", tiempoHoras: "00:15", lugar: "teletrabajo", concepto: "Con Angel Cuesta. Obtener listado de sumas y saldos", tipoFacturacion: "contra-bolsa", facturable: "no", tarifaHora: "55", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-04-08", empleado: "Mario", cliente: "Almacenes Delca SA", proyecto: "Servicios Desarrollo nuevos módulos", actividad: "desarrollo", horaDesde: "12:00", horaHasta: "17:30", tiempoHoras: "05:30", lugar: "oficina", concepto: "Proceso inicial de limpieza de LOG's (fuera de bolsa)", tipoFacturacion: "fuera-bolsa", facturable: "si", tarifaHora: "55", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-01-02", empleado: "Marcos", cliente: "Almacenes Delca SA", proyecto: "Movilidad almacén (Kit digital)", actividad: "desarrollo", horaDesde: "07:30", horaHasta: "14:30", tiempoHoras: "07:00", lugar: "casa_cliente", concepto: "Tablet picking", tipoFacturacion: "fuera-bolsa", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", km: "42", estado: "validada" },
+      { fecha: "2026-01-05", empleado: "Marcos", cliente: "Almacenes Delca SA", proyecto: "Movilidad almacén (Kit digital)", actividad: "desarrollo", horaDesde: "09:30", horaHasta: "15:30", tiempoHoras: "06:00", lugar: "casa_cliente", concepto: "Tablet Picking", tipoFacturacion: "fuera-bolsa", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", km: "42", estado: "validada" },
 
-      // ===== Nova Retail — Integración (facturable, presupuesto cerrado) =====
-      { fecha: "2026-04-23", persona: "Carlos", proyecto: "Integración POS Nova", tareaRelacionada: "Conectar Stripe sandbox al POS", concepto: "Implementación SDK Stripe + tests", horas: "5", kilometros: "0", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "desarrollo", notas: "" },
-      { fecha: "2026-04-24", persona: "Carlos", proyecto: "Integración POS Nova", tareaRelacionada: "Conectar Stripe sandbox al POS", concepto: "Tests end-to-end de pago", horas: "5", kilometros: "180", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "qa", notas: "Visita a tienda piloto Nova." },
+      // ===== Acme Labs — Fase 2 (presupuesto cerrado, no facturable por horas) =====
+      { fecha: "2026-04-21", empleado: "Pablo", cliente: "Acme Labs", proyecto: "ERP comercial Acme — Fase 2", actividad: "desarrollo", horaDesde: "09:00", horaHasta: "15:00", tiempoHoras: "06:00", lugar: "oficina", concepto: "Diseño endpoints + validaciones API REST de pedidos", tipoFacturacion: "fija", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-04-22", empleado: "Pablo", cliente: "Acme Labs", proyecto: "ERP comercial Acme — Fase 2", actividad: "desarrollo", horaDesde: "09:00", horaHasta: "15:00", tiempoHoras: "06:00", lugar: "oficina", concepto: "Implementación CRUD pedidos", tipoFacturacion: "fija", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-04-22", empleado: "Laura", cliente: "Acme Labs", proyecto: "ERP comercial Acme — Fase 2", actividad: "analisis", horaDesde: "10:00", horaHasta: "14:00", tiempoHoras: "04:00", lugar: "casa_cliente", concepto: "Cierre modelo + revisión con cliente (reunión presencial)", tipoFacturacion: "fija", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", km: "60", estado: "validada" },
+
+      // ===== Acme Labs — Soporte (facturable por horas, contra bolsa) =====
+      { fecha: "2026-04-15", empleado: "Pablo", cliente: "Acme Labs", proyecto: "Soporte usuarios Acme", actividad: "soporte", horaDesde: "10:00", horaHasta: "11:30", tiempoHoras: "01:30", lugar: "teletrabajo", concepto: "Resolver dudas funcionales sobre módulo facturación", tipoFacturacion: "contra-bolsa", facturable: "si", tarifaHora: "55", facturado: "si", facturaNumero: "FAC-TECH-035", estado: "facturada" },
+      { fecha: "2026-04-22", empleado: "Pablo", cliente: "Acme Labs", proyecto: "Soporte usuarios Acme", actividad: "soporte", horaDesde: "12:00", horaHasta: "14:00", tiempoHoras: "02:00", lugar: "teletrabajo", concepto: "Diagnóstico problema de impresión en cliente concreto", tipoFacturacion: "contra-bolsa", facturable: "si", tarifaHora: "55", facturado: "no", facturaNumero: "", estado: "validada" },
+
+      // ===== Acme Labs — Evolutivo mensual =====
+      { fecha: "2026-04-18", empleado: "Laura", cliente: "Acme Labs", proyecto: "Evolutivo sprint mensual Acme", actividad: "desarrollo", horaDesde: "09:00", horaHasta: "17:00", tiempoHoras: "08:00", lugar: "oficina", concepto: "Mejora pantalla pedidos según feedback usuario", tipoFacturacion: "fuera-bolsa", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-04-25", empleado: "Laura", cliente: "Acme Labs", proyecto: "Evolutivo sprint mensual Acme", actividad: "desarrollo", horaDesde: "10:00", horaHasta: "16:00", tiempoHoras: "06:00", lugar: "casa_cliente", concepto: "Filtros avanzados en listado clientes (validar UX in situ)", tipoFacturacion: "fuera-bolsa", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", km: "30", estado: "validada" },
+
+      // ===== Nova Retail — Integración POS (presupuesto cerrado) =====
+      { fecha: "2026-04-23", empleado: "Carlos", cliente: "Nova Retail", proyecto: "Integración POS Nova", actividad: "desarrollo", horaDesde: "09:00", horaHasta: "14:00", tiempoHoras: "05:00", lugar: "oficina", concepto: "Implementación SDK Stripe + tests sandbox", tipoFacturacion: "fija", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-04-24", empleado: "Carlos", cliente: "Nova Retail", proyecto: "Integración POS Nova", actividad: "qa", horaDesde: "10:00", horaHasta: "15:00", tiempoHoras: "05:00", lugar: "casa_cliente", concepto: "Tests end-to-end de pago en tienda piloto Nova", tipoFacturacion: "fija", facturable: "no", tarifaHora: "60", facturado: "no", facturaNumero: "", km: "90", estado: "validada" },
 
       // ===== Binary Forge — Plataforma soporte =====
-      { fecha: "2026-04-21", persona: "Ana", proyecto: "Plataforma soporte Binary", tareaRelacionada: "Investigar causa raíz del cuelgue", concepto: "Profile de memoria + análisis del worker", horas: "4", kilometros: "0", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", tipoTrabajo: "analisis", notas: "" },
-      { fecha: "2026-04-22", persona: "Ana", proyecto: "Plataforma soporte Binary", tareaRelacionada: "Investigar causa raíz del cuelgue", concepto: "Reproducción local del leak con datos sintéticos", horas: "4", kilometros: "0", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", tipoTrabajo: "analisis", notas: "" },
-      { fecha: "2026-04-25", persona: "Ana", proyecto: "Plataforma soporte Binary", tareaRelacionada: "Documentar arquitectura embeddings", concepto: "Redacción del documento técnico", horas: "5", kilometros: "0", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", tipoTrabajo: "documentacion", notas: "" },
+      { fecha: "2026-04-21", empleado: "Ana", cliente: "Binary Forge", proyecto: "Plataforma soporte Binary", actividad: "analisis", horaDesde: "09:00", horaHasta: "13:00", tiempoHoras: "04:00", lugar: "oficina", concepto: "Profile de memoria + análisis del worker (investigar causa raíz del cuelgue)", tipoFacturacion: "fija", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-04-22", empleado: "Ana", cliente: "Binary Forge", proyecto: "Plataforma soporte Binary", actividad: "analisis", horaDesde: "09:00", horaHasta: "13:00", tiempoHoras: "04:00", lugar: "oficina", concepto: "Reproducción local del leak con datos sintéticos", tipoFacturacion: "fija", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", estado: "validada" },
+      { fecha: "2026-04-25", empleado: "Ana", cliente: "Binary Forge", proyecto: "Plataforma soporte Binary", actividad: "documentacion", horaDesde: "09:00", horaHasta: "14:00", tiempoHoras: "05:00", lugar: "oficina", concepto: "Redacción documento técnico arquitectura embeddings", tipoFacturacion: "fija", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", estado: "validada" },
 
-      // ===== Binary Forge — Bolsa horas correctivo (facturable contra bolsa) =====
-      { fecha: "2026-04-15", persona: "Diego", proyecto: "Bolsa horas correctivo Binary", tareaRelacionada: "", concepto: "Hotfix bug autenticación SSO", horas: "3", kilometros: "0", facturable: "si", tarifaHora: "60", facturado: "si", facturaNumero: "FAC-TECH-036", tipoTrabajo: "soporte", notas: "Resta 3h de la bolsa de 30h." },
-      { fecha: "2026-04-23", persona: "Diego", proyecto: "Bolsa horas correctivo Binary", tareaRelacionada: "", concepto: "Investigación error 500 en exportación", horas: "5", kilometros: "0", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", tipoTrabajo: "soporte", notas: "" },
+      // ===== Binary Forge — Bolsa horas correctivo =====
+      { fecha: "2026-04-15", empleado: "Diego", cliente: "Binary Forge", proyecto: "Bolsa horas correctivo Binary", actividad: "soporte", horaDesde: "09:00", horaHasta: "12:00", tiempoHoras: "03:00", lugar: "teletrabajo", concepto: "Hotfix bug autenticación SSO (resta 3h de la bolsa de 30h)", tipoFacturacion: "contra-bolsa", facturable: "si", tarifaHora: "60", facturado: "si", facturaNumero: "FAC-TECH-036", estado: "facturada" },
+      { fecha: "2026-04-23", empleado: "Diego", cliente: "Binary Forge", proyecto: "Bolsa horas correctivo Binary", actividad: "soporte", horaDesde: "09:00", horaHasta: "14:00", tiempoHoras: "05:00", lugar: "teletrabajo", concepto: "Investigación error 500 en exportación", tipoFacturacion: "contra-bolsa", facturable: "si", tarifaHora: "60", facturado: "no", facturaNumero: "", estado: "validada" },
 
       // ===== Talleres López — Mantenimiento RGPD (cerrado, ya facturado) =====
-      { fecha: "2026-03-15", persona: "Miguel", proyecto: "Mantenimiento adaptativo López — RGPD", tareaRelacionada: "", concepto: "Análisis requisitos RGPD nuevos", horas: "4", kilometros: "40", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-033", tipoTrabajo: "analisis", notas: "" },
-      { fecha: "2026-03-20", persona: "Miguel", proyecto: "Mantenimiento adaptativo López — RGPD", tareaRelacionada: "", concepto: "Implementación módulo consentimientos", horas: "8", kilometros: "0", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-033", tipoTrabajo: "desarrollo", notas: "" },
-      { fecha: "2026-04-05", persona: "Miguel", proyecto: "Mantenimiento adaptativo López — RGPD", tareaRelacionada: "", concepto: "Tests + entrega + documentación", horas: "4", kilometros: "40", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-033", tipoTrabajo: "qa", notas: "Cierre del proyecto." },
+      { fecha: "2026-03-15", empleado: "Miguel", cliente: "Talleres López", proyecto: "Mantenimiento adaptativo López — RGPD", actividad: "analisis", horaDesde: "09:00", horaHasta: "13:00", tiempoHoras: "04:00", lugar: "casa_cliente", concepto: "Análisis requisitos RGPD nuevos", tipoFacturacion: "fija", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-033", km: "20", estado: "facturada" },
+      { fecha: "2026-03-20", empleado: "Miguel", cliente: "Talleres López", proyecto: "Mantenimiento adaptativo López — RGPD", actividad: "desarrollo", horaDesde: "09:00", horaHasta: "17:00", tiempoHoras: "08:00", lugar: "oficina", concepto: "Implementación módulo consentimientos", tipoFacturacion: "fija", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-033", estado: "facturada" },
+      { fecha: "2026-04-05", empleado: "Miguel", cliente: "Talleres López", proyecto: "Mantenimiento adaptativo López — RGPD", actividad: "qa", horaDesde: "10:00", horaHasta: "14:00", tiempoHoras: "04:00", lugar: "casa_cliente", concepto: "Tests + entrega + documentación (cierre del proyecto)", tipoFacturacion: "fija", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-033", km: "20", estado: "facturada" },
 
-      // ===== Talleres López — Bolsa correctivo (sin facturar todavía) =====
-      { fecha: "2026-04-23", persona: "Miguel", proyecto: "Bolsa horas correctivo López", tareaRelacionada: "Bug IVA descuento", concepto: "Diagnóstico cálculo erróneo IVA", horas: "2", kilometros: "40", facturable: "si", tarifaHora: "55", facturado: "no", facturaNumero: "", tipoTrabajo: "soporte", notas: "Visita al taller." },
+      // ===== Talleres López — Bolsa correctivo =====
+      { fecha: "2026-04-23", empleado: "Miguel", cliente: "Talleres López", proyecto: "Bolsa horas correctivo López", actividad: "soporte", horaDesde: "10:00", horaHasta: "12:00", tiempoHoras: "02:00", lugar: "casa_cliente", concepto: "Diagnóstico cálculo erróneo IVA (visita al taller)", tipoFacturacion: "contra-bolsa", facturable: "si", tarifaHora: "55", facturado: "no", facturaNumero: "", km: "20", estado: "validada" },
 
       // ===== Talleres López — Formación cerrada y facturada =====
-      { fecha: "2026-04-10", persona: "Miguel", proyecto: "Formación usuarios López", tareaRelacionada: "", concepto: "Sesión presencial 2h con mecánicos", horas: "2", kilometros: "60", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-034", tipoTrabajo: "reunion", notas: "Bien recibido." },
-      { fecha: "2026-04-08", persona: "Miguel", proyecto: "Formación usuarios López", tareaRelacionada: "", concepto: "Preparación material formativo", horas: "2", kilometros: "0", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", tipoTrabajo: "documentacion", notas: "Preparación interna no facturable al cliente." },
+      { fecha: "2026-04-10", empleado: "Miguel", cliente: "Talleres López", proyecto: "Formación usuarios López", actividad: "formacion", horaDesde: "10:00", horaHasta: "12:00", tiempoHoras: "02:00", lugar: "casa_cliente", concepto: "Sesión presencial 2h con mecánicos (bien recibido)", tipoFacturacion: "fija", facturable: "si", tarifaHora: "65", facturado: "si", facturaNumero: "FAC-TECH-034", km: "20", estado: "facturada" },
+      { fecha: "2026-04-08", empleado: "Miguel", cliente: "Talleres López", proyecto: "Formación usuarios López", actividad: "documentacion", horaDesde: "10:00", horaHasta: "12:00", tiempoHoras: "02:00", lugar: "oficina", concepto: "Preparación material formativo (interna no facturable)", tipoFacturacion: "no-facturable", facturable: "no", tarifaHora: "65", facturado: "no", facturaNumero: "", estado: "validada" },
 
-      // ===== Imputación a proyecto MANT (no facturable nunca) =====
-      { fecha: "2026-04-26", persona: "Pablo", proyecto: "Mantenimiento anual Acme", tareaRelacionada: "", concepto: "Bug error 500 al borrar línea de pedido", horas: "1.5", kilometros: "0", facturable: "no", tarifaHora: "55", facturado: "no", facturaNumero: "", tipoTrabajo: "soporte", notas: "Bug propio cubierto por mantenimiento." },
+      // ===== Imputación a proyecto MANT (no facturable, cubierto por mantenimiento) =====
+      { fecha: "2026-04-26", empleado: "Pablo", cliente: "Acme Labs", proyecto: "Mantenimiento anual Acme", actividad: "soporte", horaDesde: "10:00", horaHasta: "11:30", tiempoHoras: "01:30", lugar: "teletrabajo", concepto: "Bug error 500 al borrar línea de pedido (bug propio cubierto por mantenimiento)", tipoFacturacion: "no-facturable", facturable: "no", tarifaHora: "55", facturado: "no", facturaNumero: "", estado: "validada" },
     ]},
     { moduleKey: "versiones", records: [
       { version: "v1.0.0", proyecto: "ERP comercial Acme — Fase 2", tipo: "major", estado: "publicada", fechaPrevista: "2026-02-15", fechaEntrega: "2026-02-18", responsable: "Laura", notasRelease: "Primera versión productiva. Módulos: clientes, productos, facturación básica.", entornos: "Pro Acme" },
@@ -927,6 +940,8 @@ const GIMNASIO_PACK: SectorPackDefinition = {
   sector: "fitness",
   businessType: "gimnasio",
   description: "ERP sectorial para gimnasios pequeños y medianos: socios, planes, clases, instructores y cuotas mensuales.",
+  // TEST-11 — Ver nota en clinica-dental: Parte de horas no aplica.
+  disabledCoreModules: ["actividades"],
   branding: {
     displayName: "Prontara Gym",
     shortName: "PG",
@@ -1148,6 +1163,8 @@ const PELUQUERIA_PACK: SectorPackDefinition = {
   sector: "belleza",
   businessType: "peluqueria",
   description: "ERP sectorial para peluquerías y centros de estética: agenda de citas, fichas de cliente, servicios, productos y tickets.",
+  // TEST-11 — Ver nota en clinica-dental: Parte de horas no aplica.
+  disabledCoreModules: ["actividades"],
   branding: {
     displayName: "Prontara Beauty",
     shortName: "PB",
@@ -1372,6 +1389,12 @@ const TALLER_PACK: SectorPackDefinition = {
   sector: "automocion",
   businessType: "taller",
   description: "ERP sectorial para talleres mecánicos pequeños y medianos: clientes con sus vehículos, órdenes de trabajo, partes de horas, presupuestos firmables y facturación con IVA.",
+  // TEST-11 — Aunque el taller sí tiene concepto de "parte de horas" (horas
+  // del mecánico sobre una orden de trabajo), el modelo CORE de
+  // `actividades` está pensado para software factory (proyecto/tarifa/bolsa).
+  // De momento lo desactivamos para no contaminar la sidebar; cuando se
+  // diseñe el parte de horas del taller se reactivará con override propio.
+  disabledCoreModules: ["actividades"],
   branding: {
     displayName: "Prontara Taller",
     shortName: "PTA",
@@ -2397,6 +2420,8 @@ const VETERINARIA_PACK: SectorPackDefinition = {
   sector: "salud-animal",
   businessType: "clinica-veterinaria",
   description: "ERP sectorial para clínicas veterinarias: pacientes (mascotas) con propietario, calendario de citas, vacunas y desparasitaciones, historial clínico, presupuestos y facturación.",
+  // TEST-11 — Ver nota en clinica-dental: Parte de horas no aplica.
+  disabledCoreModules: ["actividades"],
   branding: {
     displayName: "Prontara Veterinaria",
     shortName: "PV",

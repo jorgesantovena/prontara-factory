@@ -328,7 +328,22 @@ export default function ProduccionPage() {
         (r) => String(r.proyecto || "").toLowerCase() === selectedProject.toLowerCase(),
       );
       const list = predicate ? filtered.filter(predicate) : filtered;
-      return list.reduce((acc, r) => acc + (parseFloat(String(r.horas || "0")) || 0), 0);
+      // TEST-11 — Parte de horas nuevo guarda `tiempoHoras` como "hh:mm"
+      // (p.ej. "1:30"). El KPI legacy leía `horas` decimal. Convertimos
+      // hh:mm a decimal cuando lo encontramos, con fallback al campo viejo.
+      function rowHoras(r: Record<string, string>): number {
+        const t = String(r.tiempoHoras || "").trim();
+        if (t.includes(":")) {
+          const [h, m] = t.split(":").map((s) => parseInt(s, 10) || 0);
+          return h + m / 60;
+        }
+        if (t) {
+          const n = parseFloat(t);
+          if (Number.isFinite(n)) return n;
+        }
+        return parseFloat(String(r.horas || "0")) || 0;
+      }
+      return list.reduce((acc, r) => acc + rowHoras(r), 0);
     }
     return {
       tareasTotales: cnt("tareas"),
