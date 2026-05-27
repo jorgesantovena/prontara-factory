@@ -740,12 +740,33 @@ function FieldInput({ field, value, onChange, options, accent }: {
     );
   } else if (field.kind === "status" && (field.options?.length || options?.length)) {
     const opts = field.options || options || [];
-    inputEl = (
-      <select value={value} onChange={(e) => onChange(e.target.value)} disabled={isReadOnly} style={{ ...baseStyle, appearance: "none", paddingRight: 28, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "10px" }}>
-        <option value="">— Selecciona —</option>
-        {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-      </select>
-    );
+    // TEST-11 bis-7 — Si el status es readOnly (Facturado, Facturable
+    // heredado, Método facturación heredado…), no tiene sentido mostrar
+    // un <select> con "— Selecciona" y el candado al lado: es
+    // contradictorio. Renderizar como input text deshabilitado con el
+    // label de la opción seleccionada (o el placeholder si vacío,
+    // explicando cuándo se rellena).
+    if (isReadOnly) {
+      const matched = opts.find((o) => o.value === value);
+      const display = matched?.label || (value ? value : "");
+      inputEl = (
+        <input
+          type="text"
+          value={display}
+          placeholder={field.placeholder || "—"}
+          readOnly
+          disabled
+          style={baseStyle}
+        />
+      );
+    } else {
+      inputEl = (
+        <select value={value} onChange={(e) => onChange(e.target.value)} style={{ ...baseStyle, appearance: "none", paddingRight: 28, backgroundImage: chevronBg, backgroundRepeat: "no-repeat", backgroundPosition: "right 10px center", backgroundSize: "10px" }}>
+          <option value="">— Selecciona —</option>
+          {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+        </select>
+      );
+    }
   } else if (field.kind === "relation") {
     const opts = options || [];
     // TEST-11 bis-2 — Si el campo es readOnly (heredado), el <select disabled>

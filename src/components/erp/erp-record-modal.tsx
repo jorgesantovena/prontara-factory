@@ -323,6 +323,8 @@ export default function ErpRecordModal({
             <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>
               {field.label}
               {field.required ? <span style={{ color: "#dc2626" }}> *</span> : null}
+              {/* TEST-11 bis-7 — Candado consistente con el editor full-page. */}
+              {ro ? <span style={{ color: "#94a3b8", marginLeft: 6, fontWeight: 400 }} title="Campo de solo lectura (heredado, calculado o de proceso)">🔒</span> : null}
             </span>
 
             {field.kind === "textarea" ? (
@@ -335,33 +337,73 @@ export default function ErpRecordModal({
                 style={{ ...inputStyleBase, resize: "vertical", fontFamily: "inherit" }}
               />
             ) : field.kind === "relation" ? (
-              <select
-                value={values[field.key] || ""}
-                onChange={(event) => updateField(field.key, event.target.value)}
-                disabled={ro}
-                style={inputStyleBase}
-              >
-                <option value="">— Selecciona —</option>
-                {(optionsMap[field.key] || []).map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              // TEST-11 bis-2 / bis-7 — relation+readOnly: render como input
+              // text con el label resuelto, no <select disabled> con
+              // "— Selecciona" (era contradictorio con el candado).
+              ro ? (
+                (() => {
+                  const opts = optionsMap[field.key] || [];
+                  const matched = opts.find((o) => o.value === (values[field.key] || ""));
+                  const display = matched?.label || values[field.key] || "";
+                  return (
+                    <input
+                      type="text"
+                      value={display}
+                      placeholder={field.placeholder || "—"}
+                      readOnly
+                      disabled
+                      style={inputStyleBase}
+                    />
+                  );
+                })()
+              ) : (
+                <select
+                  value={values[field.key] || ""}
+                  onChange={(event) => updateField(field.key, event.target.value)}
+                  style={inputStyleBase}
+                >
+                  <option value="">— Selecciona —</option>
+                  {(optionsMap[field.key] || []).map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )
             ) : field.kind === "status" && field.options && field.options.length > 0 ? (
-              <select
-                value={values[field.key] || ""}
-                onChange={(event) => updateField(field.key, event.target.value)}
-                disabled={ro}
-                style={inputStyleBase}
-              >
-                <option value="">— Selecciona —</option>
-                {field.options.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
+              // TEST-11 bis-7 — status+readOnly: mismo patrón, input text
+              // deshabilitado con el label de la opción seleccionada (o
+              // placeholder si vacío, p.ej. "Se actualiza con el proceso de
+              // facturación").
+              ro ? (
+                (() => {
+                  const matched = field.options!.find((o) => o.value === (values[field.key] || ""));
+                  const display = matched?.label || values[field.key] || "";
+                  return (
+                    <input
+                      type="text"
+                      value={display}
+                      placeholder={field.placeholder || "—"}
+                      readOnly
+                      disabled
+                      style={inputStyleBase}
+                    />
+                  );
+                })()
+              ) : (
+                <select
+                  value={values[field.key] || ""}
+                  onChange={(event) => updateField(field.key, event.target.value)}
+                  style={inputStyleBase}
+                >
+                  <option value="">— Selecciona —</option>
+                  {field.options.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              )
             ) : (
               <input
                 type={
