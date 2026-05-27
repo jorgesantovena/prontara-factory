@@ -71,6 +71,14 @@ const CLIENTES_SCHEMA: ModuleSchema = defineModule({
       label: "Ultimo contacto",
       type: "date",
     },
+    // TEST-11 — Km desde oficina al cliente, origen del Km heredado en
+    // el Parte de horas cuando Lugar=Casa cliente.
+    {
+      key: "kilometrosBase",
+      label: "Km hasta el cliente",
+      type: "text",
+      placeholder: "Km del trayecto oficina → casa del cliente (ida)",
+    },
     {
       key: "notas",
       label: "Notas",
@@ -334,6 +342,20 @@ const PROYECTOS_SCHEMA: ModuleSchema = defineModule({
       label: "Presupuesto",
       type: "text",
       placeholder: "Ejemplo: 25000 EUR",
+    },
+    // TEST-11 — Método de facturación del proyecto. Se hereda al Parte de
+    // horas para que el imputador no tenga que repetirlo en cada línea.
+    {
+      key: "tipoFacturacion",
+      label: "Método facturación",
+      type: "select",
+      options: [
+        { value: "fija", label: "Tarifa fija" },
+        { value: "contra-bolsa", label: "Contra bolsa de horas" },
+        { value: "fuera-bolsa", label: "Fuera de bolsa" },
+        { value: "por-hito", label: "Por hito" },
+        { value: "no-facturable", label: "No facturable" },
+      ],
     },
     {
       key: "notas",
@@ -782,43 +804,69 @@ const INCIDENCIAS_SCHEMA: ModuleSchema = defineModule({
   ],
 });
 
+// TEST-11 — Rediseño Parte de horas (Pedro). El CORE describe la intención
+// del módulo en su tipado básico (text/select/date sin readOnly/inheritFrom);
+// la riqueza visual (kind=time, herencia desde Proyecto, Tiempo calculado, Km
+// condicional, etc.) la aporta el override del sector pack — ver
+// `sector-pack-registry.ts` (software-factory). Mantengo aquí los mismos
+// nombres canónicos de campo y orden para que no haya divergencia.
 const ACTIVIDADES_SCHEMA: ModuleSchema = defineModule({
   moduleKey: "actividades",
-  title: "Actividades",
+  title: "Parte de horas",
   primaryField: "concepto",
-  defaultSortField: "concepto",
+  defaultSortField: "fecha",
   listColumns: [
     { key: "fecha", label: "Fecha" },
-    { key: "persona", label: "Persona" },
+    { key: "empleado", label: "Empleado" },
+    { key: "cliente", label: "Cliente" },
+    { key: "actividad", label: "Actividad" },
     { key: "proyecto", label: "Proyecto" },
     { key: "concepto", label: "Concepto" },
-    { key: "horas", label: "Horas" },
+    { key: "horaDesde", label: "Desde" },
+    { key: "horaHasta", label: "Hasta" },
+    { key: "tiempoHoras", label: "Tiempo" },
+    { key: "estado", label: "Estado" },
   ],
   allowedActions: ["list", "create", "edit", "delete", "view"],
   seedStrategy: "demo-related",
   tags: ["produccion", "horas"],
   relations: [
-    {
-      key: "proyecto",
-      targetModule: "proyectos",
-      sourceField: "proyectoId",
-      targetField: "id",
-      cardinality: "many-to-one",
-      label: "Proyecto al que se imputa",
-    },
+    { key: "empleado", targetModule: "empleados", sourceField: "empleadoId", targetField: "id", cardinality: "many-to-one", label: "Empleado que imputa" },
+    { key: "proyecto", targetModule: "proyectos", sourceField: "proyectoId", targetField: "id", cardinality: "many-to-one", label: "Proyecto al que se imputa" },
+    { key: "cliente", targetModule: "clientes", sourceField: "clienteId", targetField: "id", cardinality: "many-to-one", label: "Cliente (heredado del proyecto)" },
   ],
   fields: [
-    { key: "fecha", label: "Fecha", type: "date", required: true },
-    { key: "persona", label: "Persona", type: "text", required: true, placeholder: "Quién trabajó" },
-    { key: "proyecto", label: "Proyecto", type: "text", required: true },
-    { key: "tareaRelacionada", label: "Tarea relacionada", type: "text", placeholder: "Título o código de la tarea (opcional)" },
-    { key: "concepto", label: "Concepto", type: "text", required: true, maxLength: 200, placeholder: "Qué se hizo" },
-    { key: "horas", label: "Horas", type: "text", required: true, placeholder: "1.5" },
-    { key: "facturable", label: "Facturable", type: "select", required: true, options: [
+    { key: "empleado", label: "Empleado", type: "text", required: true, placeholder: "Quien imputa las horas" },
+    { key: "fecha", label: "Fecha", type: "date", required: true, placeholder: "Por defecto HOY" },
+    { key: "horaDesde", label: "Hora desde", type: "text", required: true, placeholder: "hh:mm" },
+    { key: "horaHasta", label: "Hora hasta", type: "text", required: true, placeholder: "hh:mm" },
+    { key: "tiempoHoras", label: "Tiempo", type: "text", placeholder: "Se calcula: Hora hasta − Hora desde" },
+    { key: "lugar", label: "Lugar", type: "select", required: true, options: [
+      { value: "oficina", label: "Oficina" },
+      { value: "teletrabajo", label: "Teletrabajo" },
+      { value: "casa_cliente", label: "Casa cliente" },
+      { value: "desplazamiento", label: "Desplazamiento" },
+    ]},
+    { key: "proyecto", label: "Proyecto", type: "text", required: true, placeholder: "Selecciona el proyecto al que se imputa" },
+    { key: "cliente", label: "Cliente", type: "text", placeholder: "Heredado del proyecto" },
+    { key: "facturable", label: "Facturable", type: "select", options: [
       { value: "si", label: "Sí" },
       { value: "no", label: "No" },
     ]},
-    { key: "tipoTrabajo", label: "Tipo de trabajo", type: "select", required: true, options: [
+    { key: "tipoFacturacion", label: "Método facturación", type: "select", options: [
+      { value: "fija", label: "Tarifa fija" },
+      { value: "contra-bolsa", label: "Contra bolsa de horas" },
+      { value: "fuera-bolsa", label: "Fuera de bolsa" },
+      { value: "por-hito", label: "Por hito" },
+      { value: "no-facturable", label: "No facturable" },
+    ]},
+    { key: "tarifaHora", label: "Tarifa €/h", type: "text", placeholder: "Heredada del proyecto, editable" },
+    { key: "facturado", label: "Facturado", type: "select", options: [
+      { value: "si", label: "Sí" },
+      { value: "no", label: "No" },
+    ]},
+    { key: "facturaNumero", label: "Factura nº", type: "text", placeholder: "Se actualiza con el proceso de facturación" },
+    { key: "actividad", label: "Actividad", type: "select", required: true, options: [
       { value: "desarrollo", label: "Desarrollo" },
       { value: "analisis", label: "Análisis" },
       { value: "soporte", label: "Soporte" },
@@ -826,8 +874,16 @@ const ACTIVIDADES_SCHEMA: ModuleSchema = defineModule({
       { value: "documentacion", label: "Documentación" },
       { value: "qa", label: "QA / Pruebas" },
       { value: "despliegue", label: "Despliegue" },
+      { value: "formacion", label: "Formación" },
     ]},
-    { key: "notas", label: "Notas", type: "textarea", maxLength: 1000 },
+    { key: "concepto", label: "Concepto", type: "textarea", required: true, maxLength: 1000, placeholder: "Descripción libre del trabajo realizado" },
+    { key: "km", label: "Km", type: "text", placeholder: "Solo si Lugar = Casa cliente (heredado del cliente)" },
+    { key: "estado", label: "Estado", type: "select", required: true, options: [
+      { value: "pendiente", label: "Pendiente" },
+      { value: "validada", label: "Validada" },
+      { value: "facturada", label: "Facturada" },
+      { value: "rechazada", label: "Rechazada" },
+    ]},
   ],
 });
 

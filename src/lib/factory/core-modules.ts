@@ -218,25 +218,37 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "empleados", fieldKey: "tarifaHora", label: "Tarifa hora", kind: "money" },
   { moduleKey: "empleados", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
-  // H7-C3 Actividades
-  { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
-  { moduleKey: "actividades", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
-  { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
-  { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto", kind: "relation", relationModuleKey: "proyectos" },
-  { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad", kind: "relation", required: true, relationModuleKey: "actividades-catalogo" },
-  { moduleKey: "actividades", fieldKey: "horaDesde", label: "Hora desde", kind: "text", required: true },
-  { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hora hasta", kind: "text", required: true },
-  { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "Tiempo (h)", kind: "number" },
+  // H7-C3 Actividades — TEST-11 (Pedro): rediseño Parte de horas.
+  // Orden EXACTO del formulario, con herencia desde Proyecto, Tiempo
+  // calculado y Km condicional (Lugar = Casa cliente). El pack del
+  // vertical puede sobrescribir cualquier campo por fieldKey; el resto
+  // se añade aquí como base CORE.
+  { moduleKey: "actividades", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados", placeholder: "Quien imputa las horas" },
+  { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", kind: "date", required: true, placeholder: "Por defecto HOY" },
+  { moduleKey: "actividades", fieldKey: "horaDesde", label: "Hora desde", kind: "time", required: true, placeholder: "hh:mm" },
+  { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hora hasta", kind: "time", required: true, placeholder: "hh:mm" },
+  { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "Tiempo", kind: "text", readOnly: true, computed: { type: "duration", from: "horaDesde", to: "horaHasta" }, placeholder: "Se calcula: Hora hasta − Hora desde" },
   { moduleKey: "actividades", fieldKey: "lugar", label: "Lugar", kind: "status", required: true, options: [
-    { value: "oficina", label: "Oficina" }, { value: "teletrabajo", label: "Teletrabajo" }, { value: "cliente", label: "Casa cliente" }, { value: "otro", label: "Otro" },
+    { value: "oficina", label: "Oficina" }, { value: "teletrabajo", label: "Teletrabajo" }, { value: "casa_cliente", label: "Casa cliente" }, { value: "desplazamiento", label: "Desplazamiento" },
   ] },
-  { moduleKey: "actividades", fieldKey: "descripcion", label: "Descripción", kind: "textarea", required: true },
-  { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Facturación", kind: "status", required: true, options: [
-    { value: "contra-bolsa", label: "Contra bolsa" }, { value: "fuera-bolsa", label: "Fuera de bolsa" }, { value: "no-facturable", label: "No facturable" },
+  { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto", kind: "relation", required: true, relationModuleKey: "proyectos", placeholder: "Selecciona el proyecto al que se imputa" },
+  { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes", readOnly: true, inheritFrom: { from: "proyecto", field: "cliente" }, placeholder: "Heredado del proyecto" },
+  { moduleKey: "actividades", fieldKey: "facturable", label: "Facturable", kind: "status", readOnly: true, inheritFrom: { from: "proyecto", field: "facturable" }, placeholder: "Heredado del proyecto", options: [
+    { value: "si", label: "Sí" }, { value: "no", label: "No" },
   ] },
-  { moduleKey: "actividades", fieldKey: "urgencia", label: "Urgencia", kind: "relation", relationModuleKey: "tipos-urgencia" },
+  { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Método facturación", kind: "status", readOnly: true, inheritFrom: { from: "proyecto", field: "tipoFacturacion" }, placeholder: "Heredado del proyecto", options: [
+    { value: "fija", label: "Tarifa fija" }, { value: "contra-bolsa", label: "Contra bolsa de horas" }, { value: "fuera-bolsa", label: "Fuera de bolsa" }, { value: "por-hito", label: "Por hito" }, { value: "no-facturable", label: "No facturable" },
+  ] },
+  { moduleKey: "actividades", fieldKey: "tarifaHora", label: "Tarifa €/h", kind: "text", inheritFrom: { from: "proyecto", field: "tarifaHoraOverride" }, placeholder: "Heredada del proyecto, editable" },
+  { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado", kind: "status", readOnly: true, placeholder: "Se actualiza con el proceso de facturación", options: [
+    { value: "si", label: "Sí" }, { value: "no", label: "No" },
+  ] },
+  { moduleKey: "actividades", fieldKey: "facturaNumero", label: "Factura nº", kind: "text", readOnly: true, placeholder: "Se actualiza con el proceso de facturación" },
+  { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad", kind: "relation", required: true, relationModuleKey: "actividades-catalogo", placeholder: "Selecciona del catálogo de actividades" },
+  { moduleKey: "actividades", fieldKey: "concepto", label: "Concepto", kind: "textarea", required: true, placeholder: "Descripción libre del trabajo realizado" },
+  { moduleKey: "actividades", fieldKey: "km", label: "Km", kind: "number", inheritFrom: { from: "cliente", field: "kilometrosBase" }, visibleWhen: { field: "lugar", equals: "casa_cliente" }, placeholder: "Heredado del cliente (visible solo si Lugar = Casa cliente)" },
   { moduleKey: "actividades", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
-    { value: "borrador", label: "Borrador" }, { value: "validada", label: "Validada" }, { value: "facturada", label: "Facturada" },
+    { value: "pendiente", label: "Pendiente" }, { value: "validada", label: "Validada" }, { value: "facturada", label: "Facturada" }, { value: "rechazada", label: "Rechazada" },
   ] },
 
   // H7-C5 Gastos
@@ -502,15 +514,16 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "empleados", fieldKey: "rol", label: "Rol" },
   { moduleKey: "empleados", fieldKey: "email", label: "Email" },
   { moduleKey: "empleados", fieldKey: "esBaja", label: "Estado" },
+  // TEST-11 — Parte de horas: columnas exactas pedidas por Pedro.
   { moduleKey: "actividades", fieldKey: "fecha", label: "Fecha", isPrimary: true },
   { moduleKey: "actividades", fieldKey: "empleado", label: "Empleado" },
   { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente" },
   { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad" },
+  { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto" },
+  { moduleKey: "actividades", fieldKey: "concepto", label: "Concepto" },
   { moduleKey: "actividades", fieldKey: "horaDesde", label: "Desde" },
   { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hasta" },
-  { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "h" },
-  { moduleKey: "actividades", fieldKey: "lugar", label: "Lug." },
-  { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Fact." },
+  { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "Tiempo" },
   { moduleKey: "actividades", fieldKey: "estado", label: "Estado" },
   { moduleKey: "gastos", fieldKey: "fecha", label: "Fecha", isPrimary: true },
   { moduleKey: "gastos", fieldKey: "empleado", label: "Empleado" },
@@ -691,10 +704,14 @@ export function applyCoreModulesToConfig<T extends {
   tableColumnsByModule: Record<string, SectorPackTableColumn[]>;
   navigationLabelMap: Record<string, string>;
   emptyStateMap: Record<string, string>;
-}>(config: T, opts?: { disabledCoreModules?: string[] }): T {
+}>(config: T, opts?: { disabledCoreModules?: string[]; noCoreFieldsFor?: string[] }): T {
   // H15-A: el vertical puede desactivar módulos CORE que no usa
   // (ej. una software factory no maneja productos físicos ni reservas).
   const disabled = new Set(opts?.disabledCoreModules || []);
+  // TEST-11: el vertical puede impedir el merge de CORE_FIELDS /
+  // CORE_TABLE_COLUMNS para módulos donde el pack reutiliza el moduleKey
+  // con otra semántica (ej. colegio.actividades = Extracurriculares).
+  const noCoreFields = new Set(opts?.noCoreFieldsFor || []);
   const existingModuleKeys = new Set(config.modules.map((m) => m.moduleKey));
   for (const cm of CORE_MODULES) {
     if (disabled.has(cm.moduleKey)) continue;
@@ -706,6 +723,7 @@ export function applyCoreModulesToConfig<T extends {
   }
   for (const f of CORE_FIELDS) {
     if (disabled.has(f.moduleKey)) continue;
+    if (noCoreFields.has(f.moduleKey)) continue;
     const existing = config.fieldsByModule[f.moduleKey] || [];
     const hasIt = existing.some((x) => x.fieldKey === f.fieldKey);
     if (hasIt) continue;
@@ -716,6 +734,7 @@ export function applyCoreModulesToConfig<T extends {
   }
   for (const c of CORE_TABLE_COLUMNS) {
     if (disabled.has(c.moduleKey)) continue;
+    if (noCoreFields.has(c.moduleKey)) continue;
     const existingCols = config.tableColumnsByModule[c.moduleKey] || [];
     if (existingCols.length > 0) continue;
     if (!config.tableColumnsByModule[c.moduleKey]) {

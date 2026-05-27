@@ -185,7 +185,7 @@ function rebuildConfigForTenant(tenant: TenantDefinition): TenantRuntimeConfig {
       navigationLabelMap,
       emptyStateMap,
     },
-    { disabledCoreModules: pack?.disabledCoreModules },
+    { disabledCoreModules: pack?.disabledCoreModules, noCoreFieldsFor: pack?.noCoreFieldsFor },
   );
   // moduleKeys se reconstruye porque modules se mutó.
   const moduleKeysFinal = modules.map((m) => m.moduleKey);

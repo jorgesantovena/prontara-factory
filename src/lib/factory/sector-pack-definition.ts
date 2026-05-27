@@ -92,6 +92,15 @@ export type SectorPackDefinition = {
    * reservas), listarlo aquí los excluye del config + sidebar.
    */
   disabledCoreModules?: string[];
+  /**
+   * TEST-11 — moduleKeys donde NO se quiere mezclar CORE_FIELDS /
+   * CORE_TABLE_COLUMNS con los del pack. Útil cuando el pack reutiliza
+   * un moduleKey con semántica distinta a la del CORE (ej. en colegio
+   * `actividades` significa "Extracurriculares", no "Parte de horas"
+   * como en CORE/SF). El pack debe declarar TODOS los fields y columnas
+   * que quiere para esos módulos — no se hace merge con el CORE.
+   */
+  noCoreFieldsFor?: string[];
   entities: SectorPackEntity[];
   fields: SectorPackField[];
   tableColumns: SectorPackTableColumn[];

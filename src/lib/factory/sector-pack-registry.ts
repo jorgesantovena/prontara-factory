@@ -1664,6 +1664,11 @@ const COLEGIO_PACK: SectorPackDefinition = {
     presupuesto: "servicio",
     presupuestos: "servicios",
   },
+  // TEST-11 — En colegio, `actividades` significa "Extracurriculares"
+  // (no "Parte de horas" como en CORE/SF), así que cortamos el merge de
+  // CORE_FIELDS / CORE_TABLE_COLUMNS para ese moduleKey: el pack declara
+  // su propio modelo abajo.
+  noCoreFieldsFor: ["actividades"],
   modules: [
     { moduleKey: "clientes", enabled: true, label: "Familias", navigationLabel: "Familias", emptyState: "Todavía no hay familias." },
     { moduleKey: "crm", enabled: true, label: "Admisiones", navigationLabel: "Admisiones", emptyState: "Sin solicitudes de admisión pendientes." },
@@ -2157,10 +2162,14 @@ const COLEGIO_PACK: SectorPackDefinition = {
     { moduleKey: "becas", fieldKey: "vigenciaHasta", label: "Hasta" },
     { moduleKey: "becas", fieldKey: "estado", label: "Estado" },
 
+    // TEST-11 — Colegio reutiliza `actividades` como Extracurriculares.
+    // Con `noCoreFieldsFor: ["actividades"]` arriba, CORE_TABLE_COLUMNS no
+    // se mergea, así que estas son las únicas columnas del listado.
     { moduleKey: "actividades", fieldKey: "nombre", label: "Actividad", isPrimary: true },
     { moduleKey: "actividades", fieldKey: "responsable", label: "Responsable" },
     { moduleKey: "actividades", fieldKey: "horario", label: "Horario" },
     { moduleKey: "actividades", fieldKey: "cupo", label: "Plazas" },
+    { moduleKey: "actividades", fieldKey: "precio", label: "Precio" },
     { moduleKey: "actividades", fieldKey: "estado", label: "Estado" },
 
     { moduleKey: "salidas", fieldKey: "destino", label: "Destino", isPrimary: true },
