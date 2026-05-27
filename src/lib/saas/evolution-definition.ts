@@ -1,3 +1,5 @@
+import type { SectorPackField } from "@/lib/factory/sector-pack-definition";
+
 export type EvolutionActionType =
   | "add_module"
   | "remove_module"
@@ -96,15 +98,10 @@ export type EvolutionRuntimeSnapshot = {
     navigationLabelMap: Record<string, string>;
     emptyStateMap: Record<string, string>;
   };
-  fieldsByModule: Record<string, Array<{
-    moduleKey: string;
-    fieldKey: string;
-    label: string;
-    kind: "text" | "email" | "tel" | "textarea" | "date" | "number" | "money" | "status" | "relation";
-    required?: boolean;
-    relationModuleKey?: string;
-    placeholder?: string;
-  }>>;
+  // TEST-11 — reusamos `SectorPackField` para no mantener un tipo paralelo
+  // que se desincronice cada vez que se añade un kind (p.ej. "time") o un
+  // flag (readOnly, inheritFrom, computed, visibleWhen).
+  fieldsByModule: Record<string, SectorPackField[]>;
   demoDataByModule: Record<string, Record<string, string>[]>;
   flows: Array<{
     key: string;

@@ -558,7 +558,8 @@ export default function ProduccionPage() {
             currentUi.fields as Array<{
               key: string;
               label: string;
-              kind: "text" | "email" | "tel" | "textarea" | "date" | "number" | "money" | "status" | "relation";
+              // TEST-11 — "time" añadido para parte de horas (hora desde/hasta).
+              kind: "text" | "email" | "tel" | "textarea" | "date" | "time" | "number" | "money" | "status" | "relation";
               required?: boolean;
               relationModuleKey?: string;
               placeholder?: string;
