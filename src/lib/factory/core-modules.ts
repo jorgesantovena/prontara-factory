@@ -22,10 +22,20 @@ export const CORE_MODULES: SectorPackModule[] = [
   { moduleKey: "caja", enabled: true, label: "Caja", navigationLabel: "Caja", emptyState: "Sin movimientos de caja hoy." },
   { moduleKey: "bodegas", enabled: true, label: "Bodegas", navigationLabel: "Bodegas", emptyState: "Sin bodegas configuradas." },
   { moduleKey: "kardex", enabled: true, label: "Kardex", navigationLabel: "Kardex", emptyState: "Sin movimientos de stock." },
-  { moduleKey: "tipos-servicio", enabled: true, label: "Tipos de servicio", navigationLabel: "Tipos servicio", emptyState: "Define las categorías de servicio." },
-  { moduleKey: "actividades-catalogo", enabled: true, label: "Catálogo actividades", navigationLabel: "Catálogo actividades", emptyState: "Define qué actividades realizas." },
+  // TEST-12 #2 — Pedro elimina "Tipos de servicio": concepto duplicado
+  // con Catálogo de actividades. Se mantiene el moduleKey internamente
+  // (prefacturación/PDFs antiguos lo referenciaban) pero `enabled: false`
+  // lo saca de la sidebar y del runtime. Si en el futuro se quiere
+  // resucitar, basta con flipear esto.
+  { moduleKey: "tipos-servicio", enabled: false, label: "Tipos de servicio", navigationLabel: "Tipos servicio", emptyState: "Define las categorías de servicio." },
+  // TEST-12 #2 — Renombrado "Catálogo actividades" → "Actividades"
+  // (label y navigationLabel). El moduleKey sigue siendo
+  // `actividades-catalogo` para no romper la BD ni los consumers. El
+  // módulo `actividades` (Parte de horas) ya estaba renombrado a "Parte
+  // de horas" en su pack SF, así que no colisionan en sidebar.
+  { moduleKey: "actividades-catalogo", enabled: true, label: "Actividades", navigationLabel: "Actividades", emptyState: "Define qué actividades realizas." },
   { moduleKey: "empleados", enabled: true, label: "Empleados", navigationLabel: "Empleados", emptyState: "Sin empleados registrados." },
-  { moduleKey: "actividades", enabled: true, label: "Actividades", navigationLabel: "Actividades", emptyState: "Sin actividades imputadas." },
+  { moduleKey: "actividades", enabled: true, label: "Parte de horas", navigationLabel: "Parte de horas", emptyState: "Sin horas imputadas." },
   { moduleKey: "gastos", enabled: true, label: "Gastos", navigationLabel: "Gastos", emptyState: "Sin gastos imputados." },
   // H8 — Catálogos comerciales y sistema de tarifas + estructura SISPYME
   { moduleKey: "tipos-cliente", enabled: true, label: "Tipos de cliente", navigationLabel: "Tipos cliente", emptyState: "Define tipos de cliente." },
@@ -187,19 +197,15 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "registrado", label: "Registrado" }, { value: "anulado", label: "Anulado" },
   ] },
 
-  // H7-C1 Tipos de servicio
-  { moduleKey: "tipos-servicio", fieldKey: "codigo", label: "Código", kind: "text", required: true },
-  { moduleKey: "tipos-servicio", fieldKey: "nombre", label: "Nombre", kind: "text", required: true },
-  { moduleKey: "tipos-servicio", fieldKey: "descripcion", label: "Descripción", kind: "textarea" },
-  { moduleKey: "tipos-servicio", fieldKey: "esFacturable", label: "¿Facturable?", kind: "status", required: true, options: [
-    { value: "si", label: "Sí" }, { value: "no", label: "No" },
-  ] },
+  // TEST-12 #2 — Eliminados los CORE_FIELDS de `tipos-servicio` (el
+  // módulo queda enabled:false). Si quedan datos huérfanos en BD por un
+  // tenant que ya los tuviera, no rompen: simplemente no se ven.
 
-  // H7-C1 Catálogo actividades
+  // H7-C1 Catálogo actividades — TEST-12 #2: eliminados `tipoServicio` y
+  // `tarifaHora`. Pedro: la tarifa se gestiona desde el Proyecto, y el
+  // concepto Tipo servicio se elimina por ser duplicado del Catálogo.
   { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Código", kind: "text", required: true },
   { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad", kind: "text", required: true },
-  { moduleKey: "actividades-catalogo", fieldKey: "tipoServicio", label: "Tipo servicio", kind: "relation", relationModuleKey: "tipos-servicio", required: true },
-  { moduleKey: "actividades-catalogo", fieldKey: "tarifaHora", label: "Tarifa hora", kind: "money" },
   { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
     { value: "activa", label: "Activa" }, { value: "archivada", label: "Archivada" },
   ] },
@@ -501,13 +507,11 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "kardex", fieldKey: "cantidad", label: "Cantidad" },
   { moduleKey: "kardex", fieldKey: "fecha", label: "Fecha" },
   { moduleKey: "kardex", fieldKey: "estado", label: "Estado" },
-  { moduleKey: "tipos-servicio", fieldKey: "codigo", label: "Cód.", isPrimary: true },
-  { moduleKey: "tipos-servicio", fieldKey: "nombre", label: "Nombre" },
-  { moduleKey: "tipos-servicio", fieldKey: "esFacturable", label: "Facturable" },
+  // TEST-12 #2 — Eliminadas CORE_TABLE_COLUMNS de `tipos-servicio` (módulo retirado).
+  // TEST-12 #2 — Catálogo de actividades: quitadas columnas Tipo y €/h
+  // (campos eliminados del schema).
   { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Cód.", isPrimary: true },
   { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad" },
-  { moduleKey: "actividades-catalogo", fieldKey: "tipoServicio", label: "Tipo" },
-  { moduleKey: "actividades-catalogo", fieldKey: "tarifaHora", label: "€/h" },
   { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado" },
   { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Cód.", isPrimary: true },
   { moduleKey: "empleados", fieldKey: "nombre", label: "Nombre" },
@@ -628,16 +632,7 @@ export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<st
   { moduleKey: "tareas", records: [
     { titulo: "Revisar contratos pendientes", asignado: "Operador", prioridad: "media", fechaLimite: "2026-05-15", estado: "pendiente", descripcion: "Repaso mensual." },
   ]},
-  { moduleKey: "tipos-servicio", records: [
-    { codigo: "1", nombre: "Análisis, Consulting", esFacturable: "si" },
-    { codigo: "2", nombre: "Programación", esFacturable: "si" },
-    { codigo: "3", nombre: "Soporte a usuario, explotación", esFacturable: "si" },
-    { codigo: "4", nombre: "Copias de seguridad, reinstalaciones", esFacturable: "si" },
-    { codigo: "5", nombre: "Técnica de sistemas", esFacturable: "si" },
-    { codigo: "6", nombre: "Otros servicios", esFacturable: "si" },
-    { codigo: "7", nombre: "Actividad comercial", esFacturable: "no" },
-    { codigo: "8", nombre: "Gestiones administrativas", esFacturable: "no" },
-  ]},
+  // TEST-12 #2 — Demo de `tipos-servicio` eliminada (módulo retirado).
   { moduleKey: "tipos-cliente", records: [
     { codigo: "ADM", nombre: "Administración", esFacturable: "si" },
     { codigo: "DST", nombre: "Distribuidor", esFacturable: "si" },

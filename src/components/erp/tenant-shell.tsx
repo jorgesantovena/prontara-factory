@@ -8,6 +8,11 @@ import FirstTimeTour from "@/components/erp/first-time-tour";
 import Breadcrumbs from "@/components/erp/breadcrumbs";
 import KeyboardShortcuts from "@/components/erp/keyboard-shortcuts";
 import DailyActivityBanner from "@/components/erp/daily-activity-banner";
+// TEST-12 #3 — Solapas concurrentes (Pedro). Barra de pestañas estilo
+// navegador que mantiene visible varias operaciones abiertas; los
+// formularios persisten su borrador en sessionStorage para no perder
+// progreso al saltar de una pestaña a otra.
+import TabBar from "@/components/erp/tab-bar";
 
 /**
  * Wrapper del runtime del tenant: añade la sidebar lateral fija a la
@@ -64,6 +69,7 @@ export default function TenantShell({
         <DashboardTopBar />
         <DailyActivityBanner />
         <Breadcrumbs />
+        <TabBar />
         <div style={{ padding: contentPadding }}>
           {children}
         </div>

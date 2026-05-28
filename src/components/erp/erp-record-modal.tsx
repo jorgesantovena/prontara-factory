@@ -17,8 +17,9 @@ type OptionItem = {
   label: string;
 };
 
-// TEST-11 — Calcula duración entre dos horas "hh:mm" y la devuelve
-// formateada "hh:mm". Mismo helper que erp-record-editor.tsx.
+// TEST-12 #1 — Calcula duración entre dos horas "hh:mm" y la devuelve
+// formateada en DECIMAL con coma ("1,50"). Mismo helper que
+// erp-record-editor.tsx — mantener sincronizados.
 function computeDuration(desde: string, hasta: string): string {
   if (!desde || !hasta) return "";
   const toMin = (s: string): number => {
@@ -27,9 +28,8 @@ function computeDuration(desde: string, hasta: string): string {
   };
   const diff = toMin(hasta) - toMin(desde);
   if (!Number.isFinite(diff) || diff <= 0) return "";
-  const hh = Math.floor(diff / 60).toString().padStart(2, "0");
-  const mm = (diff % 60).toString().padStart(2, "0");
-  return hh + ":" + mm;
+  const horas = diff / 60;
+  return horas.toFixed(2).replace(".", ",");
 }
 
 export default function ErpRecordModal({

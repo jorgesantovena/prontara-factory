@@ -33,6 +33,14 @@ function parseHoras(value: string | undefined): number {
   if (!value) return 0;
   const trimmed = String(value).trim();
   if (!trimmed) return 0;
+  // TEST-12 #1 — soporte para hh:mm legacy.
+  if (trimmed.includes(":")) {
+    const [hh = "0", mm = "0"] = trimmed.split(":");
+    const h = parseInt(hh, 10);
+    const m = parseInt(mm, 10);
+    if (Number.isFinite(h) && Number.isFinite(m)) return h + m / 60;
+    return 0;
+  }
   const match = trimmed.match(/-?\d+(?:[.,]\d+)?/);
   if (!match) return 0;
   const n = parseFloat(match[0].replace(",", "."));

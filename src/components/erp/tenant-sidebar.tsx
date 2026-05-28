@@ -190,6 +190,8 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   "formas-pago": "maestros",
   "cuentas-bancarias": "maestros",
   "tipos-cliente": "maestros",
+  // TEST-12 #2 — `tipos-servicio` retirado del menú (módulo enabled:false).
+  // Se deja la entrada por compatibilidad si algún tenant lo reactiva.
   "tipos-servicio": "maestros",
   "tipos-urgencia": "maestros",
   "actividades-catalogo": "maestros",

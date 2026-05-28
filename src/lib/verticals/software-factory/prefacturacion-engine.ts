@@ -65,7 +65,16 @@ export type LineaPrefactura = {
 
 function parseHoras(v: unknown): number {
   if (typeof v === "number") return v;
-  const n = parseFloat(String(v ?? "0").replace(",", "."));
+  // TEST-12 #1 — tolerar hh:mm legacy y decimal con coma o punto.
+  const s = String(v ?? "0").trim();
+  if (s.includes(":")) {
+    const [hh = "0", mm = "0"] = s.split(":");
+    const h = parseInt(hh, 10);
+    const m = parseInt(mm, 10);
+    if (Number.isFinite(h) && Number.isFinite(m)) return h + m / 60;
+    return 0;
+  }
+  const n = parseFloat(s.replace(",", "."));
   return Number.isFinite(n) ? n : 0;
 }
 

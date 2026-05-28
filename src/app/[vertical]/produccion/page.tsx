@@ -328,9 +328,10 @@ export default function ProduccionPage() {
         (r) => String(r.proyecto || "").toLowerCase() === selectedProject.toLowerCase(),
       );
       const list = predicate ? filtered.filter(predicate) : filtered;
-      // TEST-11 — Parte de horas nuevo guarda `tiempoHoras` como "hh:mm"
-      // (p.ej. "1:30"). El KPI legacy leía `horas` decimal. Convertimos
-      // hh:mm a decimal cuando lo encontramos, con fallback al campo viejo.
+      // TEST-12 #1 — Parte de horas guarda `tiempoHoras` en DECIMAL con
+      // coma ("1,50"). Toleramos también el formato legacy "hh:mm" de
+      // antes del cambio para no perder horas históricas, y caemos al
+      // campo `horas` legacy si no hay tiempoHoras.
       function rowHoras(r: Record<string, string>): number {
         const t = String(r.tiempoHoras || "").trim();
         if (t.includes(":")) {
@@ -338,10 +339,11 @@ export default function ProduccionPage() {
           return h + m / 60;
         }
         if (t) {
-          const n = parseFloat(t);
+          // Decimal con coma o punto.
+          const n = parseFloat(t.replace(",", "."));
           if (Number.isFinite(n)) return n;
         }
-        return parseFloat(String(r.horas || "0")) || 0;
+        return parseFloat(String(r.horas || "0").replace(",", ".")) || 0;
       }
       return list.reduce((acc, r) => acc + rowHoras(r), 0);
     }

@@ -67,9 +67,11 @@ const TAB_LABELS: Record<TabKey, string> = {
 };
 
 // TEST-11 — Calcula duración entre dos horas "hh:mm" o "hh:mm:ss" y la
-// devuelve formateada "hh:mm". Si alguna falta o el rango es negativo,
-// devuelve "" para no enseñar basura al usuario. Helper a nivel de módulo
-// para que pueda usarse tanto en el reset useEffect como en setField.
+// devuelve formateada en DECIMAL con coma (1,50) — TEST-12 #1: Pedro
+// quiere que el Tiempo sea operable aritméticamente en base 10. Si
+// alguna falta o el rango es negativo, devuelve "" para no enseñar
+// basura al usuario. Helper a nivel de módulo para que pueda usarse
+// tanto en el reset useEffect como en setField.
 function computeDurationStatic(desde: string, hasta: string): string {
   if (!desde || !hasta) return "";
   const toMin = (s: string): number => {
@@ -78,9 +80,10 @@ function computeDurationStatic(desde: string, hasta: string): string {
   };
   const diff = toMin(hasta) - toMin(desde);
   if (!Number.isFinite(diff) || diff <= 0) return "";
-  const hh = Math.floor(diff / 60).toString().padStart(2, "0");
-  const mm = (diff % 60).toString().padStart(2, "0");
-  return hh + ":" + mm;
+  // Convertir minutos a horas decimal con 2 decimales (90 min → 1.50)
+  // y representar con coma como separador (formato español).
+  const horas = diff / 60;
+  return horas.toFixed(2).replace(".", ",");
 }
 
 function classifyField(key: string): TabKey {
@@ -237,6 +240,25 @@ export default function ErpRecordEditor({
         }
       }
     }
+    // TEST-12 #3 — Si hay un borrador guardado en sessionStorage para
+    // este editor concreto (módulo + modo + id), restaurarlo encima de
+    // los valores recién calculados. Esto permite saltar entre tabs
+    // (Parte de horas → Catálogo de actividades → volver) sin perder
+    // lo que el usuario tenía a medio escribir.
+    if (typeof window !== "undefined") {
+      try {
+        const draftKey = "prontara-draft:" + moduleKey + ":" + (mode === "edit" ? String(initialValue?.id || "edit") : "new");
+        const raw = window.sessionStorage.getItem(draftKey);
+        if (raw) {
+          const draft = JSON.parse(raw) as Record<string, string>;
+          if (draft && typeof draft === "object") {
+            for (const k of Object.keys(draft)) {
+              next[k] = String(draft[k] ?? "");
+            }
+          }
+        }
+      } catch { /* draft corrupto o sessionStorage no disponible: ignorar */ }
+    }
     setValues(next);
     setDirty(false);
     setError("");
@@ -271,6 +293,27 @@ export default function ErpRecordEditor({
     loadRelations();
     return () => { cancelled = true; };
   }, [fields, tenant]);
+
+  // TEST-12 #3 — Autosave del draft a sessionStorage cada vez que
+  // cambian los `values`. Permite que al saltar a otra tab y volver, el
+  // formulario aparezca con lo que el usuario tenía escrito. El draft
+  // se limpia al guardar o cancelar (ver doSubmit y onCancel).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!dirty) return; // no guardar el draft inicial (no aporta y crea ruido)
+    try {
+      const draftKey = "prontara-draft:" + moduleKey + ":" + (mode === "edit" ? String(initialValue?.id || "edit") : "new");
+      window.sessionStorage.setItem(draftKey, JSON.stringify(values));
+    } catch { /* sessionStorage no disponible */ }
+  }, [values, dirty, moduleKey, mode, initialValue]);
+
+  function clearDraft() {
+    if (typeof window === "undefined") return;
+    try {
+      const draftKey = "prontara-draft:" + moduleKey + ":" + (mode === "edit" ? String(initialValue?.id || "edit") : "new");
+      window.sessionStorage.removeItem(draftKey);
+    } catch { /* ignore */ }
+  }
 
   // TEST-11 — Caché de records relacionados que ya hemos pedido para
   // resolver herencia (proyecto → cliente / facturable / tipoFacturacion /
@@ -434,6 +477,9 @@ export default function ErpRecordEditor({
       }
       await onSubmit(payload, { andNew });
       setDirty(false);
+      // TEST-12 #3 — Guardado OK: limpiar el draft de sessionStorage
+      // para que al volver a "Nuevo" se empiece en blanco.
+      clearDraft();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error guardando.");
     } finally {
@@ -540,7 +586,7 @@ export default function ErpRecordEditor({
               ✨ Convertir en proyecto
             </a>
           ) : null}
-          <button type="button" onClick={onCancel} disabled={busy} style={btnSecondary}>Cancelar</button>
+          <button type="button" onClick={() => { clearDraft(); onCancel(); }} disabled={busy} style={btnSecondary}>Cancelar</button>
           {mode === "create" ? (
             <button type="button" onClick={() => doSubmit(true)} disabled={busy} style={btnSecondaryAccent(accent)}>
               Guardar y nuevo

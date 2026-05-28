@@ -690,17 +690,20 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // TEST-11 bis-3 — Catálogo de Actividades. Los códigos 33/37/49 son
     // los que aparecían en el PDF de SISPYME (Delca). El resto son típicos
     // de una software factory española.
+    // TEST-12 #2 — `tipoServicio` y `tarifaHora` retirados del catálogo
+    // (la tarifa va al Proyecto; tipoServicio era duplicación del propio
+    // catálogo). Demo limpia con solo los campos vigentes.
     { moduleKey: "actividades-catalogo", records: [
-      { codigo: "33", nombre: "Desarrollo nuevos módulos", tipoServicio: "NUEDES", tarifaHora: "55", estado: "activa" },
-      { codigo: "37", nombre: "Soporte / consultoría producto", tipoServicio: "SOP", tarifaHora: "55", estado: "activa" },
-      { codigo: "49", nombre: "Soporte usuario puntual", tipoServicio: "SOP", tarifaHora: "55", estado: "activa" },
-      { codigo: "ANA", nombre: "Análisis funcional", tipoServicio: "FASE_I", tarifaHora: "60", estado: "activa" },
-      { codigo: "DEV", nombre: "Desarrollo / programación", tipoServicio: "FASE_I", tarifaHora: "60", estado: "activa" },
-      { codigo: "QA", nombre: "QA / pruebas", tipoServicio: "FASE_I", tarifaHora: "55", estado: "activa" },
-      { codigo: "DOC", nombre: "Documentación", tipoServicio: "FASE_I", tarifaHora: "55", estado: "activa" },
-      { codigo: "REU", nombre: "Reunión cliente / interna", tipoServicio: "SOP", tarifaHora: "55", estado: "activa" },
-      { codigo: "DEPL", nombre: "Despliegue / puesta en marcha", tipoServicio: "FASE_I", tarifaHora: "65", estado: "activa" },
-      { codigo: "FORM", nombre: "Formación a usuarios", tipoServicio: "FORM", tarifaHora: "65", estado: "activa" },
+      { codigo: "33", nombre: "Desarrollo nuevos módulos", estado: "activa" },
+      { codigo: "37", nombre: "Soporte / consultoría producto", estado: "activa" },
+      { codigo: "49", nombre: "Soporte usuario puntual", estado: "activa" },
+      { codigo: "ANA", nombre: "Análisis funcional", estado: "activa" },
+      { codigo: "DEV", nombre: "Desarrollo / programación", estado: "activa" },
+      { codigo: "QA", nombre: "QA / pruebas", estado: "activa" },
+      { codigo: "DOC", nombre: "Documentación", estado: "activa" },
+      { codigo: "REU", nombre: "Reunión cliente / interna", estado: "activa" },
+      { codigo: "DEPL", nombre: "Despliegue / puesta en marcha", estado: "activa" },
+      { codigo: "FORM", nombre: "Formación a usuarios", estado: "activa" },
     ]},
     { moduleKey: "clientes", records: [
       { nombre: "Acme Labs", email: "laura@acme.com", telefono: "+34 600 111 101", estado: "activo", segmento: "Industria" },

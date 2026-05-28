@@ -38,7 +38,10 @@ const BASE_STEPS: Step[] = [
 
 const VERTICAL_STEP_OVERRIDES: Record<Vertical, Partial<Record<string, Partial<Step>>>> = {
   "software-factory": {
-    catalogo: { title: "Tipos de servicio + tarifas", description: "Define qué tipos de servicio facturas (Análisis, Programación, Soporte…) y la tarifa €/h de cada uno.", cta: "Configurar tipos de servicio", href: "/tipos-servicio" },
+    // TEST-12 #2 — Tipos de servicio retirado. El catálogo único de
+    // actividades es ahora el sitio donde se define qué se hace; la
+    // tarifa se gestiona desde el Proyecto.
+    catalogo: { title: "Catálogo de actividades", description: "Define qué actividades realizas (Análisis, Programación, Soporte…). La tarifa €/h se establece a nivel de Proyecto.", cta: "Configurar actividades", href: "/actividades-catalogo" },
   },
   "clinica-dental": {
     catalogo: { title: "Tratamientos y doctores", description: "Define los tratamientos que ofreces y da de alta tu equipo médico.", cta: "Configurar tratamientos", href: "/empleados" },

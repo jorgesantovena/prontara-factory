@@ -174,8 +174,17 @@ function applyActivitiesLegacyShim(payload: Record<string, string>): Record<stri
   const next: Record<string, string> = { ...payload };
   if (next.empleado && !next.persona) next.persona = next.empleado;
   if (next.tiempoHoras && !next.horas) {
-    const [hh = "0", mm = "0"] = String(next.tiempoHoras).split(":");
-    const decimal = parseInt(hh, 10) + parseInt(mm, 10) / 60;
+    // TEST-12 #1 — `tiempoHoras` ahora es decimal con coma ("1,50").
+    // Si nos llega ese formato lo pasamos a punto y a `horas` directo.
+    // También toleramos el legacy "hh:mm" que pudieran traer importaciones.
+    const raw = String(next.tiempoHoras).trim();
+    let decimal = 0;
+    if (raw.includes(":")) {
+      const [hh = "0", mm = "0"] = raw.split(":");
+      decimal = parseInt(hh, 10) + parseInt(mm, 10) / 60;
+    } else {
+      decimal = parseFloat(raw.replace(",", "."));
+    }
     if (Number.isFinite(decimal) && decimal > 0) {
       next.horas = decimal.toFixed(2);
     }
