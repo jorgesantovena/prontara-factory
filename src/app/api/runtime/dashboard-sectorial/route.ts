@@ -105,7 +105,7 @@ export async function GET(request: NextRequest) {
         { key: "fact-pendientes", label: "Facturas pendientes", value: importeFacturasPendientes.toFixed(0) + " €", helper: facturasPendientes.length + " facturas sin cobrar", tone: facturasVencidas.length > 0 ? "warn" : "neutral", href: "/facturacion" },
       );
       quickActions.push(
-        { href: "/actividades", label: "Trabajos", icon: "⏱️" },
+        { href: "/actividades", label: "Tareas", icon: "⏱️" },
         { href: "/facturacion", label: "Trabajar con facturas", icon: "💶" },
         { href: "/presupuestos", label: "Trabajar con propuestas", icon: "📄" },
         { href: "/produccion/pre-facturacion", label: "Pre-facturación", icon: "📊" },

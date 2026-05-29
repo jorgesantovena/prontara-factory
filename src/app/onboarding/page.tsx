@@ -41,7 +41,8 @@ const VERTICAL_STEP_OVERRIDES: Record<Vertical, Partial<Record<string, Partial<S
     // TEST-12 #2 — Tipos de servicio retirado. El catálogo único de
     // actividades es ahora el sitio donde se define qué se hace; la
     // tarifa se gestiona desde el Proyecto.
-    catalogo: { title: "Actividades", description: "Define qué actividades realizas (Análisis, Programación, Soporte…). La tarifa €/h se establece a nivel de Proyecto.", cta: "Configurar actividades", href: "/actividades-catalogo" },
+    // TEST-14 — Renombrado a "Servicios".
+    catalogo: { title: "Servicios", description: "Define qué servicios prestas (Análisis, Programación, Soporte…). La tarifa €/h se establece a nivel de Proyecto.", cta: "Configurar servicios", href: "/actividades-catalogo" },
   },
   "clinica-dental": {
     catalogo: { title: "Tratamientos y doctores", description: "Define los tratamientos que ofreces y da de alta tu equipo médico.", cta: "Configurar tratamientos", href: "/empleados" },

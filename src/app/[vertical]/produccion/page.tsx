@@ -69,8 +69,9 @@ type ModuleUi = {
 
 const TABS: Array<{ key: TabKey; label: string; helper: string }> = [
   { key: "resumen", label: "Resumen", helper: "KPIs del proyecto" },
-  { key: "tareas", label: "Tareas", helper: "Backlog y trabajo en curso" },
-  { key: "actividades", label: "Trabajos", helper: "Imputación de horas y trabajos realizados" },
+  // TEST-14 — Tareas (moduleKey) → "Asignaciones" / Trabajos → "Tareas".
+  { key: "tareas", label: "Asignaciones", helper: "Backlog y trabajo en curso" },
+  { key: "actividades", label: "Tareas", helper: "Tareas imputadas con horas y trabajo realizado" },
   { key: "incidencias", label: "Incidencias", helper: "Bugs y consultas" },
   { key: "versiones", label: "Versiones", helper: "Releases del proyecto" },
   { key: "mantenimientos", label: "Mantenimientos", helper: "Bolsas de horas" },

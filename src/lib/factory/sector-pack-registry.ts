@@ -304,10 +304,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu software factory." },
     { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
     // Hub Producción — solo en Software Factory por ahora
-    { moduleKey: "tareas", enabled: true, label: "Tareas", navigationLabel: "Tareas", emptyState: "Sin tareas en este proyecto." },
+    // TEST-14 — moduleKey `tareas` → "Asignaciones".
+    { moduleKey: "tareas", enabled: true, label: "Asignaciones", navigationLabel: "Asignaciones", emptyState: "Sin asignaciones en este proyecto." },
     { moduleKey: "incidencias", enabled: true, label: "Incidencias", navigationLabel: "Incidencias", emptyState: "Sin incidencias abiertas." },
-    // TEST-13 — Renombrado "Parte de horas" → "Trabajos" en SF.
-    { moduleKey: "actividades", enabled: true, label: "Trabajos", navigationLabel: "Trabajos", emptyState: "Sin trabajos imputados." },
+    // TEST-14 — Renombrado encadenado en SF: "Parte de horas" → "Trabajos" → "Tareas".
+    { moduleKey: "actividades", enabled: true, label: "Tareas", navigationLabel: "Tareas", emptyState: "Sin tareas imputadas." },
     { moduleKey: "versiones", enabled: true, label: "Versiones", navigationLabel: "Versiones", emptyState: "Sin versiones publicadas." },
     { moduleKey: "mantenimientos", enabled: true, label: "Mantenimientos", navigationLabel: "Mantenimientos", emptyState: "Sin contratos de mantenimiento activos." },
     { moduleKey: "justificantes", enabled: true, label: "Justificantes", navigationLabel: "Justificantes", emptyState: "Sin justificantes emitidos." },

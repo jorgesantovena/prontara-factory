@@ -65,36 +65,9 @@ function readSectorPack() {
   return String(new URLSearchParams(window.location.search).get("sectorPack") || "").trim();
 }
 
-// Subtítulo amigable por moduleKey (con fallback genérico).
-const MODULE_SUBTITLE: Record<string, string> = {
-  clientes: "Gestiona tu base de datos de clientes y su actividad.",
-  crm: "Pipeline de oportunidades y captación.",
-  proyectos: "Trabajos y entregables en curso.",
-  presupuestos: "Propuestas enviadas y seguimiento.",
-  facturacion: "Facturas emitidas y cobros.",
-  documentos: "Entregables y documentación del cliente.",
-  tareas: "Lo que hay por hacer.",
-  tickets: "Incidencias abiertas y soporte.",
-  compras: "Órdenes de compra y proveedores.",
-  productos: "Catálogo de productos y servicios.",
-  reservas: "Reservas y citas.",
-  encuestas: "Encuestas creadas y respuestas.",
-  empleados: "Personal del equipo.",
-  bodegas: "Almacenes y ubicaciones de stock.",
-  kardex: "Movimientos de stock.",
-  caja: "Movimientos de caja del día.",
-  gastos: "Gastos imputados y notas.",
-  cau: "Soporte de aplicación: tickets de los clientes.",
-  aplicaciones: "Catálogo de aplicaciones y productos software.",
-  "catalogo-servicios": "Tipos de servicio facturables.",
-  actividades: "Imputación de horas y partes.",
-  albaranes: "Albaranes pendientes y facturables.",
-  "vencimientos-factura": "Vencimientos de facturas.",
-  "tarifas-generales": "Tarifas estándar.",
-  "tarifas-especiales": "Tarifas por cliente o grupo.",
-  "formas-pago": "Formas de pago configuradas.",
-  "cuentas-bancarias": "Cuentas bancarias del tenant.",
-};
+// TEST-14 C — `MODULE_SUBTITLE` eliminado: el subtítulo descriptivo bajo
+// el H1 era redundante con el título y el menú principal. La cabecera
+// compactada ya no lo muestra.
 
 // TEST-2.6 — módulos donde la vista Kanban tiene sentido (pipeline real
 // con fases o estados que progresan). En maestros (clientes, productos,
@@ -626,31 +599,10 @@ export default function GenericModuleRuntimePage({
     });
   }, [filtered, ui.fields]);
 
-  // KPIs derivados de los rows (Total + breakdown por estado).
-  const kpis = useMemo(() => {
-    const total = rows.length;
-    const byEstado: Record<string, number> = {};
-    for (const r of rows) {
-      const e = String(r.estado || "").toLowerCase() || "—";
-      byEstado[e] = (byEstado[e] || 0) + 1;
-    }
-    const items: Array<{ key: string; label: string; value: number; pct: string; tone: "neutral" | "good" | "bad" | "warn" | "vip" }> = [
-      { key: "total", label: "Total", value: total, pct: "100% del total", tone: "neutral" },
-    ];
-    const sortedEstados = Object.entries(byEstado).sort((a, b) => b[1] - a[1]).slice(0, 4);
-    for (const [estado, n] of sortedEstados) {
-      if (estado === "—") continue;
-      const pct = total > 0 ? ((n * 100) / total).toFixed(1) + "% del total" : "—";
-      let tone: "neutral" | "good" | "bad" | "warn" | "vip" = "neutral";
-      if (["activo", "completado", "ganado", "cobrada", "firmado", "aceptado"].includes(estado)) tone = "good";
-      else if (["inactivo", "perdido", "rechazado", "anulada", "cancelado"].includes(estado)) tone = "bad";
-      else if (["bloqueado", "vencida", "expirado"].includes(estado)) tone = "bad";
-      else if (["pendiente", "borrador", "en_curso", "negociacion", "enviado"].includes(estado)) tone = "warn";
-      else if (["vip", "premium"].includes(estado)) tone = "vip";
-      items.push({ key: estado, label: estado.charAt(0).toUpperCase() + estado.slice(1), value: n, pct, tone });
-    }
-    return items.slice(0, 5);
-  }, [rows]);
+  // TEST-14 C — Los mini-KPIs (Total + breakdown por estado) ya no se
+  // renderizan en la cabecera del listado (cabecera compactada). Se
+  // mantiene el `MiniKpi` y `KPI_TINTS` exportables para el dashboard
+  // sectorial que sí los consume. El cómputo concreto se elimina aquí.
 
   // Paginación (TEST-10.4 — sobre la lista ya ordenada).
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
@@ -846,7 +798,10 @@ export default function GenericModuleRuntimePage({
     });
   }
 
-  const subtitle = MODULE_SUBTITLE[moduleKey] || ("Gestiona los registros de " + ui.label.toLowerCase() + ".");
+  // TEST-14 C — `subtitle` y `MODULE_SUBTITLE` ya no se renderizan en
+  // la cabecera del listado (subtítulo descriptivo eliminado por ser
+  // genérico y redundante con el H1 y el menú principal). Si en un
+  // futuro se quiere reintroducir, basta con consumir MODULE_SUBTITLE.
 
   // H12-G — Si estamos creando o editando, mostramos el editor full-page
   // en lugar del listado. Más limpio que un slideover y permite el
@@ -1156,12 +1111,15 @@ export default function GenericModuleRuntimePage({
           <span style={{ color: "#0f172a", fontWeight: 600 }}>{ui.label}</span>
         </div>
 
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
-          <div>
-            <h1 style={{ margin: "0 0 4px 0", fontSize: 28, fontWeight: 800, letterSpacing: -0.4 }}>{ui.label}</h1>
-            <div style={{ fontSize: 13, color: "#64748b" }}>{subtitle}</div>
-          </div>
+        {/* TEST-14 C — Cabecera compactada: H1 + acciones en UNA fila
+            (antes el H1 ocupaba su propia fila con subtítulo y los
+            botones iban debajo). El subtítulo descriptivo (genérico,
+            redundante con el título y el menú) se elimina. La fila de
+            mini-KPIs (Total / Pendiente cards) también se quita más
+            abajo, lo que recupera ~140px verticales de espacio para la
+            propia tabla, que es lo que el usuario viene a ver. */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
+          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: -0.3 }}>{ui.label}</h1>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {extraActions}
             <button
@@ -1492,12 +1450,10 @@ export default function GenericModuleRuntimePage({
           </div>
         ) : null}
 
-        {/* Mini-KPIs */}
-        {rows.length > 0 ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 14 }}>
-            {kpis.map((k, i) => <MiniKpi key={k.key} kpi={k} index={i} />)}
-          </div>
-        ) : null}
+        {/* TEST-14 C — Mini-KPIs (Total / Pendiente cards) eliminados:
+            redundantes con la paginación "X-Y de N" del pie de tabla y
+            con los KPIs del dashboard sectorial. Liberan ~120px que
+            recuperan visibilidad para los datos. */}
 
         {/* Bulk action bar — TEST-1.3 con acciones reales (no alerts). */}
         {selectedIds.size > 0 ? (
@@ -2011,31 +1967,10 @@ function pagerRange(current: number, total: number): Array<number | "…"> {
   return out;
 }
 
-// === Mini KPI card ===
-const KPI_TINTS: Record<string, { bg: string; fg: string; icon: string }> = {
-  total: { bg: "#dbeafe", fg: "#1d4ed8", icon: "👥" },
-  good: { bg: "#dcfce7", fg: "#15803d", icon: "✓" },
-  bad: { bg: "#fee2e2", fg: "#dc2626", icon: "⊘" },
-  warn: { bg: "#fef3c7", fg: "#a16207", icon: "⏱" },
-  vip: { bg: "#ede9fe", fg: "#6d28d9", icon: "★" },
-  neutral: { bg: "#f1f5f9", fg: "#64748b", icon: "●" },
-};
-function MiniKpi({ kpi, index }: { kpi: { key: string; label: string; value: number; pct: string; tone: string }; index: number }) {
-  const tint = kpi.key === "total" ? KPI_TINTS.total : (KPI_TINTS[kpi.tone] || KPI_TINTS.neutral);
-  // Override tono especial saldo si key contiene "saldo"
-  const finalTint = kpi.key.toLowerCase().includes("saldo") ? { bg: "#ffedd5", fg: "#c2410c", icon: "€" } : tint;
-  void index;
-  return (
-    <div style={{ display: "flex", gap: 12, alignItems: "center", padding: 14, background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 12 }}>
-      <div style={{ width: 40, height: 40, borderRadius: 10, background: finalTint.bg, color: finalTint.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 16, fontWeight: 700, flexShrink: 0 }}>{finalTint.icon}</div>
-      <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 11, color: "#64748b", marginBottom: 2 }}>{kpi.label}</div>
-        <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", lineHeight: 1.1 }}>{kpi.value.toLocaleString("es-ES")}</div>
-        <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2 }}>{kpi.pct}</div>
-      </div>
-    </div>
-  );
-}
+// TEST-14 C — `MiniKpi` y `KPI_TINTS` eliminados: solo se usaban en la
+// cabecera del listado, que ya no muestra las cards de Total/Pendiente
+// (cabecera compactada). Si en el futuro algún dashboard quiere
+// reutilizar la card, se reextrae a su propio fichero shared.
 
 // === Drawer detalle rápido ===
 // TEST-3.3 — Solo información. Las acciones (Editar / Eliminar / Email /

@@ -11,7 +11,10 @@ import type {
 type SectorPackModule = SectorPackDefinition["modules"][number];
 
 export const CORE_MODULES: SectorPackModule[] = [
-  { moduleKey: "tareas", enabled: true, label: "Tareas", navigationLabel: "Tareas", emptyState: "Sin tareas pendientes." },
+  // TEST-14 — Renombrado "Tareas" → "Asignaciones" (ahora "Tareas" pasa
+  // a designar el moduleKey `actividades`, antes "Trabajos"/"Parte de
+  // horas"). El moduleKey y la URL `/tareas` quedan estables.
+  { moduleKey: "tareas", enabled: true, label: "Asignaciones", navigationLabel: "Asignaciones", emptyState: "Sin asignaciones pendientes." },
   { moduleKey: "tickets", enabled: true, label: "Tickets", navigationLabel: "Tickets", emptyState: "Sin tickets abiertos." },
   { moduleKey: "compras", enabled: true, label: "Compras", navigationLabel: "Compras", emptyState: "Sin órdenes de compra." },
   { moduleKey: "productos", enabled: true, label: "Productos", navigationLabel: "Productos", emptyState: "Catálogo vacío." },
@@ -33,12 +36,14 @@ export const CORE_MODULES: SectorPackModule[] = [
   // `actividades-catalogo` para no romper la BD ni los consumers. El
   // módulo `actividades` (Parte de horas) ya estaba renombrado a "Parte
   // de horas" en su pack SF, así que no colisionan en sidebar.
-  { moduleKey: "actividades-catalogo", enabled: true, label: "Actividades", navigationLabel: "Actividades", emptyState: "Define qué actividades realizas." },
+  // TEST-14 — Renombrado "Actividades" (catálogo) → "Servicios".
+  // moduleKey y URL se mantienen para no romper datos ni bookmarks.
+  { moduleKey: "actividades-catalogo", enabled: true, label: "Servicios", navigationLabel: "Servicios", emptyState: "Define qué servicios prestas." },
   { moduleKey: "empleados", enabled: true, label: "Empleados", navigationLabel: "Empleados", emptyState: "Sin empleados registrados." },
-  // TEST-13 — Renombrado "Parte de horas" → "Trabajos". El moduleKey
-  // (`actividades`) y la URL `/actividades` se mantienen para no romper
-  // datos ni bookmarks; solo cambia la etiqueta visible.
-  { moduleKey: "actividades", enabled: true, label: "Trabajos", navigationLabel: "Trabajos", emptyState: "Sin trabajos imputados." },
+  // TEST-14 — Renombrado "Trabajos" → "Tareas" (label histórico:
+  // Actividades → Parte de horas → Trabajos → Tareas). El moduleKey
+  // `actividades` se mantiene para no romper datos.
+  { moduleKey: "actividades", enabled: true, label: "Tareas", navigationLabel: "Tareas", emptyState: "Sin tareas imputadas." },
   { moduleKey: "gastos", enabled: true, label: "Gastos", navigationLabel: "Gastos", emptyState: "Sin gastos imputados." },
   // H8 — Catálogos comerciales y sistema de tarifas + estructura SISPYME
   { moduleKey: "tipos-cliente", enabled: true, label: "Tipos de cliente", navigationLabel: "Tipos cliente", emptyState: "Define tipos de cliente." },
@@ -60,7 +65,8 @@ export const CORE_MODULES: SectorPackModule[] = [
 
 export const CORE_FIELDS: SectorPackField[] = [
   // Tareas
-  { moduleKey: "tareas", fieldKey: "titulo", label: "Tarea", kind: "text", required: true, placeholder: "Qué hay que hacer" },
+  // TEST-14 — Antes "Tarea"; ahora "Asignación".
+  { moduleKey: "tareas", fieldKey: "titulo", label: "Asignación", kind: "text", required: true, placeholder: "Qué hay que hacer" },
   // TEST-10.7 — Empresa: relación con Clientes (antes no existía referencia).
   { moduleKey: "tareas", fieldKey: "empresa", label: "Empresa", kind: "relation", relationModuleKey: "clientes" },
   // TEST-10.6 — Asignado a: relación con Empleados (antes texto libre).
@@ -315,10 +321,15 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "porcentaje", label: "% sobre base" }, { value: "fijo", label: "Importe fijo" }, { value: "cascada", label: "Cascada" },
   ] },
 
-  // H8-C5 Tarifas generales
+  // H8-C5 Tarifas generales — TEST-14 B: eliminada `claseCondicion`,
+  // añadidos `servicio` (relation a actividades-catalogo, el catálogo
+  // que ahora se llama "Servicios") y `nivel` (1/2/3/4).
   { moduleKey: "tarifas-generales", fieldKey: "codigo", label: "Código", kind: "text", required: true },
   { moduleKey: "tarifas-generales", fieldKey: "nombre", label: "Tarifa", kind: "text", required: true },
-  { moduleKey: "tarifas-generales", fieldKey: "claseCondicion", label: "Clase", kind: "relation", required: true, relationModuleKey: "clases-condicion" },
+  { moduleKey: "tarifas-generales", fieldKey: "servicio", label: "Servicio", kind: "relation", required: true, relationModuleKey: "actividades-catalogo", placeholder: "Servicio del catálogo al que aplica la tarifa" },
+  { moduleKey: "tarifas-generales", fieldKey: "nivel", label: "Nivel", kind: "status", required: true, options: [
+    { value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" },
+  ] },
   { moduleKey: "tarifas-generales", fieldKey: "valor", label: "Valor", kind: "money", required: true },
   { moduleKey: "tarifas-generales", fieldKey: "fechaInicio", label: "Fecha inicio", kind: "date", required: true },
   { moduleKey: "tarifas-generales", fieldKey: "fechaFin", label: "Fecha fin", kind: "date" },
@@ -326,11 +337,15 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "vigor", label: "En vigor" }, { value: "futura", label: "Futura" }, { value: "obsoleta", label: "Obsoleta" },
   ] },
 
-  // H8-C5 Tarifas especiales
+  // H8-C5 Tarifas especiales — TEST-14 B: mismo cambio que en Tarifas
+  // generales.
   { moduleKey: "tarifas-especiales", fieldKey: "nombre", label: "Tarifa especial", kind: "text", required: true },
   { moduleKey: "tarifas-especiales", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
   { moduleKey: "tarifas-especiales", fieldKey: "grupo", label: "Grupo", kind: "relation", relationModuleKey: "grupos-empresa" },
-  { moduleKey: "tarifas-especiales", fieldKey: "claseCondicion", label: "Clase", kind: "relation", required: true, relationModuleKey: "clases-condicion" },
+  { moduleKey: "tarifas-especiales", fieldKey: "servicio", label: "Servicio", kind: "relation", required: true, relationModuleKey: "actividades-catalogo", placeholder: "Servicio del catálogo al que aplica la tarifa" },
+  { moduleKey: "tarifas-especiales", fieldKey: "nivel", label: "Nivel", kind: "status", required: true, options: [
+    { value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" },
+  ] },
   { moduleKey: "tarifas-especiales", fieldKey: "valor", label: "Valor", kind: "money", required: true },
   { moduleKey: "tarifas-especiales", fieldKey: "fechaInicio", label: "Inicio", kind: "date", required: true },
   { moduleKey: "tarifas-especiales", fieldKey: "fechaFin", label: "Fin", kind: "date" },
@@ -451,7 +466,7 @@ export const CORE_FIELDS: SectorPackField[] = [
 ];
 
 export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
-  { moduleKey: "tareas", fieldKey: "titulo", label: "Tarea", isPrimary: true },
+  { moduleKey: "tareas", fieldKey: "titulo", label: "Asignación", isPrimary: true },
   { moduleKey: "tareas", fieldKey: "empresa", label: "Empresa" },
   { moduleKey: "tareas", fieldKey: "asignado", label: "Asignado" },
   { moduleKey: "tareas", fieldKey: "prioridad", label: "Prioridad" },
@@ -565,18 +580,22 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "clases-condicion", fieldKey: "tipo", label: "Tipo" },
   { moduleKey: "clases-condicion", fieldKey: "operador", label: "Operador" },
 
+  // TEST-14 B — columnas: Clase eliminada; Servicio y Nivel añadidos.
   { moduleKey: "tarifas-generales", fieldKey: "codigo", label: "Cód.", isPrimary: true },
   { moduleKey: "tarifas-generales", fieldKey: "nombre", label: "Tarifa" },
-  { moduleKey: "tarifas-generales", fieldKey: "claseCondicion", label: "Clase" },
+  { moduleKey: "tarifas-generales", fieldKey: "servicio", label: "Servicio" },
+  { moduleKey: "tarifas-generales", fieldKey: "nivel", label: "Nivel" },
   { moduleKey: "tarifas-generales", fieldKey: "valor", label: "Valor" },
   { moduleKey: "tarifas-generales", fieldKey: "fechaInicio", label: "Inicio" },
   { moduleKey: "tarifas-generales", fieldKey: "fechaFin", label: "Fin" },
   { moduleKey: "tarifas-generales", fieldKey: "estado", label: "Estado" },
 
+  // TEST-14 B — Tarifas especiales: Clase eliminada; Servicio y Nivel añadidos.
   { moduleKey: "tarifas-especiales", fieldKey: "nombre", label: "Tarifa especial", isPrimary: true },
   { moduleKey: "tarifas-especiales", fieldKey: "cliente", label: "Cliente" },
   { moduleKey: "tarifas-especiales", fieldKey: "grupo", label: "Grupo" },
-  { moduleKey: "tarifas-especiales", fieldKey: "claseCondicion", label: "Clase" },
+  { moduleKey: "tarifas-especiales", fieldKey: "servicio", label: "Servicio" },
+  { moduleKey: "tarifas-especiales", fieldKey: "nivel", label: "Nivel" },
   { moduleKey: "tarifas-especiales", fieldKey: "valor", label: "Valor" },
   { moduleKey: "tarifas-especiales", fieldKey: "estado", label: "Estado" },
 

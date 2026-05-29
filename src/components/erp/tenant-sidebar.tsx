@@ -322,8 +322,8 @@ const FALLBACK_LABELS: Record<string, string> = {
   mantenimiento: "Mantenimiento",
   personal: "Personal",
   egresados: "Egresados",
-  // CORE-03
-  tareas: "Tareas",
+  // CORE-03 — TEST-14 tareas → "Asignaciones".
+  tareas: "Asignaciones",
   tickets: "Tickets",
   compras: "Compras",
   productos: "Productos",
