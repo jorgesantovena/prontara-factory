@@ -448,6 +448,12 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // lookup en Tarifas según (Cliente.tipoTarifa, Cliente.nivel,
     // Servicio). Ver erp-record-editor.tsx lookup TEST-15 D.
     { moduleKey: "proyectos", fieldKey: "tarifaHoraOverride", label: "Tarifa €/h", kind: "text", readOnly: true, placeholder: "Se calcula desde Tarifas al elegir Cliente + Servicio" },
+    // TEST-16 E — Nivel del Cliente y Unidad de la Tarifa, ambos SALIDA.
+    // Se rellenan automáticamente en el lookup TEST-15 D al elegir Cliente
+    // (nivelCliente ← cliente.nivel) y Servicio+Cliente (unidadTarifa
+    // ← tarifa.unidad). Necesarios como columnas del listado TEST-16 E.
+    { moduleKey: "proyectos", fieldKey: "nivelCliente", label: "Nivel cliente", kind: "text", readOnly: true, inheritFrom: { from: "cliente", field: "nivel" }, placeholder: "Heredado del Cliente" },
+    { moduleKey: "proyectos", fieldKey: "unidadTarifa", label: "Unidad tarifa", kind: "text", readOnly: true, placeholder: "Se calcula desde Tarifas al elegir Cliente + Servicio" },
     // TEST-13 E — Horas totales (bolsa) visible y obligatorio SOLO si
     // Método facturación = "contra-bolsa".
     { moduleKey: "proyectos", fieldKey: "horasTotales", label: "Horas totales (bolsa)", kind: "text", visibleWhen: { field: "tipoFacturacion", equals: "contra-bolsa" }, requiredWhen: { field: "tipoFacturacion", equals: "contra-bolsa" }, placeholder: "Total horas contratadas en la bolsa" },
@@ -550,11 +556,10 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "rechazada", label: "Rechazada" },
     ] },
 
-    // TEST-14-15 bis — Servicios: solo Código + Descripción (Pedro).
-    // El resto de campos (facturablePorDefecto, vigenciaMesesPorDefecto,
-    // tarifaHoraDefault, notas) se eliminan: la tarifa va a Proyecto y
-    // las casuísticas a Tarifas con su sistema de niveles.
-    { moduleKey: "catalogo-servicios", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "INST, MANT, NUEDES, SOP, FORM, ..." },
+    // TEST-16 D — Servicios: Pedro elimina el campo Código del
+    // formulario. Solo se muestra Descripción. El dato `codigo` sigue
+    // existiendo internamente para los servicios demo (clave de
+    // lookup en Tarifas), pero no se pide al alta de nuevos servicios.
     { moduleKey: "catalogo-servicios", fieldKey: "descripcion", label: "Descripción", kind: "text", required: true, placeholder: "Descripción del servicio" },
 
     // H7-S1 — Catálogo de Aplicaciones del tenant (AXIS, MATRIX, ERP V7...)
@@ -610,9 +615,16 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "crm", fieldKey: "valorEstimado", label: "Valor" },
     { moduleKey: "crm", fieldKey: "referenciaPropuesta", label: "Ref. propuesta" },
 
+    // TEST-16 E — Proyectos listado: añadir Nivel (heredado del Cliente)
+    // y Unidad (de la tarifa aplicada). Ambos son readOnly: se rellenan
+    // automáticamente al elegir Cliente y Servicio en el alta del proyecto
+    // (ver lookup TEST-15 D en erp-record-editor.tsx).
     { moduleKey: "proyectos", fieldKey: "codigoTipo", label: "Código", isPrimary: true },
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Proyecto" },
     { moduleKey: "proyectos", fieldKey: "cliente", label: "Cliente" },
+    { moduleKey: "proyectos", fieldKey: "nivelCliente", label: "Nivel" },
+    { moduleKey: "proyectos", fieldKey: "tarifaHoraOverride", label: "Tarifa" },
+    { moduleKey: "proyectos", fieldKey: "unidadTarifa", label: "Unidad" },
     { moduleKey: "proyectos", fieldKey: "facturable", label: "Facturable" },
     { moduleKey: "proyectos", fieldKey: "fechaCaducidad", label: "Caducidad" },
     { moduleKey: "proyectos", fieldKey: "estado", label: "Estado" },
@@ -621,9 +633,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "documentos", fieldKey: "nombre", label: "Entregable", isPrimary: true },
     { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
 
-    // TEST-14-15 bis — Servicios: listado simplificado a Código + Descripción.
-    { moduleKey: "catalogo-servicios", fieldKey: "codigo", label: "Código", isPrimary: true },
-    { moduleKey: "catalogo-servicios", fieldKey: "descripcion", label: "Descripción" },
+    // TEST-16 D — Servicios: listado solo Descripción (Código eliminado).
+    { moduleKey: "catalogo-servicios", fieldKey: "descripcion", label: "Descripción", isPrimary: true },
 
     // H7-S1
     { moduleKey: "aplicaciones", fieldKey: "codigo", label: "Código", isPrimary: true },

@@ -9,6 +9,8 @@ import ModuleExportButton from "@/components/erp/module-export-button";
 import ModuleImportButton from "@/components/erp/module-import-button";
 import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 import DangerConfirm from "@/components/erp/danger-confirm";
+// TEST-16 — singular() centralizado; ver src/lib/text/singular.ts.
+import { singular } from "@/lib/text/singular";
 
 /**
  * Página genérica de un módulo del runtime del tenant (H12-F — rediseño).
@@ -1918,68 +1920,10 @@ function renderCell(fieldKey: string, val: string, primaryRow: Record<string, st
 // === Singular del label (Clientes → cliente) ===
 // TEST-1.2 — overrides para palabras castellanas comunes. Fallback "quitar s"
 // solo si no hay override. Antes "Clientes" → "client" porque slice(-2) en "es".
-const SINGULAR_OVERRIDES: Record<string, string> = {
-  clientes: "cliente",
-  oportunidades: "oportunidad",
-  proyectos: "proyecto",
-  propuestas: "propuesta",
-  presupuestos: "presupuesto",
-  facturas: "factura",
-  documentos: "documento",
-  entregables: "entregable",
-  tareas: "tarea",
-  tickets: "ticket",
-  compras: "compra",
-  productos: "producto",
-  reservas: "reserva",
-  encuestas: "encuesta",
-  etiquetas: "etiqueta",
-  plantillas: "plantilla",
-  empleados: "empleado",
-  gastos: "gasto",
-  vencimientos: "vencimiento",
-  desplazamientos: "desplazamiento",
-  hitos: "hito",
-  aplicaciones: "aplicación",
-  notificaciones: "notificación",
-  pacientes: "paciente",
-  citas: "cita",
-  tratamientos: "tratamiento",
-  alumnos: "alumno",
-  docentes: "docente",
-  calificaciones: "calificación",
-  // TEST-14-15 bis — Pedro reporta "Asignacione" y similares. Para los
-  // plurales en -ciones / -siones / -aciones / -iones, el singular
-  // termina en -ción con tilde (no quitando solo la 's'). Añadimos los
-  // que aparecen en los labels actuales del producto.
-  asignaciones: "asignación",
-  operaciones: "operación",
-  direcciones: "dirección",
-  versiones: "versión",
-  // Renombrados TEST-14: los plurales con singular trivial -s también
-  // los añadimos explícitos para no depender del fallback (más rápido
-  // de auditar).
-  trabajos: "trabajo",
-  servicios: "servicio",
-  actividades: "actividad",
-  tarifas: "tarifa",
-  zonas: "zona",
-  grupos: "grupo",
-  becas: "beca",
-  salidas: "salida",
-  egresados: "egresado",
-  avisos: "aviso",
-  recibos: "recibo",
-  socios: "socio",
-  bonos: "bono",
-  cuotas: "cuota",
-};
-function singular(label: string): string {
-  const l = label.toLowerCase().trim();
-  if (SINGULAR_OVERRIDES[l]) return SINGULAR_OVERRIDES[l];
-  if (l.endsWith("s") && l.length > 2) return l.slice(0, -1);
-  return l;
-}
+// TEST-16 — `singular()` y `SINGULAR_OVERRIDES` movidos al helper
+// compartido `@/lib/text/singular`. Ver el fichero para la lista actual.
+// Esta página lo importa arriba (no se reexporta aquí para evitar tener
+// dos puntos de import).
 
 // === Pager helper ===
 function pagerRange(current: number, total: number): Array<number | "…"> {

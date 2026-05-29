@@ -3,6 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
+// TEST-16 — singular() centralizado en src/lib/text/singular.ts. Antes
+// había una copia duplicada en este fichero y otra en
+// generic-module-runtime-page.tsx que se desincronizaban al añadir
+// overrides (Pedro: "Asignacione" en vez de "Asignación").
+import { singular } from "@/lib/text/singular";
 
 /**
  * Editor full-page para crear/editar un registro de cualquier módulo.
@@ -501,14 +506,16 @@ export default function ErpRecordEditor({
                   String(row.nivel || "") === nivelCliente,
                 );
             if (!found) {
-              // Sin coincidencia: dejamos el campo vacío (señal de que
-              // no hay tarifa configurada). No sobrescribimos un valor
-              // existente con "" si el usuario lo había puesto a mano.
-              setValues((v) => ({ ...v, tarifaHoraOverride: "" }));
+              // Sin coincidencia: dejamos los campos derivados vacíos.
+              // No sobrescribimos lo que el usuario hubiera puesto.
+              setValues((v) => ({ ...v, tarifaHoraOverride: "", unidadTarifa: "", nivelCliente }));
               return;
             }
+            // TEST-16 E — Además de la Tarifa, rellenamos Unidad (de la
+            // tarifa) y Nivel del Cliente para que el listado los pinte.
             const tarifa = String(found.valor || "").trim();
-            setValues((v) => ({ ...v, tarifaHoraOverride: tarifa }));
+            const unidad = String(found.unidad || "").trim();
+            setValues((v) => ({ ...v, tarifaHoraOverride: tarifa, unidadTarifa: unidad, nivelCliente }));
           } catch { /* tolerar fallo de red */ }
         })();
       }
@@ -613,8 +620,12 @@ export default function ErpRecordEditor({
 
   return (
     <div style={{ color: "#0f172a", fontFamily: "system-ui, -apple-system, sans-serif", maxWidth: 1280, margin: "0 auto" }}>
-      {/* Breadcrumb */}
-      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
+      {/* TEST-16 A — Cabecera del editor compactada (Pedro pide subir
+          etiquetas a la primera fila y reducir verticalidad). El
+          breadcrumb ya contiene el título al final, así que reducimos
+          el H1 de la fila siguiente y bajamos los márgenes. No
+          eliminamos elementos para no romper la navegación. */}
+      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
         <Link href="/" style={{ color: "#64748b", textDecoration: "none" }}>Inicio</Link>
         <span style={{ margin: "0 6px" }}>/</span>
         <Link href={"/" + moduleKey} style={{ color: "#64748b", textDecoration: "none" }}>{moduleLabel}</Link>
@@ -622,10 +633,10 @@ export default function ErpRecordEditor({
         <span style={{ color: "#0f172a", fontWeight: 600 }}>{titulo}</span>
       </div>
 
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
+      {/* Header — H1 + acciones en una sola fila compacta. */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, letterSpacing: -0.4 }}>{titulo}</h1>
+          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: -0.3 }}>{titulo}</h1>
           <button
             type="button"
             onClick={() => setFavorite((f) => !f)}
@@ -1433,14 +1444,19 @@ function subBtnPrimary(accent: string): React.CSSProperties {
 // puede ver datos, eliminar y crear nuevos proyectos con el cliente
 // precargado vía query string `?prefill_cliente=<id>` que el generic
 // module-runtime-page interpreta para abrir el editor en modo create.
+// TEST-16 F — Sublista de proyectos del cliente: columnas pedidas por
+// Pedro son Proyecto, Estado, Responsable, Servicio, Facturable,
+// Tarifa, Unidad. Inicio/Caducidad excluidas.
 type ProyectoRow = {
   id: string;
   nombre: string;
   cliente: string;
   estado: string;
   responsable: string;
-  fechaInicio: string;
-  fechaCaducidad: string;
+  codigoTipo: string;       // Servicio (código)
+  facturable: string;
+  tarifaHoraOverride: string;
+  unidadTarifa: string;
 };
 
 function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: string; clienteName: string; accent: string }) {
@@ -1480,8 +1496,12 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
         cliente: String(row.cliente || ""),
         estado: String(row.estado || ""),
         responsable: String(row.responsable || ""),
-        fechaInicio: String(row.fechaInicio || ""),
-        fechaCaducidad: String(row.fechaCaducidad || ""),
+        // TEST-16 F — Servicio (código del catalogo-servicios),
+        // Facturable, Tarifa y Unidad: nuevas columnas pedidas.
+        codigoTipo: String(row.codigoTipo || ""),
+        facturable: String(row.facturable || ""),
+        tarifaHoraOverride: String(row.tarifaHoraOverride || ""),
+        unidadTarifa: String(row.unidadTarifa || ""),
       }));
       setRows(filtered);
     } catch (e) {
@@ -1547,12 +1567,17 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
         <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
+              {/* TEST-16 F — Columnas: Proyecto, Estado, Responsable,
+                  Servicio, Facturable, Tarifa, Unidad. Excluidas
+                  Inicio/Caducidad. */}
               <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
                 <th style={subTh()}>Proyecto</th>
                 <th style={subTh()}>Estado</th>
                 <th style={subTh()}>Responsable</th>
-                <th style={subTh(110)}>Inicio</th>
-                <th style={subTh(110)}>Caducidad</th>
+                <th style={subTh()}>Servicio</th>
+                <th style={subTh(100)}>Facturable</th>
+                <th style={subTh(90)}>Tarifa</th>
+                <th style={subTh(90)}>Unidad</th>
                 <th style={subTh(120)}>Acciones</th>
               </tr>
             </thead>
@@ -1562,11 +1587,15 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
                   <td style={subTd}>{p.nombre || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>{p.estado || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>{p.responsable || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                  <td style={subTd}>{p.fechaInicio ? fmtDateEs(p.fechaInicio) : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                  <td style={subTd}>{p.fechaCaducidad ? fmtDateEs(p.fechaCaducidad) : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.codigoTipo || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.facturable || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.tarifaHoraOverride || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.unidadTarifa || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>
                     <div style={{ display: "flex", gap: 4 }}>
-                      <Link href={link("proyectos")} style={{ ...subBtn, textDecoration: "none" }} title="Abrir módulo Proyectos para editar">Abrir</Link>
+                      {/* TEST-16 F — "Abrir" navega a la ficha del Proyecto
+                          concreto (?ver=<id>), no al listado. */}
+                      <Link href={link("proyectos") + "?ver=" + encodeURIComponent(p.id)} style={{ ...subBtn, textDecoration: "none" }} title="Abrir ficha de este proyecto">Abrir</Link>
                       <button type="button" onClick={() => setConfirmDeleteId(p.id)} style={subBtnDanger} title="Eliminar proyecto" disabled={busy}>🗑</button>
                     </div>
                   </td>
@@ -1848,47 +1877,10 @@ function fmtMoney(v: unknown): string {
   if (!Number.isFinite(n)) return String(v ?? "—");
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
 }
-// TEST-1.2 — singular() con overrides. El fallback genérico se equivocaba
-// con palabras tipo "Clientes" → "client" (cortaba "es" entero). Para
-// palabras castellanas comunes mapeamos a su singular correcto.
-const SINGULAR_OVERRIDES: Record<string, string> = {
-  clientes: "cliente",
-  oportunidades: "oportunidad",
-  proyectos: "proyecto",
-  propuestas: "propuesta",
-  presupuestos: "presupuesto",
-  facturas: "factura",
-  documentos: "documento",
-  entregables: "entregable",
-  tareas: "tarea",
-  tickets: "ticket",
-  compras: "compra",
-  productos: "producto",
-  reservas: "reserva",
-  encuestas: "encuesta",
-  etiquetas: "etiqueta",
-  plantillas: "plantilla",
-  empleados: "empleado",
-  gastos: "gasto",
-  vencimientos: "vencimiento",
-  desplazamientos: "desplazamiento",
-  hitos: "hito",
-  aplicaciones: "aplicación",
-  notificaciones: "notificación",
-  pacientes: "paciente",
-  citas: "cita",
-  tratamientos: "tratamiento",
-  alumnos: "alumno",
-  docentes: "docente",
-  calificaciones: "calificación",
-};
-function singular(label: string): string {
-  const l = label.toLowerCase().trim();
-  if (SINGULAR_OVERRIDES[l]) return SINGULAR_OVERRIDES[l];
-  // Fallback genérico: si termina en "s", quitar la "s" final.
-  if (l.endsWith("s") && l.length > 2) return l.slice(0, -1);
-  return l;
-}
+// TEST-16 — singular() ahora vive en `@/lib/text/singular`. Tener una
+// única fuente de verdad evita el drift de los overrides (Pedro reportó
+// "Alta de Asignacione" porque actualicé el de generic-module-runtime
+// pero no este).
 
 // === Botones ===
 function btnPrimary(accent: string): React.CSSProperties {

@@ -330,39 +330,49 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "porcentaje", label: "% sobre base" }, { value: "fijo", label: "Importe fijo" }, { value: "cascada", label: "Cascada" },
   ] },
 
-  // H8-C5 Tarifas generales — TEST-14 B: eliminada `claseCondicion`,
-  // añadidos `servicio` (relation a actividades-catalogo, el catálogo
-  // que ahora se llama "Servicios") y `nivel` (1/2/3/4).
-  { moduleKey: "tarifas-generales", fieldKey: "codigo", label: "Código", kind: "text", required: true },
-  { moduleKey: "tarifas-generales", fieldKey: "nombre", label: "Tarifa", kind: "text", required: true },
-  // TEST-14-15 bis — La tabla de Servicios es `catalogo-servicios` (no
-  // `actividades-catalogo`). El field apunta ahí.
+  // H8-C5 Tarifas — TEST-16 B: eliminados `codigo` y `nombre` (Pedro:
+  // la tarifa se identifica por Servicio+Nivel). Nuevo campo `unidad`
+  // (€/año, €/semestre, €/trimestre, €/mes, €/hora, €). Estado y
+  // fechaFin con defaultValue para que el alta sea "1 click".
   { moduleKey: "tarifas-generales", fieldKey: "servicio", label: "Servicio", kind: "relation", required: true, relationModuleKey: "catalogo-servicios", placeholder: "Servicio al que aplica la tarifa" },
   { moduleKey: "tarifas-generales", fieldKey: "nivel", label: "Nivel", kind: "status", required: true, options: [
     { value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" },
   ] },
   { moduleKey: "tarifas-generales", fieldKey: "valor", label: "Valor", kind: "money", required: true },
+  { moduleKey: "tarifas-generales", fieldKey: "unidad", label: "Unidad", kind: "status", required: true, options: [
+    { value: "ano", label: "€/año" },
+    { value: "semestre", label: "€/semestre" },
+    { value: "trimestre", label: "€/trimestre" },
+    { value: "mes", label: "€/mes" },
+    { value: "hora", label: "€/hora" },
+    { value: "unidad", label: "€" },
+  ] },
   { moduleKey: "tarifas-generales", fieldKey: "fechaInicio", label: "Fecha inicio", kind: "date", required: true },
-  { moduleKey: "tarifas-generales", fieldKey: "fechaFin", label: "Fecha fin", kind: "date" },
-  { moduleKey: "tarifas-generales", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+  { moduleKey: "tarifas-generales", fieldKey: "fechaFin", label: "Fecha fin", kind: "date", defaultValue: "9999-12-31" },
+  { moduleKey: "tarifas-generales", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "vigor", options: [
     { value: "vigor", label: "En vigor" }, { value: "futura", label: "Futura" }, { value: "obsoleta", label: "Obsoleta" },
   ] },
 
-  // H8-C5 Tarifas especiales — TEST-14 B: mismo cambio que en Tarifas
-  // generales.
-  { moduleKey: "tarifas-especiales", fieldKey: "nombre", label: "Tarifa especial", kind: "text", required: true },
+  // H8-C5 Tarifas especiales — TEST-16 C: mismo tratamiento.
   { moduleKey: "tarifas-especiales", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
   { moduleKey: "tarifas-especiales", fieldKey: "grupo", label: "Grupo", kind: "relation", relationModuleKey: "grupos-empresa" },
-  // TEST-14-15 bis — Idem en Tarifas especiales: relation a catalogo-servicios.
   { moduleKey: "tarifas-especiales", fieldKey: "servicio", label: "Servicio", kind: "relation", required: true, relationModuleKey: "catalogo-servicios", placeholder: "Servicio al que aplica la tarifa especial" },
   { moduleKey: "tarifas-especiales", fieldKey: "nivel", label: "Nivel", kind: "status", required: true, options: [
     { value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" },
   ] },
   { moduleKey: "tarifas-especiales", fieldKey: "valor", label: "Valor", kind: "money", required: true },
+  { moduleKey: "tarifas-especiales", fieldKey: "unidad", label: "Unidad", kind: "status", required: true, options: [
+    { value: "ano", label: "€/año" },
+    { value: "semestre", label: "€/semestre" },
+    { value: "trimestre", label: "€/trimestre" },
+    { value: "mes", label: "€/mes" },
+    { value: "hora", label: "€/hora" },
+    { value: "unidad", label: "€" },
+  ] },
   { moduleKey: "tarifas-especiales", fieldKey: "fechaInicio", label: "Inicio", kind: "date", required: true },
-  { moduleKey: "tarifas-especiales", fieldKey: "fechaFin", label: "Fin", kind: "date" },
+  { moduleKey: "tarifas-especiales", fieldKey: "fechaFin", label: "Fin", kind: "date", defaultValue: "9999-12-31" },
   { moduleKey: "tarifas-especiales", fieldKey: "observaciones", label: "Observaciones", kind: "textarea" },
-  { moduleKey: "tarifas-especiales", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+  { moduleKey: "tarifas-especiales", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "vigor", options: [
     { value: "vigor", label: "En vigor" }, { value: "futura", label: "Futura" }, { value: "obsoleta", label: "Obsoleta" },
   ] },
 
@@ -593,22 +603,25 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "clases-condicion", fieldKey: "operador", label: "Operador" },
 
   // TEST-14 B — columnas: Clase eliminada; Servicio y Nivel añadidos.
-  { moduleKey: "tarifas-generales", fieldKey: "codigo", label: "Cód.", isPrimary: true },
-  { moduleKey: "tarifas-generales", fieldKey: "nombre", label: "Tarifa" },
+  // TEST-16 B — Tarifas: identidad por Nivel+Servicio (no por Código).
+  // Lista clasificada por Nivel y Servicio (orden por defecto manejado
+  // por el listado runtime; aquí solo definimos las columnas visibles).
+  { moduleKey: "tarifas-generales", fieldKey: "nivel", label: "Nivel", isPrimary: true },
   { moduleKey: "tarifas-generales", fieldKey: "servicio", label: "Servicio" },
-  { moduleKey: "tarifas-generales", fieldKey: "nivel", label: "Nivel" },
   { moduleKey: "tarifas-generales", fieldKey: "valor", label: "Valor" },
+  { moduleKey: "tarifas-generales", fieldKey: "unidad", label: "Unidad" },
   { moduleKey: "tarifas-generales", fieldKey: "fechaInicio", label: "Inicio" },
   { moduleKey: "tarifas-generales", fieldKey: "fechaFin", label: "Fin" },
   { moduleKey: "tarifas-generales", fieldKey: "estado", label: "Estado" },
 
   // TEST-14 B — Tarifas especiales: Clase eliminada; Servicio y Nivel añadidos.
-  { moduleKey: "tarifas-especiales", fieldKey: "nombre", label: "Tarifa especial", isPrimary: true },
+  // TEST-16 C — Tarifas especiales: sin Código ni Nombre.
+  { moduleKey: "tarifas-especiales", fieldKey: "nivel", label: "Nivel", isPrimary: true },
+  { moduleKey: "tarifas-especiales", fieldKey: "servicio", label: "Servicio" },
   { moduleKey: "tarifas-especiales", fieldKey: "cliente", label: "Cliente" },
   { moduleKey: "tarifas-especiales", fieldKey: "grupo", label: "Grupo" },
-  { moduleKey: "tarifas-especiales", fieldKey: "servicio", label: "Servicio" },
-  { moduleKey: "tarifas-especiales", fieldKey: "nivel", label: "Nivel" },
   { moduleKey: "tarifas-especiales", fieldKey: "valor", label: "Valor" },
+  { moduleKey: "tarifas-especiales", fieldKey: "unidad", label: "Unidad" },
   { moduleKey: "tarifas-especiales", fieldKey: "estado", label: "Estado" },
 
   { moduleKey: "albaranes", fieldKey: "numero", label: "Nº", isPrimary: true },
