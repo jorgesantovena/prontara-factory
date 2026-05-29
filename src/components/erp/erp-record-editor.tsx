@@ -171,7 +171,9 @@ export default function ErpRecordEditor({
   // clientes, que aunque no tenga fields del pack siempre muestra la sublista.
   const grouped = useMemo(() => {
     const acc: Record<TabKey, UiFieldDefinition[]> = {
-      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], documentos: [],
+      // TEST-15 E.2 — "propuestas" añadida al record (TabKey nuevo) para
+      // que el inicializador cubra TODAS las keys del type.
+      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], propuestas: [], documentos: [],
     };
     // TEST-11 — En el Parte de horas (actividades) el orden EXACTO de
     // campos que define el sector pack importa (Empleado → Fecha → Hora
