@@ -17,7 +17,8 @@ const SEGMENT_LABELS: Record<string, string> = {
   presupuestos: "Presupuestos",
   facturacion: "Facturas",
   documentos: "Documentos",
-  actividades: "Actividades",
+  // TEST-13 — actividades = "Trabajos" (antes "Parte de horas"/"Actividades").
+  actividades: "Trabajos",
   tareas: "Tareas",
   tickets: "Tickets",
   cau: "CAU",
@@ -64,7 +65,9 @@ const SEGMENT_LABELS: Record<string, string> = {
   "tipos-cliente": "Tipos cliente",
   "tipos-servicio": "Tipos servicio",
   "tipos-urgencia": "Urgencias",
-  "actividades-catalogo": "Catálogo actividades",
+  // TEST-13 — actividades-catalogo = "Actividades" (Pedro: las pantallas
+  // distintas a Menú Principal seguían mostrando el label antiguo).
+  "actividades-catalogo": "Actividades",
   "zonas-comerciales": "Zonas",
   "grupos-empresa": "Grupos",
   "avisos-programados": "Avisos",

@@ -35,7 +35,10 @@ export const CORE_MODULES: SectorPackModule[] = [
   // de horas" en su pack SF, así que no colisionan en sidebar.
   { moduleKey: "actividades-catalogo", enabled: true, label: "Actividades", navigationLabel: "Actividades", emptyState: "Define qué actividades realizas." },
   { moduleKey: "empleados", enabled: true, label: "Empleados", navigationLabel: "Empleados", emptyState: "Sin empleados registrados." },
-  { moduleKey: "actividades", enabled: true, label: "Parte de horas", navigationLabel: "Parte de horas", emptyState: "Sin horas imputadas." },
+  // TEST-13 — Renombrado "Parte de horas" → "Trabajos". El moduleKey
+  // (`actividades`) y la URL `/actividades` se mantienen para no romper
+  // datos ni bookmarks; solo cambia la etiqueta visible.
+  { moduleKey: "actividades", enabled: true, label: "Trabajos", navigationLabel: "Trabajos", emptyState: "Sin trabajos imputados." },
   { moduleKey: "gastos", enabled: true, label: "Gastos", navigationLabel: "Gastos", emptyState: "Sin gastos imputados." },
   // H8 — Catálogos comerciales y sistema de tarifas + estructura SISPYME
   { moduleKey: "tipos-cliente", enabled: true, label: "Tipos de cliente", navigationLabel: "Tipos cliente", emptyState: "Define tipos de cliente." },

@@ -41,12 +41,19 @@ type UiFieldDefinition = {
   // una relación), el editor lee el registro destino y copia `field` en
   // este campo. Ej.: cliente ← proyecto.cliente, km ← cliente.kilometrosBase.
   inheritFrom?: { from: string; field: string };
-  // TEST-11 — Cálculo automático. Soportado: { type: "duration", from, to }
-  // produce "hh:mm" entre dos horas. Usado en Tiempo del Parte de horas.
-  computed?: { type: "duration"; from: string; to: string };
+  // TEST-11/13 — Cálculo automático. Soportados:
+  //   - { type: "duration", from, to }: produce "hh:mm" / decimal entre dos horas.
+  //   - { type: "derived", from, map, default }: copia el valor del campo
+  //     `from` mapeado por `map`; si no hay match usa `default`.
+  computed?:
+    | { type: "duration"; from: string; to: string }
+    | { type: "derived"; from: string; map?: Record<string, string>; default?: string };
   // TEST-11 — Visibilidad condicional: el campo solo se muestra si otro
   // campo del registro tiene uno de los valores indicados.
   visibleWhen?: { field: string; equals: string | string[] };
+  // TEST-13 E — Required condicional y default al crear.
+  requiredWhen?: { field: string; equals: string | string[] };
+  defaultValue?: string;
 };
 
 type OptionItem = { value: string; label: string };
@@ -221,6 +228,10 @@ export default function ErpRecordEditor({
         next[f.key] = String(initVal);
       } else if (mode === "create" && f.kind === "date" && TODAY_DEFAULT_DATE_FIELDS.has(f.key)) {
         next[f.key] = todayIso;
+      } else if (mode === "create" && f.defaultValue) {
+        // TEST-13 E — Valor por defecto al crear (Estado=activo,
+        // fechaCaducidad=9999-12-31, etc.).
+        next[f.key] = f.defaultValue;
       } else {
         next[f.key] = String(initVal ?? "");
       }
@@ -229,6 +240,8 @@ export default function ErpRecordEditor({
     // inicial. Si un registro viene de BD/import con horaDesde/horaHasta
     // pero tiempoHoras vacío, queremos verlo lleno desde el primer render
     // sin esperar a que el usuario teclee algo.
+    // TEST-13 E — También aplicar computed.derived al cargar
+    // (Facturable=f(tipoFacturacion) etc.).
     for (const f of fields) {
       if (f.computed?.type === "duration") {
         const current = String(next[f.key] || "").trim();
@@ -238,6 +251,11 @@ export default function ErpRecordEditor({
           const computed = computeDurationStatic(desde, hasta);
           if (computed) next[f.key] = computed;
         }
+      } else if (f.computed?.type === "derived") {
+        const fromVal = String(next[f.computed.from] || "");
+        const mapped = f.computed.map?.[fromVal];
+        const value = mapped ?? f.computed.default ?? "";
+        if (value) next[f.key] = value;
       }
     }
     // TEST-12 #3 — Si hay un borrador guardado en sessionStorage para
@@ -365,11 +383,16 @@ export default function ErpRecordEditor({
     setValues((v) => {
       const next: Record<string, string> = { ...v, [key]: value };
       // TEST-11 — Recalcular campos computed.duration cuya from/to es `key`.
+      // TEST-13 E — También recalcular computed.derived cuyo `from` es `key`
+      // (p.ej. Facturable = f(tipoFacturacion)).
       for (const f of fields) {
         if (f.computed?.type === "duration" && (f.computed.from === key || f.computed.to === key)) {
           const desde = f.computed.from === key ? value : (next[f.computed.from] || "");
           const hasta = f.computed.to === key ? value : (next[f.computed.to] || "");
           next[f.key] = computeDuration(desde, hasta);
+        } else if (f.computed?.type === "derived" && f.computed.from === key) {
+          const mapped = f.computed.map?.[value];
+          next[f.key] = mapped ?? f.computed.default ?? "";
         }
       }
       return next;
@@ -436,8 +459,28 @@ export default function ErpRecordEditor({
       if (fields.length === 0) {
         throw new Error("Este módulo no tiene campos configurados. Configúralos en Ajustes → Campos personalizados antes de crear registros.");
       }
-      // Validación mínima: required no vacíos
-      const missing = fields.filter((f) => f.required && !String(values[f.key] || "").trim());
+      // Validación mínima: required no vacíos. TEST-13 E — también
+      // requiredWhen: un campo opcional pasa a obligatorio si otro campo
+      // del registro tiene el valor pedido (p.ej. Horas bolsa obligatoria
+      // cuando Método facturación = "contra-bolsa"). Si visibleWhen no
+      // se cumple, el campo NO es required aunque lo diga requiredWhen.
+      function isVisible(f: UiFieldDefinition): boolean {
+        if (!f.visibleWhen) return true;
+        const watch = String(values[f.visibleWhen.field] || "");
+        const eq = f.visibleWhen.equals;
+        return Array.isArray(eq) ? eq.includes(watch) : watch === eq;
+      }
+      function isRequired(f: UiFieldDefinition): boolean {
+        if (f.required) return true;
+        if (f.requiredWhen) {
+          const watch = String(values[f.requiredWhen.field] || "");
+          const eq = f.requiredWhen.equals;
+          const hit = Array.isArray(eq) ? eq.includes(watch) : watch === eq;
+          if (hit) return isVisible(f);
+        }
+        return false;
+      }
+      const missing = fields.filter((f) => isRequired(f) && !String(values[f.key] || "").trim());
       if (missing.length > 0) {
         // Saltar al primer tab que tenga el campo faltante
         const firstMissingTab = classifyField(missing[0].key);

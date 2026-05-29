@@ -43,17 +43,34 @@ function storageKey(): string {
   return STORAGE_KEY + ":" + readTenant();
 }
 
-function labelFromPath(pathname: string): string {
-  // /softwarefactory/clientes → "Clientes"
-  // /softwarefactory/actividades-catalogo → "Actividades"
-  // /softwarefactory → "Inicio"
+// Extrae el segmento que representa el moduleKey en la URL del runtime
+// (/<vertical>/<moduleKey>[/...]). Devuelve "" para la raíz del vertical.
+function moduleKeyFromPath(pathname: string): string {
   const parts = pathname.replace(/^\/+|\/+$/g, "").split("/");
-  if (parts.length === 0 || (parts.length === 1 && !parts[0])) return "Inicio";
-  if (parts.length === 1) return "Inicio";
-  const last = parts[parts.length - 1];
-  // Convertir kebab/snake a Título.
-  const pretty = last.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  if (parts.length < 2) return "";
+  return parts[1] || "";
+}
+
+function fallbackLabelFromSlug(slug: string): string {
+  if (!slug) return "Inicio";
+  const pretty = slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   return pretty.length > MAX_LABEL ? pretty.slice(0, MAX_LABEL - 1) + "…" : pretty;
+}
+
+// TEST-13 C — Resuelve el label visible de una tab usando el
+// navigationLabelMap del tenant-config (donde "actividades" = "Trabajos"
+// y "actividades-catalogo" = "Actividades"). Si la URL no corresponde a
+// un módulo, o si todavía no se ha cargado el map, cae al título
+// derivado del slug. Así las solapas se llaman como las entradas del
+// Menú Principal y no aparecen labels desincronizados.
+function labelFromPath(pathname: string, navigationLabelMap: Record<string, string>): string {
+  const slug = moduleKeyFromPath(pathname);
+  if (!slug) return "Inicio";
+  const fromMap = navigationLabelMap[slug];
+  if (fromMap) {
+    return fromMap.length > MAX_LABEL ? fromMap.slice(0, MAX_LABEL - 1) + "…" : fromMap;
+  }
+  return fallbackLabelFromSlug(slug);
 }
 
 function loadTabs(): Tab[] {
@@ -80,10 +97,41 @@ export default function TabBar() {
   const pathname = usePathname() || "/";
   const router = useRouter();
   const [tabs, setTabs] = useState<Tab[]>([]);
+  // TEST-13 C — Map de navigationLabel por moduleKey, leído del config
+  // del tenant. Asegura que la solapa de "/actividades" sea "Trabajos" y
+  // la de "/actividades-catalogo" sea "Actividades" (no derivados del slug).
+  const [navigationLabelMap, setNavigationLabelMap] = useState<Record<string, string>>({});
 
   // Cargar tabs guardadas al montar.
   useEffect(() => {
     setTabs(loadTabs());
+  }, []);
+
+  // Cargar el navigationLabelMap del tenant-config (una sola vez por
+  // sesión; el config cambia raramente y el fallback por slug es seguro).
+  useEffect(() => {
+    let cancelled = false;
+    async function loadConfig() {
+      if (typeof window === "undefined") return;
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const tenant = params.get("tenant") || "";
+        const sectorPack = params.get("sectorPack") || "";
+        const qs: string[] = [];
+        if (tenant) qs.push("tenant=" + encodeURIComponent(tenant));
+        if (sectorPack) qs.push("sectorPack=" + encodeURIComponent(sectorPack));
+        const url = "/api/runtime/tenant-config" + (qs.length ? "?" + qs.join("&") : "");
+        const r = await fetch(url, { cache: "no-store" });
+        const d = await r.json();
+        if (cancelled) return;
+        if (r.ok && d.ok) {
+          const map = (d.config?.navigationLabelMap || {}) as Record<string, string>;
+          setNavigationLabelMap(map);
+        }
+      } catch { /* fallback al slug */ }
+    }
+    loadConfig();
+    return () => { cancelled = true; };
   }, []);
 
   // Cada vez que cambia la URL, asegurar que la tab existe.
@@ -92,12 +140,30 @@ export default function TabBar() {
     setTabs((prev) => {
       const exists = prev.some((t) => t.href === pathname);
       if (exists) return prev;
-      const newTab: Tab = { href: pathname, label: labelFromPath(pathname) };
+      const newTab: Tab = { href: pathname, label: labelFromPath(pathname, navigationLabelMap) };
       const next = [...prev, newTab];
       saveTabs(next);
       return next;
     });
-  }, [pathname]);
+  }, [pathname, navigationLabelMap]);
+
+  // Cuando el navigationLabelMap llega (asíncrono), recalcular los
+  // labels de las tabs ya abiertas para que dejen de mostrar el slug
+  // crudo (p.ej. "Actividades Catalogo" → "Actividades", "Actividades"
+  // del moduleKey actividades → "Trabajos").
+  useEffect(() => {
+    if (Object.keys(navigationLabelMap).length === 0) return;
+    setTabs((prev) => {
+      let changed = false;
+      const next = prev.map((t) => {
+        const fresh = labelFromPath(t.href, navigationLabelMap);
+        if (fresh !== t.label) { changed = true; return { ...t, label: fresh }; }
+        return t;
+      });
+      if (changed) saveTabs(next);
+      return changed ? next : prev;
+    });
+  }, [navigationLabelMap]);
 
   const closeTab = useCallback((href: string, e: React.MouseEvent) => {
     e.preventDefault();

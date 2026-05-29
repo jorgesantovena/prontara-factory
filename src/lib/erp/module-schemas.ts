@@ -812,7 +812,7 @@ const INCIDENCIAS_SCHEMA: ModuleSchema = defineModule({
 // nombres canónicos de campo y orden para que no haya divergencia.
 const ACTIVIDADES_SCHEMA: ModuleSchema = defineModule({
   moduleKey: "actividades",
-  title: "Parte de horas",
+  title: "Trabajos",
   primaryField: "concepto",
   defaultSortField: "fecha",
   listColumns: [

@@ -306,7 +306,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // Hub Producción — solo en Software Factory por ahora
     { moduleKey: "tareas", enabled: true, label: "Tareas", navigationLabel: "Tareas", emptyState: "Sin tareas en este proyecto." },
     { moduleKey: "incidencias", enabled: true, label: "Incidencias", navigationLabel: "Incidencias", emptyState: "Sin incidencias abiertas." },
-    { moduleKey: "actividades", enabled: true, label: "Parte de horas", navigationLabel: "Parte de horas", emptyState: "Sin horas imputadas." },
+    // TEST-13 — Renombrado "Parte de horas" → "Trabajos" en SF.
+    { moduleKey: "actividades", enabled: true, label: "Trabajos", navigationLabel: "Trabajos", emptyState: "Sin trabajos imputados." },
     { moduleKey: "versiones", enabled: true, label: "Versiones", navigationLabel: "Versiones", emptyState: "Sin versiones publicadas." },
     { moduleKey: "mantenimientos", enabled: true, label: "Mantenimientos", navigationLabel: "Mantenimientos", emptyState: "Sin contratos de mantenimiento activos." },
     { moduleKey: "justificantes", enabled: true, label: "Justificantes", navigationLabel: "Justificantes", emptyState: "Sin justificantes emitidos." },
@@ -393,7 +394,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "proyectos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
     { moduleKey: "proyectos", fieldKey: "codigoTipo", label: "Código de servicio", kind: "relation", relationModuleKey: "catalogo-servicios", placeholder: "INST, MANT, NUEDES, SOP, FORM..." },
     { moduleKey: "proyectos", fieldKey: "responsable", label: "Project lead", kind: "text", placeholder: "Responsable" },
-    { moduleKey: "proyectos", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "activo / pausado / finalizado / expirado / por_renovar", options: [
+    // TEST-13 E — Estado por defecto "Activo" en alta de proyecto.
+    { moduleKey: "proyectos", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "activo", placeholder: "activo / pausado / finalizado / expirado / por_renovar", options: [
       { value: "activo", label: "Activo" },
       { value: "por_renovar", label: "Por renovar" },
       { value: "pausado", label: "Pausado" },
@@ -408,15 +410,24 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "por-hito", label: "Por hito" },
       { value: "no-facturable", label: "No facturable" },
     ] },
-    { moduleKey: "proyectos", fieldKey: "facturable", label: "Facturable", kind: "status", required: true, placeholder: "si / no — heredado del tipo, sobrescribible", options: [
+    // TEST-13 E — Facturable es CAMPO DE SALIDA derivado de
+    // tipoFacturacion: "no-facturable" → no, resto → sí. El usuario no
+    // lo edita; se rellena automáticamente al cambiar el método.
+    { moduleKey: "proyectos", fieldKey: "facturable", label: "Facturable", kind: "status", readOnly: true, computed: { type: "derived", from: "tipoFacturacion", map: { "no-facturable": "no" }, default: "si" }, placeholder: "Se calcula a partir del Método facturación", options: [
       { value: "si", label: "Sí" },
       { value: "no", label: "No" },
     ] },
     { moduleKey: "proyectos", fieldKey: "fechaInicio", label: "Fecha de inicio", kind: "date", placeholder: "YYYY-MM-DD" },
-    { moduleKey: "proyectos", fieldKey: "fechaCaducidad", label: "Fecha de caducidad", kind: "date", placeholder: "YYYY-MM-DD — fin de vigencia del contrato" },
-    { moduleKey: "proyectos", fieldKey: "kilometros", label: "Km acumulados", kind: "text", placeholder: "Km imputados a este proyecto (sumatorio de partes)" },
+    // TEST-13 E — Fecha caducidad asumida "sin caducidad" (9999-12-31).
+    { moduleKey: "proyectos", fieldKey: "fechaCaducidad", label: "Fecha de caducidad", kind: "date", defaultValue: "9999-12-31", placeholder: "YYYY-MM-DD — fin de vigencia (9999-12-31 = sin caducidad)" },
+    // TEST-13 E — Km acumulados como campo de SALIDA (sumatorio que
+    // mantiene el backend cuando se imputa un trabajo). El usuario no
+    // edita; lo ve crecer.
+    { moduleKey: "proyectos", fieldKey: "kilometros", label: "Km acumulados", kind: "text", readOnly: true, placeholder: "Se actualiza al imputar trabajos al proyecto" },
     { moduleKey: "proyectos", fieldKey: "tarifaHoraOverride", label: "Tarifa €/h", kind: "text", placeholder: "Vacío → usa la del catálogo. Numérico → override puntual." },
-    { moduleKey: "proyectos", fieldKey: "horasTotales", label: "Horas totales (bolsa)", kind: "text", placeholder: "Solo aplica a codigoTipo=BOLSA — total horas contratadas" },
+    // TEST-13 E — Horas totales (bolsa) visible y obligatorio SOLO si
+    // Método facturación = "contra-bolsa".
+    { moduleKey: "proyectos", fieldKey: "horasTotales", label: "Horas totales (bolsa)", kind: "text", visibleWhen: { field: "tipoFacturacion", equals: "contra-bolsa" }, requiredWhen: { field: "tipoFacturacion", equals: "contra-bolsa" }, placeholder: "Total horas contratadas en la bolsa" },
     // TEST-8.1.d — Referencia a la propuesta que dio origen al proyecto.
     { moduleKey: "proyectos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Nº de la propuesta origen" },
     { moduleKey: "proyectos", fieldKey: "notas", label: "Notas", kind: "text", placeholder: "Condiciones específicas, observaciones..." },
@@ -504,7 +515,7 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // TEST-11 bis-3 — Actividad selecciona del módulo "Catálogo Actividades"
     // (actividades-catalogo), no de una lista hardcoded. Así cada tenant
     // define sus propios tipos y los reutiliza en facturación y estadísticas.
-    { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad", kind: "relation", required: true, relationModuleKey: "actividades-catalogo", placeholder: "Selecciona del Catálogo de actividades" },
+    { moduleKey: "actividades", fieldKey: "actividad", label: "Actividad", kind: "relation", required: true, relationModuleKey: "actividades-catalogo", placeholder: "Selecciona del catálogo" },
     { moduleKey: "actividades", fieldKey: "concepto", label: "Concepto", kind: "textarea", required: true, placeholder: "Descripción libre del trabajo realizado" },
     { moduleKey: "actividades", fieldKey: "km", label: "Km", kind: "number", inheritFrom: { from: "cliente", field: "kilometrosBase" }, visibleWhen: { field: "lugar", equals: "casa_cliente" }, placeholder: "Heredado del cliente (visible solo si Lugar = Casa cliente)" },
     { moduleKey: "actividades", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [

@@ -37,11 +37,15 @@ type FieldDef = {
   placeholder?: string;
   // TEST-10.2/10.9 — opciones de los campos status (vienen del pack/core).
   options?: Array<{ value: string; label: string }>;
-  // TEST-11 — flags del rediseño del Parte de horas (ver SectorPackField).
+  // TEST-11/13 — flags del rediseño Parte de horas + defaults de Proyectos.
   readOnly?: boolean;
   inheritFrom?: { from: string; field: string };
-  computed?: { type: "duration"; from: string; to: string };
+  computed?:
+    | { type: "duration"; from: string; to: string }
+    | { type: "derived"; from: string; map?: Record<string, string>; default?: string };
   visibleWhen?: { field: string; equals: string | string[] };
+  requiredWhen?: { field: string; equals: string | string[] };
+  defaultValue?: string;
 };
 
 type TableColumnDef = {
@@ -356,6 +360,70 @@ export default function GenericModuleRuntimePage({
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moduleKey]);
+
+  // TEST-13 D — Restaurar el foco del editor al volver a la solapa.
+  // Cuando el usuario abandona la solapa con el formulario abierto y
+  // vuelve más tarde, Next.js re-monta la página y la vista vuelve al
+  // listado. Aquí leemos de sessionStorage el modo (create|edit) y el
+  // id del registro que estaba editando, y re-abrimos el editor con
+  // ese mismo estado. El draft (los valores) lo restaura el propio
+  // ErpRecordEditor desde su clave `prontara-draft:<modulo>:<id|new>`.
+  function editorStateKey(): string {
+    return "prontara-editor-mode:" + (readTenant() || "default") + ":" + moduleKey;
+  }
+  // Se ejecuta una sola vez por moduleKey al montar. Inmediatamente abre
+  // el editor con `selected` placeholder (id si era edit); luego, cuando
+  // `rows` cargue, otro effect enriquece `selected` con el row real.
+  const editorRestoredRef = useRef(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    editorRestoredRef.current = false;
+    try {
+      const raw = window.sessionStorage.getItem(editorStateKey());
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { mode?: "create" | "edit"; id?: string };
+      if (!parsed?.mode) return;
+      if (parsed.mode === "edit" && parsed.id) {
+        setSelected({ id: String(parsed.id) });
+        setModalMode("edit");
+      } else if (parsed.mode === "create") {
+        setSelected(null);
+        setModalMode("create");
+      }
+    } catch { /* sessionStorage corrupto: ignorar */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moduleKey]);
+
+  // Cuando llegan los `rows`, si el editor está abierto en modo edit
+  // con `selected` siendo un placeholder (solo id), buscamos el row
+  // completo y enriquecemos selected. Una sola vez por restauración.
+  useEffect(() => {
+    if (editorRestoredRef.current) return;
+    if (modalMode !== "edit") return;
+    if (!selected?.id) return;
+    if (rows.length === 0) return;
+    const full = rows.find((r) => String(r.id || "") === String(selected.id));
+    if (full) {
+      setSelected(full);
+      editorRestoredRef.current = true;
+    }
+  }, [rows, modalMode, selected]);
+
+  // Sincronizar el estado del editor con sessionStorage. Al abrir, se
+  // guarda; al cerrar (modalMode = null), se borra. Si se cierra el
+  // editor, también se borra el draft del propio ErpRecordEditor.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      if (modalMode === null) {
+        window.sessionStorage.removeItem(editorStateKey());
+      } else {
+        const payload = { mode: modalMode, id: modalMode === "edit" ? String(selected?.id || "") : "" };
+        window.sessionStorage.setItem(editorStateKey(), JSON.stringify(payload));
+      }
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modalMode, selected?.id, moduleKey]);
 
   // TEST-3.8 — Pre-carga vía query string `?prefill_<campo>=<valor>`. Si
   // existe al menos un parámetro `prefill_*`, abrimos el editor en modo
@@ -797,8 +865,13 @@ export default function GenericModuleRuntimePage({
             options?: Array<{ value: string; label: string }>;
             readOnly?: boolean;
             inheritFrom?: { from: string; field: string };
-            computed?: { type: "duration"; from: string; to: string };
+            // TEST-13 E — añadido "derived" para Facturable=f(tipoFacturacion).
+            computed?:
+              | { type: "duration"; from: string; to: string }
+              | { type: "derived"; from: string; map?: Record<string, string>; default?: string };
             visibleWhen?: { field: string; equals: string | string[] };
+            requiredWhen?: { field: string; equals: string | string[] };
+            defaultValue?: string;
           }>}
           // TEST-2.12 Duplicar — pasar selected también en create-from-duplicate.
           initialValue={selected}

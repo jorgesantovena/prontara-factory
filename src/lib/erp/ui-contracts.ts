@@ -33,8 +33,13 @@ export type UiFieldDefinition = {
   // todos son opcionales. Ver SectorPackField para semántica completa.
   readOnly?: boolean;
   inheritFrom?: { from: string; field: string };
-  computed?: { type: "duration"; from: string; to: string };
+  // TEST-13 E — añadido "derived" para Facturable = f(tipoFacturacion).
+  computed?:
+    | { type: "duration"; from: string; to: string }
+    | { type: "derived"; from: string; map?: Record<string, string>; default?: string };
   visibleWhen?: { field: string; equals: string | string[] };
+  requiredWhen?: { field: string; equals: string | string[] };
+  defaultValue?: string;
 };
 
 export type UiModuleContract = {

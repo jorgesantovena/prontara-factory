@@ -44,14 +44,36 @@ export type SectorPackField = {
    * mismo registro. Soportados:
    *   - { type: "duration", from: "horaInicio", to: "horaFin" }
    *     produce "hh:mm" entre las dos horas (Tiempo = Hora hasta − Hora desde).
+   *   - TEST-13 E: { type: "derived", from: "tipoFacturacion",
+   *                 map: { "no-facturable": "no" }, default: "si" }
+   *     copia el valor del campo `from` mapeado por `map`; si no hay match
+   *     usa `default`. Ejemplo en Proyectos: Facturable derivado de
+   *     Método facturación (no-facturable → no, resto → sí).
    */
-  computed?: { type: "duration"; from: string; to: string };
+  computed?:
+    | { type: "duration"; from: string; to: string }
+    | { type: "derived"; from: string; map?: Record<string, string>; default?: string };
   /**
    * TEST-11 — Visibilidad condicional. El campo solo se renderiza en el
    * editor cuando otro campo del registro tiene uno de los valores
    * indicados. Ejemplo: Km solo si Lugar = "casa_cliente".
    */
   visibleWhen?: { field: string; equals: string | string[] };
+  /**
+   * TEST-13 E — Required condicional. El campo se valida como
+   * obligatorio cuando otro campo del registro toma uno de los valores
+   * indicados. Útil para "Horas totales (bolsa)": obligatorio si
+   * Método facturación = "contra-bolsa", opcional en otro caso.
+   */
+  requiredWhen?: { field: string; equals: string | string[] };
+  /**
+   * TEST-13 E — Valor por defecto al crear un registro nuevo. Se aplica
+   * solo cuando el editor está en mode="create" y el valor entrante
+   * está vacío. Ejemplos:
+   *   - Estado de Proyecto: "activo".
+   *   - Fecha caducidad de Proyecto: "9999-12-31" (sin fecha).
+   */
+  defaultValue?: string;
 };
 
 export type SectorPackTableColumn = {

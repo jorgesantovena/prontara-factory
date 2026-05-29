@@ -65,11 +65,15 @@ export type BlueprintFieldConfig = {
   relationModuleKey?: string;
   placeholder?: string;
   options?: BlueprintFieldOption[];
-  // TEST-11 — Ver SectorPackField para semántica completa.
+  // TEST-11/13 — Ver SectorPackField para semántica completa.
   readOnly?: boolean;
   inheritFrom?: { from: string; field: string };
-  computed?: { type: "duration"; from: string; to: string };
+  computed?:
+    | { type: "duration"; from: string; to: string }
+    | { type: "derived"; from: string; map?: Record<string, string>; default?: string };
   visibleWhen?: { field: string; equals: string | string[] };
+  requiredWhen?: { field: string; equals: string | string[] };
+  defaultValue?: string;
 };
 
 export type BlueprintDemoDataConfig = {
