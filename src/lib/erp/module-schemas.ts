@@ -79,6 +79,29 @@ const CLIENTES_SCHEMA: ModuleSchema = defineModule({
       type: "text",
       placeholder: "Km del trayecto oficina → casa del cliente (ida)",
     },
+    // TEST-15 C — Tipo Tarifa y Nivel del cliente, base para el lookup
+    // de la tarifa €/h del Proyecto.
+    {
+      key: "tipoTarifa",
+      label: "Tipo Tarifa",
+      type: "select",
+      options: [
+        { value: "normal", label: "Normal" },
+        { value: "especial", label: "Especial" },
+      ],
+    },
+    {
+      key: "nivel",
+      label: "Nivel (mantenimiento)",
+      type: "select",
+      options: [
+        { value: "0", label: "0 (sin mantenimiento)" },
+        { value: "1", label: "1" },
+        { value: "2", label: "2" },
+        { value: "3", label: "3" },
+        { value: "4", label: "4" },
+      ],
+    },
     {
       key: "notas",
       label: "Notas",

@@ -61,7 +61,11 @@ type OptionItem = { value: string; label: string };
 // TEST-3.8 — "proyectos" añadido como tab virtual (no agrupa fields, igual
 // que "documentos"). Solo visible cuando moduleKey === "clientes" y el
 // cliente ya tiene id (mode === "edit").
-type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "documentos";
+// TEST-15 E.2 — "propuestas" añadida como tab virtual (no agrupa fields).
+// Solo visible cuando moduleKey === "crm" && mode === "edit" — lista las
+// propuestas vinculadas a la oportunidad y permite añadir desde el mismo
+// editor (mismo patrón que la sublista Contactos y Proyectos).
+type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "propuestas" | "documentos";
 
 const TAB_LABELS: Record<TabKey, string> = {
   general: "Datos generales",
@@ -70,6 +74,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   financiero: "Financiero",
   notas: "Notas",
   proyectos: "Proyectos",
+  propuestas: "Propuestas",
   documentos: "Documentos",
 };
 
@@ -199,10 +204,13 @@ export default function ErpRecordEditor({
   // cuando moduleKey === "clientes" y el cliente ya tiene id.
   const tabsConFields = (Object.keys(TAB_LABELS) as TabKey[]).filter((t) => grouped[t].length > 0);
   const showProyectosTab = moduleKey === "clientes" && mode === "edit" && Boolean(initialValue?.id);
+  // TEST-15 E.2 — Tab "Propuestas" en la ficha de Oportunidad (crm).
+  const showPropuestasTab = moduleKey === "crm" && mode === "edit" && Boolean(initialValue?.id);
   const visibleTabs: TabKey[] = tabsConFields.length > 0
     ? [
         ...tabsConFields,
         ...(showProyectosTab ? ["proyectos" as TabKey] : []),
+        ...(showPropuestasTab ? ["propuestas" as TabKey] : []),
         "documentos" as TabKey,
       ]
     : []; // sin fields → no mostramos tabs, mostramos mensaje (ver render)
@@ -448,6 +456,70 @@ export default function ErpRecordEditor({
         });
       }
     }
+
+    // TEST-15 D — Lookup de Tarifa €/h del Proyecto en función del
+    // Cliente y del Servicio (codigoTipo). Reglas:
+    //   - cliente.tipoTarifa = "normal" → tarifas-generales por
+    //     (servicio=codigoTipo, nivel=cliente.nivel) → valor.
+    //   - cliente.tipoTarifa = "especial" → tarifas-especiales por
+    //     (servicio=codigoTipo, cliente=cliente) → valor.
+    // Se ejecuta solo en proyectos y solo si el campo modificado es
+    // `cliente` o `codigoTipo`; el resultado va a `tarifaHoraOverride`,
+    // que en SF está marcado readOnly.
+    if (moduleKey === "proyectos" && (key === "cliente" || key === "codigoTipo")) {
+      const hasTarifa = fields.some((f) => f.key === "tarifaHoraOverride");
+      if (hasTarifa) {
+        (async () => {
+          // Construimos el state proyectado tras el cambio.
+          const projectedCliente = key === "cliente" ? value : String(values.cliente || "");
+          const projectedServicio = key === "codigoTipo" ? value : String(values.codigoTipo || "");
+          if (!projectedCliente || !projectedServicio) return;
+          // 1) Cargamos el record del cliente (por nombre — el value de
+          //    /api/erp/options para clientes es `nombre`).
+          const clienteRec = await loadRelatedRecord("clientes", projectedCliente);
+          if (!clienteRec) return;
+          const tipoTarifa = String(clienteRec.tipoTarifa || "normal").toLowerCase();
+          const nivelCliente = String(clienteRec.nivel || "0");
+          // 2) Decidimos la tabla y buscamos.
+          const tablaTarifas = tipoTarifa === "especial" ? "tarifas-especiales" : "tarifas-generales";
+          try {
+            const t = readTenant();
+            const url = "/api/erp/module?module=" + encodeURIComponent(tablaTarifas) + (t ? "&tenant=" + encodeURIComponent(t) : "");
+            const r = await fetch(url, { cache: "no-store" });
+            const d = await r.json();
+            if (!r.ok || !d.ok || !Array.isArray(d.rows)) return;
+            const rows = d.rows as Array<Record<string, string>>;
+            const found = tipoTarifa === "especial"
+              ? rows.find((row) =>
+                  String(row.servicio || "") === projectedServicio &&
+                  String(row.cliente || "") === projectedCliente,
+                )
+              : rows.find((row) =>
+                  String(row.servicio || "") === projectedServicio &&
+                  String(row.nivel || "") === nivelCliente,
+                );
+            if (!found) {
+              // Sin coincidencia: dejamos el campo vacío (señal de que
+              // no hay tarifa configurada). No sobrescribimos un valor
+              // existente con "" si el usuario lo había puesto a mano.
+              setValues((v) => ({ ...v, tarifaHoraOverride: "" }));
+              return;
+            }
+            const tarifa = String(found.valor || "").trim();
+            setValues((v) => ({ ...v, tarifaHoraOverride: tarifa }));
+          } catch { /* tolerar fallo de red */ }
+        })();
+      }
+    }
+  }
+
+  // Helper para leer el tenant de la URL desde dentro del editor (igual
+  // que en generic-module-runtime-page). Lo usa el lookup TEST-15 D.
+  function readTenant(): string {
+    if (typeof window === "undefined") return "";
+    try {
+      return String(new URLSearchParams(window.location.search).get("tenant") || "").trim();
+    } catch { return ""; }
   }
 
   async function doSubmit(andNew: boolean = false) {
@@ -698,6 +770,13 @@ export default function ErpRecordEditor({
             <ProyectosSublist
               clienteId={String(initialValue?.id || "")}
               clienteName={String(initialValue?.nombre || "")}
+              accent={accent}
+            />
+          ) : tab === "propuestas" ? (
+            <PropuestasSublist
+              oportunidadId={String(initialValue?.id || "")}
+              oportunidadNumero={String(initialValue?.numero || "")}
+              empresaCliente={String(values.empresa || initialValue?.empresa || "")}
               accent={accent}
             />
           ) : tab === "contacto" && (moduleKey === "clientes" || moduleKey === "crm") ? (
@@ -1507,6 +1586,135 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
               <button type="button" onClick={() => remove(confirmDeleteId)} style={{ ...subBtnDanger, padding: "8px 14px" }} disabled={busy}>Eliminar</button>
             </div>
           </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// TEST-15 E.2 — Sublista de Propuestas asociadas a una Oportunidad
+// (moduleKey crm). Lista los registros de `presupuestos` cuya
+// `codigoOportunidad` coincide con el código nemotécnico OP-YYYY-NNN
+// de la oportunidad actual. Botón "Añadir Propuesta" abre el editor de
+// presupuestos con código + cliente prerellenados.
+type PropuestaRow = {
+  id: string;
+  numero: string;
+  cliente: string;
+  concepto: string;
+  importe: string;
+  estado: string;
+  fechaEnvio: string;
+};
+function PropuestasSublist({ oportunidadId, oportunidadNumero, empresaCliente, accent }: {
+  oportunidadId: string;
+  oportunidadNumero: string;
+  empresaCliente: string;
+  accent: string;
+}) {
+  const { link } = useCurrentVertical();
+  const [rows, setRows] = useState<PropuestaRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function load() {
+    if (!oportunidadNumero && !oportunidadId) { setLoading(false); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const r = await fetch("/api/erp/module?module=presupuestos", { cache: "no-store" });
+      const data = await r.json();
+      if (!r.ok || !data.ok) {
+        setRows([]); setLoading(false); return;
+      }
+      const all: Array<Record<string, unknown>> = Array.isArray(data.rows) ? data.rows : [];
+      // Filtramos por código nemotécnico (OP-YYYY-NNN) primario, con
+      // fallback al UUID por si en el futuro se migra a id.
+      const filtered = all.filter((row) => {
+        const c = String(row.codigoOportunidad || "");
+        if (!c) return false;
+        return c === oportunidadNumero || c === oportunidadId;
+      }).map((row) => ({
+        id: String(row.id || ""),
+        numero: String(row.numero || ""),
+        cliente: String(row.cliente || ""),
+        concepto: String(row.concepto || ""),
+        importe: String(row.importe || ""),
+        estado: String(row.estado || ""),
+        fechaEnvio: String(row.fechaEnvio || ""),
+      }));
+      setRows(filtered);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error cargando propuestas.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [oportunidadId, oportunidadNumero]);
+
+  // Botón "+ Alta de propuesta" con cliente y código de oportunidad
+  // prerellenados (mismo patrón que TEST-5.W oportunidad→propuesta).
+  const qs: string[] = [];
+  if (empresaCliente) qs.push("prefill_cliente=" + encodeURIComponent(empresaCliente));
+  if (oportunidadNumero) qs.push("prefill_codigoOportunidad=" + encodeURIComponent(oportunidadNumero));
+  if (oportunidadId) qs.push("wf_back_crm=" + encodeURIComponent(oportunidadId));
+  const nuevoHref = link("presupuestos") + (qs.length ? "?" + qs.join("&") : "");
+
+  return (
+    <section>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Propuestas de la oportunidad</h3>
+          <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+            Propuestas vinculadas a esta oportunidad. Para editar a fondo se abre el módulo Propuestas con la oportunidad ya seleccionada.
+          </p>
+        </div>
+        <Link href={nuevoHref} style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+          + Añadir propuesta
+        </Link>
+      </div>
+
+      {error ? (
+        <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 13 }}>{error}</div>
+      ) : null}
+
+      {loading ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando propuestas…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+          Esta oportunidad todavía no tiene propuestas. Pulsa &quot;Añadir propuesta&quot; para crear la primera.
+        </div>
+      ) : (
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
+                <th style={subTh(110)}>Nº</th>
+                <th style={subTh()}>Concepto</th>
+                <th style={subTh()}>Cliente</th>
+                <th style={subTh(110)}>Importe</th>
+                <th style={subTh(110)}>Estado</th>
+                <th style={subTh(110)}>Enviada</th>
+                <th style={subTh(80)}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((p) => (
+                <tr key={p.id} style={{ borderTop: "1px solid #e5e7eb" }}>
+                  <td style={subTd}>{p.numero || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.concepto || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.cliente || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.importe || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.estado || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.fechaEnvio ? fmtDateEs(p.fechaEnvio) : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>
+                    <Link href={link("presupuestos") + "?ver=" + encodeURIComponent(p.numero || p.id)} style={{ ...subBtn, textDecoration: "none" }} title="Ver/editar propuesta">Abrir</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </section>

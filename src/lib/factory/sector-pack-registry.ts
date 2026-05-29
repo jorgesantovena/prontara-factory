@@ -366,6 +366,22 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // TEST-11 — Km hasta el cliente. Origen del Km heredado del parte de
     // horas cuando Lugar=Casa cliente.
     { moduleKey: "clientes", fieldKey: "kilometrosBase", label: "Km hasta el cliente", kind: "number", placeholder: "Km del trayecto oficina → casa del cliente (ida)" },
+    // TEST-15 C — Tipo Tarifa y Nivel determinan qué tarifa €/h aplica
+    // al imputar trabajos del cliente en un proyecto:
+    //   - Tipo = "normal" → tabla tarifas-generales por (servicio + nivel).
+    //   - Tipo = "especial" → tabla tarifas-especiales por (servicio + cliente).
+    //   - Nivel 0 = sin contrato de mantenimiento.
+    { moduleKey: "clientes", fieldKey: "tipoTarifa", label: "Tipo Tarifa", kind: "status", required: true, defaultValue: "normal", options: [
+      { value: "normal", label: "Normal" },
+      { value: "especial", label: "Especial" },
+    ] },
+    { moduleKey: "clientes", fieldKey: "nivel", label: "Nivel (mantenimiento)", kind: "status", required: true, defaultValue: "0", options: [
+      { value: "0", label: "0 (sin mantenimiento)" },
+      { value: "1", label: "1" },
+      { value: "2", label: "2" },
+      { value: "3", label: "3" },
+      { value: "4", label: "4" },
+    ] },
     { moduleKey: "clientes", fieldKey: "notas", label: "Notas internas", kind: "textarea", placeholder: "Observaciones útiles del cliente" },
 
     // CRM (oportunidades) — SF-21.
@@ -425,7 +441,10 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // mantiene el backend cuando se imputa un trabajo). El usuario no
     // edita; lo ve crecer.
     { moduleKey: "proyectos", fieldKey: "kilometros", label: "Km acumulados", kind: "text", readOnly: true, placeholder: "Se actualiza al imputar trabajos al proyecto" },
-    { moduleKey: "proyectos", fieldKey: "tarifaHoraOverride", label: "Tarifa €/h", kind: "text", placeholder: "Vacío → usa la del catálogo. Numérico → override puntual." },
+    // TEST-15 D — Tarifa €/h es SALIDA: la calcula el editor por
+    // lookup en Tarifas según (Cliente.tipoTarifa, Cliente.nivel,
+    // Servicio). Ver erp-record-editor.tsx lookup TEST-15 D.
+    { moduleKey: "proyectos", fieldKey: "tarifaHoraOverride", label: "Tarifa €/h", kind: "text", readOnly: true, placeholder: "Se calcula desde Tarifas al elegir Cliente + Servicio" },
     // TEST-13 E — Horas totales (bolsa) visible y obligatorio SOLO si
     // Método facturación = "contra-bolsa".
     { moduleKey: "proyectos", fieldKey: "horasTotales", label: "Horas totales (bolsa)", kind: "text", visibleWhen: { field: "tipoFacturacion", equals: "contra-bolsa" }, requiredWhen: { field: "tipoFacturacion", equals: "contra-bolsa" }, placeholder: "Total horas contratadas en la bolsa" },
@@ -463,7 +482,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Concepto facturado" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "Ej. 4500 EUR" },
-    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, placeholder: "emitida / cobrada / vencida / anulada", options: [
+    // TEST-15 F — Añadido "Borrador" como primer estado de Factura.
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "borrador", placeholder: "borrador / emitida / cobrada / vencida / anulada", options: [
+      { value: "borrador", label: "Borrador" },
       { value: "emitida", label: "Emitida" },
       { value: "cobrada", label: "Cobrada" },
       { value: "vencida", label: "Vencida" },
@@ -702,20 +723,18 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // TEST-11 bis-3 — Catálogo de Actividades. Los códigos 33/37/49 son
     // los que aparecían en el PDF de SISPYME (Delca). El resto son típicos
     // de una software factory española.
-    // TEST-12 #2 — `tipoServicio` y `tarifaHora` retirados del catálogo
-    // (la tarifa va al Proyecto; tipoServicio era duplicación del propio
-    // catálogo). Demo limpia con solo los campos vigentes.
+    // TEST-15 B — Servicios: Pedro reduce a Código + Descripción.
     { moduleKey: "actividades-catalogo", records: [
-      { codigo: "33", nombre: "Desarrollo nuevos módulos", estado: "activa" },
-      { codigo: "37", nombre: "Soporte / consultoría producto", estado: "activa" },
-      { codigo: "49", nombre: "Soporte usuario puntual", estado: "activa" },
-      { codigo: "ANA", nombre: "Análisis funcional", estado: "activa" },
-      { codigo: "DEV", nombre: "Desarrollo / programación", estado: "activa" },
-      { codigo: "QA", nombre: "QA / pruebas", estado: "activa" },
-      { codigo: "DOC", nombre: "Documentación", estado: "activa" },
-      { codigo: "REU", nombre: "Reunión cliente / interna", estado: "activa" },
-      { codigo: "DEPL", nombre: "Despliegue / puesta en marcha", estado: "activa" },
-      { codigo: "FORM", nombre: "Formación a usuarios", estado: "activa" },
+      { codigo: "33", nombre: "Desarrollo nuevos módulos" },
+      { codigo: "37", nombre: "Soporte / consultoría producto" },
+      { codigo: "49", nombre: "Soporte usuario puntual" },
+      { codigo: "ANA", nombre: "Análisis funcional" },
+      { codigo: "DEV", nombre: "Desarrollo / programación" },
+      { codigo: "QA", nombre: "QA / pruebas" },
+      { codigo: "DOC", nombre: "Documentación" },
+      { codigo: "REU", nombre: "Reunión cliente / interna" },
+      { codigo: "DEPL", nombre: "Despliegue / puesta en marcha" },
+      { codigo: "FORM", nombre: "Formación a usuarios" },
     ]},
     { moduleKey: "clientes", records: [
       { nombre: "Acme Labs", email: "laura@acme.com", telefono: "+34 600 111 101", estado: "activo", segmento: "Industria" },
@@ -2542,8 +2561,8 @@ const VETERINARIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true },
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
-    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
-      { value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }, { value: "anulada", label: "Anulada" },
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "borrador", options: [
+      { value: "borrador", label: "Borrador" }, { value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }, { value: "anulada", label: "Anulada" },
     ] },
 
     // CRM
@@ -2727,7 +2746,7 @@ const ABOGADOS_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true },
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
-    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }, { value: "anulada", label: "Anulada" }] },
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "borrador", options: [{ value: "borrador", label: "Borrador" }, { value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }, { value: "anulada", label: "Anulada" }] },
     // CRM
     // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
     { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
@@ -2874,7 +2893,7 @@ const HOSTELERIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true },
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
-    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }] },
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "borrador", options: [{ value: "borrador", label: "Borrador" }, { value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }] },
     // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
     { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Solicitante", kind: "text", required: true },
@@ -3003,7 +3022,7 @@ const INMOBILIARIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto comisión", kind: "text" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true },
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
-    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }] },
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "borrador", options: [{ value: "borrador", label: "Borrador" }, { value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }] },
     // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
     { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Interesado", kind: "text", required: true },
@@ -3135,7 +3154,7 @@ const ASESORIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true },
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
-    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [{ value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }] },
+    { moduleKey: "facturacion", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "borrador", options: [{ value: "borrador", label: "Borrador" }, { value: "emitida", label: "Emitida" }, { value: "cobrada", label: "Cobrada" }, { value: "vencida", label: "Vencida" }] },
     // TEST-8bis.1.c.ii universal — Código nemotécnico autoasignado OP-YYYY-NNN.
     { moduleKey: "crm", fieldKey: "numero", label: "Código", kind: "text", placeholder: "Déjalo vacío y se autoasigna OP-YYYY-NNN" },
     { moduleKey: "crm", fieldKey: "nombre", label: "Posible cliente", kind: "text", required: true },

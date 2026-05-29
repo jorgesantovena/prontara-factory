@@ -103,8 +103,10 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "compras", fieldKey: "importe", label: "Importe", kind: "money", required: true },
   { moduleKey: "compras", fieldKey: "fechaSolicitud", label: "Fecha solicitud", kind: "date" },
   { moduleKey: "compras", fieldKey: "fechaEntregaPrevista", label: "Entrega prevista", kind: "date" },
+  // TEST-15 F — Sustituido "Comprada" por "En curso" (estado más
+  // descriptivo entre Aprobada y Recibida).
   { moduleKey: "compras", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
-    { value: "solicitada", label: "Solicitada" }, { value: "aprobada", label: "Aprobada" }, { value: "comprada", label: "Comprada" }, { value: "recibida", label: "Recibida" }, { value: "rechazada", label: "Rechazada" },
+    { value: "solicitada", label: "Solicitada" }, { value: "aprobada", label: "Aprobada" }, { value: "en-curso", label: "En curso" }, { value: "recibida", label: "Recibida" }, { value: "rechazada", label: "Rechazada" },
   ] },
   { moduleKey: "compras", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
@@ -210,14 +212,14 @@ export const CORE_FIELDS: SectorPackField[] = [
   // módulo queda enabled:false). Si quedan datos huérfanos en BD por un
   // tenant que ya los tuviera, no rompen: simplemente no se ven.
 
-  // H7-C1 Catálogo actividades — TEST-12 #2: eliminados `tipoServicio` y
-  // `tarifaHora`. Pedro: la tarifa se gestiona desde el Proyecto, y el
-  // concepto Tipo servicio se elimina por ser duplicado del Catálogo.
+  // H7-C1 Servicios (antes "Catálogo actividades") — TEST-15 B: Pedro
+  // pide dejarla solo con Código + Descripción. Estado también se
+  // elimina (más abajo). El fieldKey `nombre` se mantiene para no
+  // romper datos persistidos; lo que cambia es el label visible.
   { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Código", kind: "text", required: true },
-  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad", kind: "text", required: true },
-  { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
-    { value: "activa", label: "Activa" }, { value: "archivada", label: "Archivada" },
-  ] },
+  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Descripción", kind: "text", required: true, placeholder: "Descripción del servicio" },
+  // TEST-15 B — Estado eliminado de Servicios (Pedro: solo Código y
+  // Descripción).
 
   // H7-C2 Empleados
   { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Código", kind: "text", required: true },
@@ -226,10 +228,12 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "empleados", fieldKey: "telefono", label: "Teléfono", kind: "tel" },
   { moduleKey: "empleados", fieldKey: "rol", label: "Rol", kind: "text" },
   { moduleKey: "empleados", fieldKey: "fechaAlta", label: "Fecha alta", kind: "date" },
-  { moduleKey: "empleados", fieldKey: "fechaBaja", label: "Fecha baja", kind: "date" },
-  { moduleKey: "empleados", fieldKey: "esBaja", label: "¿Baja?", kind: "status", required: true, options: [
+  // TEST-15 F — Fecha baja solo visible si ¿Baja? = sí; ¿Baja? por
+  // defecto = no (Activo).
+  { moduleKey: "empleados", fieldKey: "esBaja", label: "¿Baja?", kind: "status", required: true, defaultValue: "no", options: [
     { value: "no", label: "Activo" }, { value: "si", label: "Baja" },
   ] },
+  { moduleKey: "empleados", fieldKey: "fechaBaja", label: "Fecha baja", kind: "date", visibleWhen: { field: "esBaja", equals: "si" } },
   { moduleKey: "empleados", fieldKey: "tarifaHora", label: "Tarifa hora", kind: "money" },
   { moduleKey: "empleados", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
@@ -277,7 +281,8 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "gastos", fieldKey: "importe", label: "Importe", kind: "money", required: true },
   { moduleKey: "gastos", fieldKey: "justificante", label: "Justificante (URL)", kind: "text" },
   { moduleKey: "gastos", fieldKey: "repercutibleA", label: "Repercutir a cliente", kind: "relation", relationModuleKey: "clientes" },
-  { moduleKey: "gastos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+  // TEST-15 F — Gastos: estado por defecto = Pendiente.
+  { moduleKey: "gastos", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "pendiente", options: [
     { value: "pendiente", label: "Pendiente" }, { value: "aprobado", label: "Aprobado" }, { value: "rechazado", label: "Rechazado" }, { value: "pagado", label: "Pagado" }, { value: "facturado", label: "Facturado al cliente" },
   ] },
 
@@ -526,11 +531,9 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "kardex", fieldKey: "fecha", label: "Fecha" },
   { moduleKey: "kardex", fieldKey: "estado", label: "Estado" },
   // TEST-12 #2 — Eliminadas CORE_TABLE_COLUMNS de `tipos-servicio` (módulo retirado).
-  // TEST-12 #2 — Catálogo de actividades: quitadas columnas Tipo y €/h
-  // (campos eliminados del schema).
+  // TEST-15 B — Servicios: solo Código + Descripción (Estado eliminado).
   { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Cód.", isPrimary: true },
-  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad" },
-  { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado" },
+  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Descripción" },
   { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Cód.", isPrimary: true },
   { moduleKey: "empleados", fieldKey: "nombre", label: "Nombre" },
   { moduleKey: "empleados", fieldKey: "rol", label: "Rol" },

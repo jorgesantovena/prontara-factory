@@ -56,6 +56,17 @@ export async function GET(request: NextRequest) {
           };
         }
 
+        // TEST-15 A — Catálogo de servicios (legacy SF): mismo patrón.
+        // Antes caía al default (value = UUID) y el campo Código de
+        // Servicio del Proyecto guardaba/mostraba UUIDs en vez de los
+        // códigos "MANT", "INST", "NUEDES"... causando "basura".
+        if (moduleKey === "catalogo-servicios") {
+          return {
+            value: String(item.codigo || ""),
+            label: String(item.codigo || "") + (item.descripcion ? " · " + String(item.descripcion) : ""),
+          };
+        }
+
         // TEST-11 bis-5 — Empleados: value = nombre (legible) en lugar de
         // id. Coherente con clientes/proyectos para que los filtros y la
         // columna Empleado del listado muestren el nombre, no el UUID.
