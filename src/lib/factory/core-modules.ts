@@ -38,7 +38,10 @@ export const CORE_MODULES: SectorPackModule[] = [
   // de horas" en su pack SF, así que no colisionan en sidebar.
   // TEST-14 — Renombrado "Actividades" (catálogo) → "Servicios".
   // moduleKey y URL se mantienen para no romper datos ni bookmarks.
-  { moduleKey: "actividades-catalogo", enabled: true, label: "Servicios", navigationLabel: "Servicios", emptyState: "Define qué servicios prestas." },
+  // TEST-14-15 bis — Restaurado a "Actividades" (Pedro: confundimos
+  // los términos en TEST-14). `actividades-catalogo` = qué se hace
+  // (Actividades), `catalogo-servicios` = líneas facturables (Servicios).
+  { moduleKey: "actividades-catalogo", enabled: true, label: "Actividades", navigationLabel: "Actividades", emptyState: "Define qué actividades realizas." },
   { moduleKey: "empleados", enabled: true, label: "Empleados", navigationLabel: "Empleados", emptyState: "Sin empleados registrados." },
   // TEST-14 — Renombrado "Trabajos" → "Tareas" (label histórico:
   // Actividades → Parte de horas → Trabajos → Tareas). El moduleKey
@@ -212,14 +215,15 @@ export const CORE_FIELDS: SectorPackField[] = [
   // módulo queda enabled:false). Si quedan datos huérfanos en BD por un
   // tenant que ya los tuviera, no rompen: simplemente no se ven.
 
-  // H7-C1 Servicios (antes "Catálogo actividades") — TEST-15 B: Pedro
-  // pide dejarla solo con Código + Descripción. Estado también se
-  // elimina (más abajo). El fieldKey `nombre` se mantiene para no
-  // romper datos persistidos; lo que cambia es el label visible.
+  // H7-C1 Actividades (lo que se hace). TEST-14-15 bis — Pedro aclara
+  // que el "solo Código + Descripción" iba para Servicios
+  // (catalogo-servicios), no para Actividades. Aquí restauramos los
+  // tres campos vigentes: código, descripción/nombre y estado.
   { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Código", kind: "text", required: true },
-  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Descripción", kind: "text", required: true, placeholder: "Descripción del servicio" },
-  // TEST-15 B — Estado eliminado de Servicios (Pedro: solo Código y
-  // Descripción).
+  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad", kind: "text", required: true, placeholder: "Nombre de la actividad" },
+  { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+    { value: "activa", label: "Activa" }, { value: "retirada", label: "Retirada" },
+  ] },
 
   // H7-C2 Empleados
   { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Código", kind: "text", required: true },
@@ -331,7 +335,9 @@ export const CORE_FIELDS: SectorPackField[] = [
   // que ahora se llama "Servicios") y `nivel` (1/2/3/4).
   { moduleKey: "tarifas-generales", fieldKey: "codigo", label: "Código", kind: "text", required: true },
   { moduleKey: "tarifas-generales", fieldKey: "nombre", label: "Tarifa", kind: "text", required: true },
-  { moduleKey: "tarifas-generales", fieldKey: "servicio", label: "Servicio", kind: "relation", required: true, relationModuleKey: "actividades-catalogo", placeholder: "Servicio del catálogo al que aplica la tarifa" },
+  // TEST-14-15 bis — La tabla de Servicios es `catalogo-servicios` (no
+  // `actividades-catalogo`). El field apunta ahí.
+  { moduleKey: "tarifas-generales", fieldKey: "servicio", label: "Servicio", kind: "relation", required: true, relationModuleKey: "catalogo-servicios", placeholder: "Servicio al que aplica la tarifa" },
   { moduleKey: "tarifas-generales", fieldKey: "nivel", label: "Nivel", kind: "status", required: true, options: [
     { value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" },
   ] },
@@ -347,7 +353,8 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "tarifas-especiales", fieldKey: "nombre", label: "Tarifa especial", kind: "text", required: true },
   { moduleKey: "tarifas-especiales", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
   { moduleKey: "tarifas-especiales", fieldKey: "grupo", label: "Grupo", kind: "relation", relationModuleKey: "grupos-empresa" },
-  { moduleKey: "tarifas-especiales", fieldKey: "servicio", label: "Servicio", kind: "relation", required: true, relationModuleKey: "actividades-catalogo", placeholder: "Servicio del catálogo al que aplica la tarifa" },
+  // TEST-14-15 bis — Idem en Tarifas especiales: relation a catalogo-servicios.
+  { moduleKey: "tarifas-especiales", fieldKey: "servicio", label: "Servicio", kind: "relation", required: true, relationModuleKey: "catalogo-servicios", placeholder: "Servicio al que aplica la tarifa especial" },
   { moduleKey: "tarifas-especiales", fieldKey: "nivel", label: "Nivel", kind: "status", required: true, options: [
     { value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4", label: "4" },
   ] },
@@ -531,9 +538,11 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "kardex", fieldKey: "fecha", label: "Fecha" },
   { moduleKey: "kardex", fieldKey: "estado", label: "Estado" },
   // TEST-12 #2 — Eliminadas CORE_TABLE_COLUMNS de `tipos-servicio` (módulo retirado).
-  // TEST-15 B — Servicios: solo Código + Descripción (Estado eliminado).
+  // TEST-14-15 bis — Actividades restaurado: el "solo Código + Descripción"
+  // iba para Servicios (catalogo-servicios), no aquí.
   { moduleKey: "actividades-catalogo", fieldKey: "codigo", label: "Cód.", isPrimary: true },
-  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Descripción" },
+  { moduleKey: "actividades-catalogo", fieldKey: "nombre", label: "Actividad" },
+  { moduleKey: "actividades-catalogo", fieldKey: "estado", label: "Estado" },
   { moduleKey: "empleados", fieldKey: "codigoCorto", label: "Cód.", isPrimary: true },
   { moduleKey: "empleados", fieldKey: "nombre", label: "Nombre" },
   { moduleKey: "empleados", fieldKey: "rol", label: "Rol" },

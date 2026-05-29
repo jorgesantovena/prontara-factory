@@ -411,13 +411,13 @@ export default function ProduccionPage() {
               ...(selectedProject ? [{ label: selectedProject }] : []),
             ]}
           />
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
-            <div>
-              <h1 style={{ margin: 0, fontSize: 28, color: "#0f172a" }}>Producción</h1>
-              <p style={{ margin: "4px 0 0 0", color: "#6b7280", fontSize: 14 }}>
-                Ejecución del proyecto: tareas, incidencias, horas, versiones y entregas.
-              </p>
-            </div>
+          {/* TEST-14-15 bis — Cabecera compactada (criterio): se elimina
+              el subtítulo descriptivo "Ejecución del proyecto..." que
+              repetía la información de las propias tabs de abajo. El
+              H1 se compacta de 28 → 22 para ganar verticalidad. Misma
+              regla que aplicamos al listado en TEST-14 C. */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <h1 style={{ margin: 0, fontSize: 22, color: "#0f172a", fontWeight: 800, letterSpacing: -0.3 }}>Producción</h1>
           </div>
         </header>
 

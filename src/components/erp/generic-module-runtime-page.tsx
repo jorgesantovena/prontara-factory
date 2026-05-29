@@ -1948,6 +1948,31 @@ const SINGULAR_OVERRIDES: Record<string, string> = {
   alumnos: "alumno",
   docentes: "docente",
   calificaciones: "calificación",
+  // TEST-14-15 bis — Pedro reporta "Asignacione" y similares. Para los
+  // plurales en -ciones / -siones / -aciones / -iones, el singular
+  // termina en -ción con tilde (no quitando solo la 's'). Añadimos los
+  // que aparecen en los labels actuales del producto.
+  asignaciones: "asignación",
+  operaciones: "operación",
+  direcciones: "dirección",
+  versiones: "versión",
+  // Renombrados TEST-14: los plurales con singular trivial -s también
+  // los añadimos explícitos para no depender del fallback (más rápido
+  // de auditar).
+  trabajos: "trabajo",
+  servicios: "servicio",
+  actividades: "actividad",
+  tarifas: "tarifa",
+  zonas: "zona",
+  grupos: "grupo",
+  becas: "beca",
+  salidas: "salida",
+  egresados: "egresado",
+  avisos: "aviso",
+  recibos: "recibo",
+  socios: "socio",
+  bonos: "bono",
+  cuotas: "cuota",
 };
 function singular(label: string): string {
   const l = label.toLowerCase().trim();

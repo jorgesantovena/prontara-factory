@@ -313,8 +313,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "mantenimientos", enabled: true, label: "Mantenimientos", navigationLabel: "Mantenimientos", emptyState: "Sin contratos de mantenimiento activos." },
     { moduleKey: "justificantes", enabled: true, label: "Justificantes", navigationLabel: "Justificantes", emptyState: "Sin justificantes emitidos." },
     { moduleKey: "descripciones-proyecto", enabled: true, label: "Descripción del proyecto", navigationLabel: "Descripción", emptyState: "Sin descripción técnica del proyecto." },
-    // Catálogo de tipos de servicio (líneas estándar contratables: INST, MANT, NUEDES, SOP, FORM, ...)
-    { moduleKey: "catalogo-servicios", enabled: true, label: "Catálogo de servicios", navigationLabel: "Catálogo", emptyState: "Aún no hay tipos de servicio definidos." },
+    // TEST-14-15 bis — `catalogo-servicios` renombrado a "Servicios"
+    // (líneas facturables: INST, MANT, NUEDES, SOP, FORM, ...). Pedro
+    // confirma que ESTA es la tabla que en TEST-14 quería llamar
+    // "Servicios", no `actividades-catalogo`.
+    { moduleKey: "catalogo-servicios", enabled: true, label: "Servicios", navigationLabel: "Servicios", emptyState: "Aún no hay servicios definidos." },
     // H7-S1 — Catálogo de aplicaciones / productos software del tenant
     { moduleKey: "aplicaciones", enabled: true, label: "Aplicaciones", navigationLabel: "Aplicaciones", emptyState: "Aún no hay aplicaciones definidas." },
     // H7-S5 — CAU (vista dedicada para soporte aplicación)
@@ -547,56 +550,12 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "rechazada", label: "Rechazada" },
     ] },
 
-    // Catálogo de servicios — campos del tipo de servicio.
-    {
-      moduleKey: "catalogo-servicios",
-      fieldKey: "codigo",
-      label: "Código",
-      kind: "text",
-      required: true,
-      placeholder: "INST, MANT, NUEDES, SOP, FORM, VERIFACTU, ...",
-    },
-    {
-      moduleKey: "catalogo-servicios",
-      fieldKey: "descripcion",
-      label: "Descripción",
-      kind: "text",
-      required: true,
-      placeholder: "Descripción del servicio que se factura/imputa.",
-    },
-    {
-      moduleKey: "catalogo-servicios",
-      fieldKey: "facturablePorDefecto",
-      label: "Facturable por defecto",
-      kind: "status",
-      required: true,
-      placeholder: "si / no",
-      options: [
-        { value: "si", label: "Sí" },
-        { value: "no", label: "No" },
-      ],
-    },
-    {
-      moduleKey: "catalogo-servicios",
-      fieldKey: "vigenciaMesesPorDefecto",
-      label: "Vigencia (meses)",
-      kind: "text",
-      placeholder: "12 — meses por defecto desde alta hasta caducidad",
-    },
-    {
-      moduleKey: "catalogo-servicios",
-      fieldKey: "tarifaHoraDefault",
-      label: "Tarifa €/h por defecto",
-      kind: "text",
-      placeholder: "55 — tarifa por hora si el proyecto no tiene override",
-    },
-    {
-      moduleKey: "catalogo-servicios",
-      fieldKey: "notas",
-      label: "Notas internas",
-      kind: "text",
-      placeholder: "Cuándo aplica, casuísticas, condiciones...",
-    },
+    // TEST-14-15 bis — Servicios: solo Código + Descripción (Pedro).
+    // El resto de campos (facturablePorDefecto, vigenciaMesesPorDefecto,
+    // tarifaHoraDefault, notas) se eliminan: la tarifa va a Proyecto y
+    // las casuísticas a Tarifas con su sistema de niveles.
+    { moduleKey: "catalogo-servicios", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "INST, MANT, NUEDES, SOP, FORM, ..." },
+    { moduleKey: "catalogo-servicios", fieldKey: "descripcion", label: "Descripción", kind: "text", required: true, placeholder: "Descripción del servicio" },
 
     // H7-S1 — Catálogo de Aplicaciones del tenant (AXIS, MATRIX, ERP V7...)
     { moduleKey: "aplicaciones", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "AXIS, MATRIX, ERP V7..." },
@@ -662,11 +621,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "documentos", fieldKey: "nombre", label: "Entregable", isPrimary: true },
     { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
 
+    // TEST-14-15 bis — Servicios: listado simplificado a Código + Descripción.
     { moduleKey: "catalogo-servicios", fieldKey: "codigo", label: "Código", isPrimary: true },
     { moduleKey: "catalogo-servicios", fieldKey: "descripcion", label: "Descripción" },
-    { moduleKey: "catalogo-servicios", fieldKey: "facturablePorDefecto", label: "Facturable" },
-    { moduleKey: "catalogo-servicios", fieldKey: "vigenciaMesesPorDefecto", label: "Vigencia (meses)" },
-    { moduleKey: "catalogo-servicios", fieldKey: "tarifaHoraDefault", label: "€/h" },
 
     // H7-S1
     { moduleKey: "aplicaciones", fieldKey: "codigo", label: "Código", isPrimary: true },
@@ -941,18 +898,19 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { asunto: "Consulta sobre exportación contabilidad", cliente: "Almacenes Delca SA", aplicacion: "vConta", version: "v7.0", severidad: "baja", urgencia: "normal", asignado: "Julio", estado: "resuelto", descripcion: "Cliente quiere saber cómo exportar a Sage.", solucion: "Documentación enviada por email + sesión de 15 min." },
     ]},
 
+    // TEST-14-15 bis — Demo de Servicios saneado (solo Código + Descripción).
     { moduleKey: "catalogo-servicios", records: [
-      { codigo: "INST", descripcion: "Servicios de Actualización e Instalación de Software", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Onboarding inicial incluido en el contrato. Versiones puntuales puntuales por petición." },
-      { codigo: "MANT", descripcion: "Servicios de Mantenimiento contra errores de programación", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Cubierto por la cuota mensual. Bugs introducidos por nosotros. NO cubre nuevos desarrollos ni cambios de alcance." },
-      { codigo: "NUEDES", descripcion: "Servicios de Desarrollo de nuevos módulos/funcionalidades", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "60", notas: "Funcionalidad nueva pedida por el cliente. Se factura por horas." },
-      { codigo: "SOP", descripcion: "Soporte a usuarios", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Asistencia funcional a usuarios finales. Tickets, dudas, formación puntual. Bolsa de horas o por uso." },
-      { codigo: "FORM", descripcion: "Formación a usuarios", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "6", tarifaHoraDefault: "65", notas: "Sesiones de formación presencial u online. Material formativo. Suele facturarse por jornada." },
-      { codigo: "VERIFACTU", descripcion: "Adaptación a Veri*factu (AEAT)", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Adaptación al sistema Veri*factu de la AEAT. Incluido en mantenimiento si el cliente está al día con cuotas." },
-      { codigo: "SOPV", descripcion: "Soporte vConta (módulo contabilidad)", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Soporte específico del módulo de contabilidad vConta. Por uso." },
-      { codigo: "SERPRE", descripcion: "Servicios de Desarrollo contra Presupuesto", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "60", notas: "Servicio cerrado por presupuesto fijo. Las horas no se facturan en línea — se factura el presupuesto entero al cierre del hito." },
-      { codigo: "FASE_I", descripcion: "Servicios de Desarrollo de fase de proyecto cerrado", facturablePorDefecto: "no", vigenciaMesesPorDefecto: "0", tarifaHoraDefault: "60", notas: "Iniciativa concreta con kickoff y deliverable final. Vigencia 0 = vinculada al cierre de fase, no a fecha." },
-      { codigo: "BOLSA", descripcion: "Bolsa de horas prepagada", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "12", tarifaHoraDefault: "55", notas: "Bolsa prepagada. Las horas imputadas restan saldo. Cuando se agota, se renueva o se factura el sobreconsumo." },
-      { codigo: "EVOLU", descripcion: "Mantenimiento evolutivo (sprint mensual)", facturablePorDefecto: "si", vigenciaMesesPorDefecto: "1", tarifaHoraDefault: "60", notas: "Sprint mensual de mejoras priorizadas con el cliente. Renovación mensual." },
+      { codigo: "INST", descripcion: "Servicios de Actualización e Instalación de Software" },
+      { codigo: "MANT", descripcion: "Servicios de Mantenimiento contra errores de programación" },
+      { codigo: "NUEDES", descripcion: "Servicios de Desarrollo de nuevos módulos/funcionalidades" },
+      { codigo: "SOP", descripcion: "Soporte a usuarios" },
+      { codigo: "FORM", descripcion: "Formación a usuarios" },
+      { codigo: "VERIFACTU", descripcion: "Adaptación a Veri*factu (AEAT)" },
+      { codigo: "SOPV", descripcion: "Soporte vConta (módulo contabilidad)" },
+      { codigo: "SERPRE", descripcion: "Servicios de Desarrollo contra Presupuesto" },
+      { codigo: "FASE_I", descripcion: "Servicios de Desarrollo de fase de proyecto cerrado" },
+      { codigo: "BOLSA", descripcion: "Bolsa de horas prepagada" },
+      { codigo: "EVOLU", descripcion: "Mantenimiento evolutivo (sprint mensual)" },
     ]},
     { moduleKey: "descripciones-proyecto", records: [
       { proyecto: "ERP comercial Acme — Fase 2", objetivoNegocio: "Sustituir el ERP heredado de Acme (Navision 2010) por una solución moderna que permita escalar el negocio comercial sin la deuda técnica actual y reducir el tiempo de cierre mensual de 5 días a 1.", alcance: "Entra: módulos de clientes, productos, pedidos, facturación, reportes mensuales y exportación a contabilidad. NO entra: e-commerce, integración con Amazon, ni RRHH (lo gestionan en Sage).", restricciones: "Migración de 8 años de histórico desde Navision. Calendario condicionado al cierre fiscal de junio.", equipo: "Project lead: Laura. Devs: Pablo + freelance externo (4h/sem). QA: equipo de Acme.", riesgos: "1) Datos heredados con inconsistencias (alto). 2) Disponibilidad limitada del usuario clave de Acme (medio). 3) Integración con Sage no probada (medio).", estadoSituacional: "verde", ultimaActualizacion: "2026-04-22" },
