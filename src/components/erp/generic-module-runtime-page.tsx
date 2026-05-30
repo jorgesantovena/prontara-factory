@@ -1132,12 +1132,10 @@ export default function GenericModuleRuntimePage({
   return (
     <TenantShell>
       <div style={{ maxWidth: 1320, margin: "0 auto", color: "#0f172a", fontFamily: "system-ui, -apple-system, sans-serif" }}>
-        {/* Breadcrumb */}
-        <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-          <Link href={link("") || "/"} style={{ color: "#64748b", textDecoration: "none" }}>Inicio</Link>
-          <span style={{ margin: "0 6px" }}>/</span>
-          <span style={{ color: "#0f172a", fontWeight: 600 }}>{ui.label}</span>
-        </div>
+        {/* TEST-16 bis (2) — Franja 4 eliminada (Pedro): este breadcrumb
+            "Inicio / {Módulo}" duplicaba lo que ya dicen la tab activa
+            y el H1. Quitándolo, el nombre del módulo aparece 2 veces
+            (TabBar + H1) en vez de 4. */}
 
         {/* TEST-14 C — Cabecera compactada: H1 + acciones en UNA fila
             (antes el H1 ocupaba su propia fila con subtítulo y los

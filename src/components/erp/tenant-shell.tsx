@@ -5,7 +5,9 @@ import TenantSidebar from "@/components/erp/tenant-sidebar";
 import DashboardTopBar from "@/components/erp/dashboard-topbar";
 import HelpPanel from "@/components/erp/help-panel";
 import FirstTimeTour from "@/components/erp/first-time-tour";
-import Breadcrumbs from "@/components/erp/breadcrumbs";
+// TEST-16 bis (2) — `Breadcrumbs` ya no se monta aquí (franja 2
+// eliminada). Se mantiene el componente vivo en `breadcrumbs.tsx` por
+// si en el futuro se reincorpora a una vista concreta.
 import KeyboardShortcuts from "@/components/erp/keyboard-shortcuts";
 import DailyActivityBanner from "@/components/erp/daily-activity-banner";
 // TEST-12 #3 — Solapas concurrentes (Pedro). Barra de pestañas estilo
@@ -68,7 +70,10 @@ export default function TenantShell({
       >
         <DashboardTopBar />
         <DailyActivityBanner />
-        <Breadcrumbs />
+        {/* TEST-16 bis (2) — Franja 2 eliminada (Pedro): el Breadcrumbs
+            global mostraba "Inicio / Vertical / Módulo" repitiendo lo
+            que el TopBar y la TabBar ya dejan claro. La navegación se
+            mantiene desde el sidebar y desde las pestañas. */}
         <TabBar />
         <div style={{ padding: contentPadding }}>
           {children}
