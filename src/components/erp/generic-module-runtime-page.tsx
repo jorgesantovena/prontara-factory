@@ -464,24 +464,37 @@ export default function GenericModuleRuntimePage({
     return () => window.removeEventListener("keydown", onKey);
   }, [selectedIds, detailOpen, selected, modalMode, bulkModal, archiveConfirmOpen, deleteSuprOpen]);
 
-  // TEST-9.1 — Navegacion cruzada: ?ver=<numero|id> abre el detalle rapido.
+  // TEST-9.1 / TEST-16 bis — Navegacion cruzada:
+  //   ?ver=<numero|id>  → abre el detalle rapido (drawer lateral).
+  //   ?edit=<numero|id> → abre directamente el editor en modo EDIT
+  //                       (Pedro pide que el botón Abrir de la sublista
+  //                       de Proyectos del Cliente lleve a la ficha de
+  //                       edición, no al detalle rápido).
   const verHandledRef = useRef(false);
   useEffect(() => {
     if (verHandledRef.current) return;
     if (typeof window === "undefined") return;
     if (busy) return;
-    const ver = new URLSearchParams(window.location.search).get("ver");
-    if (!ver) { verHandledRef.current = true; return; }
+    const params = new URLSearchParams(window.location.search);
+    const edit = params.get("edit");
+    const ver = params.get("ver");
+    if (!ver && !edit) { verHandledRef.current = true; return; }
     verHandledRef.current = true;
-    const target = rows.find(
-      (r) => String(r.numero || "") === ver || String(r.id || "") === ver,
-    );
+    const target = rows.find((r) => {
+      const ref = edit || ver || "";
+      return String(r.numero || "") === ref || String(r.id || "") === ref;
+    });
     if (target) {
       setSelected(target);
-      setDetailOpen(true);
+      if (edit) {
+        setModalMode("edit");
+      } else {
+        setDetailOpen(true);
+      }
     }
     const cleaned = new URLSearchParams(window.location.search);
     cleaned.delete("ver");
+    cleaned.delete("edit");
     const newSearch = cleaned.toString();
     window.history.replaceState(
       {},
@@ -578,7 +591,20 @@ export default function GenericModuleRuntimePage({
   // TEST-10.4 — Orden por defecto. Si el módulo tiene campo fechaLimite,
   // ordena por fecha límite ascendente y, a igual fecha, por prioridad
   // (1-Urgente primero). Tolera datos antiguos con prioridad en texto.
+  // TEST-16 bis B — Tarifas y Tarifas Especiales se ordenan ASC por
+  // Nivel (1,2,3,4) y, a igual nivel, por Servicio. Pedro reportó que
+  // salían en orden inverso.
   const sorted = useMemo(() => {
+    if (moduleKey === "tarifas-generales" || moduleKey === "tarifas-especiales") {
+      return [...filtered].sort((a, b) => {
+        const na = parseInt(String(a.nivel || "99"), 10) || 99;
+        const nb = parseInt(String(b.nivel || "99"), 10) || 99;
+        if (na !== nb) return na - nb;
+        const sa = String(a.servicio || "").toLowerCase();
+        const sb = String(b.servicio || "").toLowerCase();
+        return sa < sb ? -1 : sa > sb ? 1 : 0;
+      });
+    }
     const hasFechaLimite = ui.fields.some((f) => f.key === "fechaLimite");
     if (!hasFechaLimite) return filtered;
     const rank = (v: unknown): number => {
@@ -599,7 +625,7 @@ export default function GenericModuleRuntimePage({
       if (!fa && fb) return 1;
       return rank(a.prioridad) - rank(b.prioridad);
     });
-  }, [filtered, ui.fields]);
+  }, [filtered, ui.fields, moduleKey]);
 
   // TEST-14 C — Los mini-KPIs (Total + breakdown por estado) ya no se
   // renderizan en la cabecera del listado (cabecera compactada). Se

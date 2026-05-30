@@ -68,6 +68,26 @@ export const SINGULAR_OVERRIDES: Record<string, string> = {
   socios: "socio",
   bonos: "bono",
   cuotas: "cuota",
+  // TEST-16 bis D — Pedro reporta singulares mal generados en módulos
+  // cuyo label es de varias palabras. El fallback "quitar la s final"
+  // solo toca la última palabra del label, dejando "tarifas especiale"
+  // (no convierte "tarifas" → "tarifa"). Lo arreglamos con overrides
+  // explícitos del label completo en minúsculas.
+  "tarifas especiales": "tarifa especial",
+  "tarifas generales": "tarifa general",
+  "formas pago": "forma de pago",
+  "formas de pago": "forma de pago",
+  "cuentas bancarias": "cuenta bancaria",
+  "tipos cliente": "tipo de cliente",
+  "tipos servicio": "tipo de servicio",
+  "tipos urgencia": "tipo de urgencia",
+  "grupos empresa": "grupo de empresa",
+  "zonas comerciales": "zona comercial",
+  "puntos venta": "punto de venta",
+  "grupos de empresa": "grupo de empresa",
+  "extracurriculares": "extracurricular",
+  "salidas pedagogicas": "salida pedagógica",
+  "salidas pedagógicas": "salida pedagógica",
 };
 
 export function singular(label: string): string {

@@ -620,20 +620,13 @@ export default function ErpRecordEditor({
 
   return (
     <div style={{ color: "#0f172a", fontFamily: "system-ui, -apple-system, sans-serif", maxWidth: 1280, margin: "0 auto" }}>
-      {/* TEST-16 A — Cabecera del editor compactada (Pedro pide subir
-          etiquetas a la primera fila y reducir verticalidad). El
-          breadcrumb ya contiene el título al final, así que reducimos
-          el H1 de la fila siguiente y bajamos los márgenes. No
-          eliminamos elementos para no romper la navegación. */}
-      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>
-        <Link href="/" style={{ color: "#64748b", textDecoration: "none" }}>Inicio</Link>
-        <span style={{ margin: "0 6px" }}>/</span>
-        <Link href={"/" + moduleKey} style={{ color: "#64748b", textDecoration: "none" }}>{moduleLabel}</Link>
-        <span style={{ margin: "0 6px" }}>/</span>
-        <span style={{ color: "#0f172a", fontWeight: 600 }}>{titulo}</span>
-      </div>
-
-      {/* Header — H1 + acciones en una sola fila compacta. */}
+      {/* TEST-16 bis A — Cabecera del editor: Pedro contó que "Proyectos"
+          aparecía 4 veces (breadcrumbs de TenantShell, TabBar activa,
+          breadcrumb interno del editor, fallback del H1). Eliminamos el
+          BREADCRUMB INTERNO (era duplicado del que pinta TenantShell)
+          y dejamos solo el H1 con el título del registro + acciones en
+          una sola fila. Resultado: "Proyectos" pasa a aparecer 2 veces
+          (breadcrumb global + tab activa), tal como pide el diseño. */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, letterSpacing: -0.3 }}>{titulo}</h1>
@@ -1593,9 +1586,10 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
                   <td style={subTd}>{p.unidadTarifa || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>
                     <div style={{ display: "flex", gap: 4 }}>
-                      {/* TEST-16 F — "Abrir" navega a la ficha del Proyecto
-                          concreto (?ver=<id>), no al listado. */}
-                      <Link href={link("proyectos") + "?ver=" + encodeURIComponent(p.id)} style={{ ...subBtn, textDecoration: "none" }} title="Abrir ficha de este proyecto">Abrir</Link>
+                      {/* TEST-16 bis C — "Abrir" navega al editor de la
+                          ficha del Proyecto (?edit=<id>), no al detalle
+                          rápido. Pedro quiere editar directamente. */}
+                      <Link href={link("proyectos") + "?edit=" + encodeURIComponent(p.id)} style={{ ...subBtn, textDecoration: "none" }} title="Abrir formulario de edición de este proyecto">Abrir</Link>
                       <button type="button" onClick={() => setConfirmDeleteId(p.id)} style={subBtnDanger} title="Eliminar proyecto" disabled={busy}>🗑</button>
                     </div>
                   </td>
