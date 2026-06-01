@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+// TEST-17 — Pedro: el icono del moduleKey debe aparecer también en la
+// solapa, a la izquierda de la etiqueta (mismo icono que la sidebar).
+import { iconForModule } from "@/lib/ui/module-icons";
 
 /**
  * TEST-12 #3 — Solapas concurrentes.
@@ -207,6 +210,9 @@ export default function TabBar() {
     >
       {tabs.map((t) => {
         const active = pathname === t.href;
+        // TEST-17 — Icono del moduleKey, igual al de la sidebar.
+        const moduleKey = moduleKeyFromPath(t.href);
+        const icon = iconForModule(moduleKey);
         return (
           <Link
             key={t.href}
@@ -233,6 +239,7 @@ export default function TabBar() {
               cursor: "pointer",
             }}
           >
+            <span aria-hidden="true" style={{ fontSize: 13, lineHeight: 1 }}>{icon}</span>
             <span>{t.label}</span>
             <button
               type="button"

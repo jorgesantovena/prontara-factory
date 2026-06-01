@@ -588,27 +588,100 @@ export default function GenericModuleRuntimePage({
     });
   }, [rows, query, estadoFilter, segmentoFilter, responsableFilter, fechaLimiteMax, clienteQuery, proyectoQuery, fechaMin, fechaMax, personaFieldKey, ui.tableColumns, moduleKey]);
 
-  // TEST-10.4 — Orden por defecto. Si el módulo tiene campo fechaLimite,
-  // ordena por fecha límite ascendente y, a igual fecha, por prioridad
-  // (1-Urgente primero). Tolera datos antiguos con prioridad en texto.
-  // TEST-16 bis B — Tarifas y Tarifas Especiales se ordenan ASC por
-  // Nivel (1,2,3,4) y, a igual nivel, por Servicio. Pedro reportó que
-  // salían en orden inverso.
+  // TEST-10.4 / TEST-16 bis B / TEST-17 D — Orden por defecto del listado.
+  // Pedro pide reglas concretas por módulo (Clientes por Empresa,
+  // Oportunidades por Fase y Empresa, Proyectos por Estado y Cliente,
+  // Tareas/actividades por Fecha+Empleado+Cliente, Propuestas por
+  // Estado+Cliente, Entregables por Cliente, Compras por Estado+Fecha,
+  // Servicios por Descripción, Empleados por Nombre, Actividades-
+  // catálogo por Código, Formas de pago por Nombre, Facturas por Cliente).
   const sorted = useMemo(() => {
+    const ABC = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
+    const lower = (v: unknown) => String(v ?? "").toLowerCase().trim();
+    // Tarifas: Nivel ASC, Servicio ABC.
     if (moduleKey === "tarifas-generales" || moduleKey === "tarifas-especiales") {
       return [...filtered].sort((a, b) => {
         const na = parseInt(String(a.nivel || "99"), 10) || 99;
         const nb = parseInt(String(b.nivel || "99"), 10) || 99;
         if (na !== nb) return na - nb;
-        const sa = String(a.servicio || "").toLowerCase();
-        const sb = String(b.servicio || "").toLowerCase();
-        return sa < sb ? -1 : sa > sb ? 1 : 0;
+        return ABC(lower(a.servicio), lower(b.servicio));
       });
     }
+    // TEST-17 D — Reglas específicas por módulo.
+    if (moduleKey === "clientes") {
+      return [...filtered].sort((a, b) => ABC(lower(a.nombre), lower(b.nombre)));
+    }
+    if (moduleKey === "crm") {
+      const faseRank = (v: unknown) => {
+        const s = lower(v);
+        if (s.includes("lead")) return 1;
+        if (s.includes("contact")) return 2;
+        if (s.includes("propuesta") || s.includes("negoc")) return 3;
+        if (s.includes("ganad")) return 4;
+        if (s.includes("perdid")) return 5;
+        return 99;
+      };
+      return [...filtered].sort((a, b) => {
+        const r = faseRank(a.fase) - faseRank(b.fase);
+        if (r !== 0) return r;
+        return ABC(lower(a.empresa), lower(b.empresa));
+      });
+    }
+    if (moduleKey === "proyectos") {
+      return [...filtered].sort((a, b) => {
+        const r = ABC(lower(a.estado), lower(b.estado));
+        if (r !== 0) return r;
+        return ABC(lower(a.cliente), lower(b.cliente));
+      });
+    }
+    if (moduleKey === "actividades") {
+      // Parte de horas (Tareas en SF): Fecha ASC, Empleado ABC, Cliente ABC.
+      return [...filtered].sort((a, b) => {
+        const fa = String(a.fecha || "").slice(0, 10);
+        const fb = String(b.fecha || "").slice(0, 10);
+        if (fa !== fb) return ABC(fa, fb);
+        const e = ABC(lower(a.empleado || a.persona), lower(b.empleado || b.persona));
+        if (e !== 0) return e;
+        return ABC(lower(a.cliente), lower(b.cliente));
+      });
+    }
+    if (moduleKey === "presupuestos") {
+      return [...filtered].sort((a, b) => {
+        const r = ABC(lower(a.estado), lower(b.estado));
+        if (r !== 0) return r;
+        return ABC(lower(a.cliente), lower(b.cliente));
+      });
+    }
+    if (moduleKey === "documentos") {
+      return [...filtered].sort((a, b) => ABC(lower(a.cliente), lower(b.cliente)));
+    }
+    if (moduleKey === "compras") {
+      return [...filtered].sort((a, b) => {
+        const r = ABC(lower(a.estado), lower(b.estado));
+        if (r !== 0) return r;
+        return ABC(String(a.fecha || ""), String(b.fecha || ""));
+      });
+    }
+    if (moduleKey === "facturacion") {
+      return [...filtered].sort((a, b) => ABC(lower(a.cliente), lower(b.cliente)));
+    }
+    if (moduleKey === "catalogo-servicios") {
+      return [...filtered].sort((a, b) => ABC(lower(a.descripcion), lower(b.descripcion)));
+    }
+    if (moduleKey === "empleados") {
+      return [...filtered].sort((a, b) => ABC(lower(a.nombre), lower(b.nombre)));
+    }
+    if (moduleKey === "actividades-catalogo") {
+      return [...filtered].sort((a, b) => ABC(lower(a.codigo), lower(b.codigo)));
+    }
+    if (moduleKey === "formas-pago") {
+      return [...filtered].sort((a, b) => ABC(lower(a.nombre), lower(b.nombre)));
+    }
+    // Default: si el módulo tiene fechaLimite, fecha ASC + prioridad.
     const hasFechaLimite = ui.fields.some((f) => f.key === "fechaLimite");
     if (!hasFechaLimite) return filtered;
     const rank = (v: unknown): number => {
-      const s = String(v ?? "").toLowerCase().trim();
+      const s = lower(v);
       const n = Number(s);
       if (Number.isFinite(n) && n > 0) return n;
       if (s.includes("urgent")) return 1;
@@ -1627,7 +1700,7 @@ export default function GenericModuleRuntimePage({
                           const display = labelForValue(col.fieldKey, valStr);
                           return (
                             <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 400 }}>
-                              {renderCell(col.fieldKey, display, idx === 0 ? item : null)}
+                              {renderCell(col.fieldKey, display, idx === 0 ? item : null, moduleKey)}
                             </td>
                           );
                         })}
@@ -1906,7 +1979,7 @@ export default function GenericModuleRuntimePage({
 }
 
 // === Render por tipo de campo ===
-function renderCell(fieldKey: string, val: string, primaryRow: Record<string, string> | null) {
+function renderCell(fieldKey: string, val: string, primaryRow: Record<string, string> | null, moduleKey?: string) {
   // Estado / segmento → pill de color
   if (fieldKey === "estado" || fieldKey === "fase" || fieldKey === "tipo" || fieldKey === "segmento" || fieldKey === "modalidad" || fieldKey === "severidad" || fieldKey === "urgencia" || fieldKey === "prioridad") {
     if (val === "—") return <span style={{ color: "#94a3b8" }}>—</span>;
@@ -1928,12 +2001,18 @@ function renderCell(fieldKey: string, val: string, primaryRow: Record<string, st
     const initial = (val.charAt(0) || "?").toUpperCase();
     const email = String(primaryRow.email || "");
     const tel = String(primaryRow.telefono || primaryRow.tel || "");
+    // TEST-17 — Pedro: en Clientes y Oportunidades NO mostrar email/tel
+    // bajo el primer campo (Empresa / Código) porque ya hay una columna
+    // CONTACTO con esos datos y aparecía duplicado en el listado. En el
+    // resto de módulos se mantiene como subtítulo del avatar.
+    const isClienteOrCrm = moduleKey === "clientes" || moduleKey === "crm";
+    const showSubtitle = !isClienteOrCrm && (email || tel);
     return (
       <span style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
         <span style={{ width: 30, height: 30, borderRadius: 999, background: tint.bg, color: tint.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{initial}</span>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: "block", color: "#0f172a", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{val}</span>
-          {email || tel ? <span style={{ display: "block", color: "#94a3b8", fontSize: 11 }}>{email || tel}</span> : null}
+          {showSubtitle ? <span style={{ display: "block", color: "#94a3b8", fontSize: 11 }}>{email || tel}</span> : null}
         </span>
       </span>
     );

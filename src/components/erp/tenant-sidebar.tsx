@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
+// TEST-17 — Iconos compartidos con TabBar. Ver src/lib/ui/module-icons.ts.
+import { MODULE_ICON } from "@/lib/ui/module-icons";
 
 /**
  * Sidebar lateral fija del runtime del tenant.
@@ -202,88 +204,8 @@ function categoriaDe(moduleKey: string): SidebarCategory {
   return MODULE_CATEGORY[moduleKey] || "operacion";
 }
 
-// Iconos por módulo (emoji simple para no añadir dependencia de iconos SVG).
-const MODULE_ICON: Record<string, string> = {
-  // Operación
-  clientes: "👥",
-  crm: "🎯",
-  proyectos: "🛠️",
-  produccion: "🏭",
-  actividades: "⏱️",
-  tareas: "✔️",
-  reservas: "📅",
-  caja: "💰",
-  "puntos-venta": "🏪",
-  "avisos-programados": "🔔",
-  calendario: "🗓️",
-  eventos: "🎉",
-  comunicaciones: "📢",
-  mensajes: "💬",
-  // Académico (colegio)
-  docentes: "👨‍🏫",
-  horarios: "🕐",
-  planeaciones: "📋",
-  calificaciones: "📊",
-  asistencia: "✅",
-  disciplina: "⚖️",
-  orientacion: "🧠",
-  enfermeria: "🏥",
-  transporte: "🚌",
-  comedor: "🍽️",
-  biblioteca: "📖",
-  salidas: "🚶",
-  becas: "🎓",
-  visitantes: "🚪",
-  tramites: "📝",
-  egresados: "🎓",
-  // Administración — finanzas y stock
-  presupuestos: "📄",
-  "pre-facturacion": "🧾",
-  facturacion: "💶",
-  albaranes: "📦",
-  "vencimientos-factura": "⏰",
-  compras: "🛒",
-  productos: "🏷️",
-  bodegas: "🏬",
-  kardex: "📈",
-  documentos: "📎",
-  gastos: "💸",
-  desplazamientos: "🚗",
-  inventario: "📦",
-  mantenimiento: "🔧",
-  cau: "🎧",
-  kb: "📚",
-  tickets: "🎫",
-  "catalogo-servicios": "📚",
-  // Analítica
-  reportes: "📊",
-  "estadistica-ventas": "📈",
-  encuestas: "📝",
-  // Configuración / Maestros
-  asistente: "💬",
-  equipo: "👤",
-  ajustes: "⚙️",
-  "ajustes-cuenta": "👤",
-  "ajustes-campos": "🧩",
-  workflows: "🔀",
-  integraciones: "🔌",
-  etiquetas: "🏷",
-  plantillas: "📑",
-  aplicaciones: "📱",
-  empleados: "👔",
-  personal: "💼",
-  "tipos-cliente": "🔖",
-  "tipos-servicio": "🔖",
-  "tipos-urgencia": "🚨",
-  "actividades-catalogo": "📋",
-  "zonas-comerciales": "🗺️",
-  "grupos-empresa": "🏢",
-  "tarifas-generales": "💲",
-  "tarifas-especiales": "💎",
-  "clases-condicion": "🏷️",
-  "formas-pago": "💳",
-  "cuentas-bancarias": "🏦",
-};
+// TEST-17 — MODULE_ICON ahora se importa desde `@/lib/ui/module-icons`.
+// Esta posición se reservaba para la definición local (eliminada).
 
 const FALLBACK_LABELS: Record<string, string> = {
   clientes: "Clientes",
