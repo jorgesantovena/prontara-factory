@@ -628,8 +628,19 @@ export default function GenericModuleRuntimePage({
       });
     }
     if (moduleKey === "proyectos") {
+      // TEST-17 bis A — Estado no por alfa sino por valor numérico:
+      // 1=pausado, 3=activo, 5=por renovar, 7=expirado, 9=finalizado.
+      const rankEstado = (v: unknown) => {
+        const s = lower(v).replace(/[_\s]+/g, "");
+        if (s.includes("pausad")) return 1;
+        if (s.includes("activ")) return 3;
+        if (s.includes("porrenov") || s.includes("renovar")) return 5;
+        if (s.includes("expirad")) return 7;
+        if (s.includes("finalizad")) return 9;
+        return 99;
+      };
       return [...filtered].sort((a, b) => {
-        const r = ABC(lower(a.estado), lower(b.estado));
+        const r = rankEstado(a.estado) - rankEstado(b.estado);
         if (r !== 0) return r;
         return ABC(lower(a.cliente), lower(b.cliente));
       });
@@ -646,8 +657,20 @@ export default function GenericModuleRuntimePage({
       });
     }
     if (moduleKey === "presupuestos") {
+      // TEST-17 bis A — Estado por rank: 1=pendiente, 2=borrador,
+      // 3=enviada, 4=negociación, 5=aceptada, 6=rechazada.
+      const rankEstado = (v: unknown) => {
+        const s = lower(v);
+        if (s.includes("pendient")) return 1;
+        if (s.includes("borrador")) return 2;
+        if (s.includes("envia")) return 3;
+        if (s.includes("negoc")) return 4;
+        if (s.includes("acept")) return 5;
+        if (s.includes("rechaz")) return 6;
+        return 99;
+      };
       return [...filtered].sort((a, b) => {
-        const r = ABC(lower(a.estado), lower(b.estado));
+        const r = rankEstado(a.estado) - rankEstado(b.estado);
         if (r !== 0) return r;
         return ABC(lower(a.cliente), lower(b.cliente));
       });
@@ -656,8 +679,19 @@ export default function GenericModuleRuntimePage({
       return [...filtered].sort((a, b) => ABC(lower(a.cliente), lower(b.cliente)));
     }
     if (moduleKey === "compras") {
+      // TEST-17 bis A — Estado por rank: 1=solicitada, 2=aprobada,
+      // 4=en curso, 6=recibida, 9=rechazada.
+      const rankEstado = (v: unknown) => {
+        const s = lower(v).replace(/[_\s]+/g, "");
+        if (s.includes("solicit")) return 1;
+        if (s.includes("aprobad")) return 2;
+        if (s.includes("encurso")) return 4;
+        if (s.includes("recibid")) return 6;
+        if (s.includes("rechaz")) return 9;
+        return 99;
+      };
       return [...filtered].sort((a, b) => {
-        const r = ABC(lower(a.estado), lower(b.estado));
+        const r = rankEstado(a.estado) - rankEstado(b.estado);
         if (r !== 0) return r;
         return ABC(String(a.fecha || ""), String(b.fecha || ""));
       });
@@ -798,7 +832,23 @@ export default function GenericModuleRuntimePage({
       .map((f) => ({ fieldKey: f.key, label: f.label }));
     return [...base, ...extra];
   }, [ui.tableColumns, ui.fields]);
-  const columns = allColumns.filter((c) => !hiddenCols.has(c.fieldKey));
+  // TEST-17 bis C — En Clientes y Oportunidades, las columnas email y
+  // telefono NUNCA se renderizan como columnas separadas (porque la
+  // columna CONTACTO ya enseña esos datos). Lo que sí controla el
+  // selector "Mostrar columnas" es si se muestra el subtítulo de email
+  // y/o telefono bajo el nombre del primer campo (Empresa/Código).
+  // Si están en hiddenCols (= no marcados) no se muestra subtítulo;
+  // si NO están en hiddenCols (= marcados), se añaden al subtítulo.
+  const HIDE_AS_COLUMN_IN_CLIENT = new Set(["email", "telefono", "tel"]);
+  const columns = allColumns.filter((c) => {
+    if (hiddenCols.has(c.fieldKey)) return false;
+    if ((moduleKey === "clientes" || moduleKey === "crm") && HIDE_AS_COLUMN_IN_CLIENT.has(c.fieldKey)) {
+      return false;
+    }
+    return true;
+  });
+  const showEmailSubtitle = (moduleKey === "clientes" || moduleKey === "crm") && !hiddenCols.has("email");
+  const showTelSubtitle = (moduleKey === "clientes" || moduleKey === "crm") && (!hiddenCols.has("telefono") || !hiddenCols.has("tel"));
 
   const titleField = ui.tableColumns.find((c) => c.isPrimary)?.fieldKey || allColumns[0]?.fieldKey || ui.fields[0]?.key || "id";
 
@@ -1700,7 +1750,7 @@ export default function GenericModuleRuntimePage({
                           const display = labelForValue(col.fieldKey, valStr);
                           return (
                             <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 400 }}>
-                              {renderCell(col.fieldKey, display, idx === 0 ? item : null, moduleKey)}
+                              {renderCell(col.fieldKey, display, idx === 0 ? item : null, moduleKey, { showEmailSubtitle, showTelSubtitle })}
                             </td>
                           );
                         })}
@@ -1979,7 +2029,13 @@ export default function GenericModuleRuntimePage({
 }
 
 // === Render por tipo de campo ===
-function renderCell(fieldKey: string, val: string, primaryRow: Record<string, string> | null, moduleKey?: string) {
+function renderCell(
+  fieldKey: string,
+  val: string,
+  primaryRow: Record<string, string> | null,
+  moduleKey?: string,
+  contactSub?: { showEmailSubtitle?: boolean; showTelSubtitle?: boolean },
+) {
   // Estado / segmento → pill de color
   if (fieldKey === "estado" || fieldKey === "fase" || fieldKey === "tipo" || fieldKey === "segmento" || fieldKey === "modalidad" || fieldKey === "severidad" || fieldKey === "urgencia" || fieldKey === "prioridad") {
     if (val === "—") return <span style={{ color: "#94a3b8" }}>—</span>;
@@ -2001,18 +2057,28 @@ function renderCell(fieldKey: string, val: string, primaryRow: Record<string, st
     const initial = (val.charAt(0) || "?").toUpperCase();
     const email = String(primaryRow.email || "");
     const tel = String(primaryRow.telefono || primaryRow.tel || "");
-    // TEST-17 — Pedro: en Clientes y Oportunidades NO mostrar email/tel
-    // bajo el primer campo (Empresa / Código) porque ya hay una columna
-    // CONTACTO con esos datos y aparecía duplicado en el listado. En el
-    // resto de módulos se mantiene como subtítulo del avatar.
+    // TEST-17 / TEST-17 bis C — En Clientes/Oportunidades el subtítulo
+    // de email/tel SOLO aparece si el usuario marcó esas columnas en
+    // "Mostrar columnas" (el componente padre nos pasa los flags). En
+    // el resto de módulos se mantiene el comportamiento legacy.
     const isClienteOrCrm = moduleKey === "clientes" || moduleKey === "crm";
-    const showSubtitle = !isClienteOrCrm && (email || tel);
+    const subtitleParts: string[] = [];
+    if (isClienteOrCrm) {
+      if (contactSub?.showEmailSubtitle && email) subtitleParts.push(email);
+      if (contactSub?.showTelSubtitle && tel) subtitleParts.push(tel);
+    } else if (email || tel) {
+      subtitleParts.push(email || tel);
+    }
     return (
       <span style={{ display: "inline-flex", alignItems: "center", gap: 10, minWidth: 0 }}>
         <span style={{ width: 30, height: 30, borderRadius: 999, background: tint.bg, color: tint.fg, display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12, flexShrink: 0 }}>{initial}</span>
         <span style={{ minWidth: 0 }}>
           <span style={{ display: "block", color: "#0f172a", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{val}</span>
-          {showSubtitle ? <span style={{ display: "block", color: "#94a3b8", fontSize: 11 }}>{email || tel}</span> : null}
+          {subtitleParts.length > 0 ? (
+            <span style={{ display: "block", color: "#94a3b8", fontSize: 11 }}>
+              {subtitleParts.join(" · ")}
+            </span>
+          ) : null}
         </span>
       </span>
     );

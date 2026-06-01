@@ -58,12 +58,22 @@ export default function PreFacturacionPage() {
   }
   useEffect(() => { load(); }, [periodo]);
 
-  const visibles = lineas.filter((l) => estadoFiltro === "todos" || l.estado === estadoFiltro);
+  // TEST-17 bis B — Ordenar por alfabético de cliente.
+  const visibles = lineas
+    .filter((l) => estadoFiltro === "todos" || l.estado === estadoFiltro)
+    .slice()
+    .sort((a, b) => {
+      const ca = String(a.cliente || "").toLowerCase();
+      const cb = String(b.cliente || "").toLowerCase();
+      return ca < cb ? -1 : ca > cb ? 1 : 0;
+    });
 
   return (
     <TenantShell>
       <div style={{ maxWidth: 1400, margin: "0 auto", fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      <h1 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>Servicios facturables</h1>
+      {/* TEST-17 bis B — Pedro: el título decía "Servicios facturables"
+          (concepto antiguo), debe ser "Tareas facturables". */}
+      <h1 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>Tareas facturables</h1>
       <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 16 }}>
         Pre-facturación del periodo. Compara horas trabajadas, contra cuota y a facturar para cada cliente.
       </p>

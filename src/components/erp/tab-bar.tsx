@@ -47,15 +47,45 @@ function storageKey(): string {
 }
 
 // Extrae el segmento que representa el moduleKey en la URL del runtime
-// (/<vertical>/<moduleKey>[/...]). Devuelve "" para la raíz del vertical.
+// (/<vertical>/<moduleKey>[/<subseccion>...]). Devuelve "" para la raíz
+// del vertical.
+//
+// TEST-17 bis B — Rutas anidadas tipo /<vertical>/produccion/pre-facturacion:
+// el moduleKey "real" es el ÚLTIMO segmento (pre-facturacion), no el padre
+// (produccion). Si la URL tiene 3+ segmentos y el último es conocido,
+// devolvemos el último. Si no, caemos al segundo segmento (comportamiento
+// histórico para /vertical/clientes, /vertical/proyectos, etc.).
 function moduleKeyFromPath(pathname: string): string {
   const parts = pathname.replace(/^\/+|\/+$/g, "").split("/");
   if (parts.length < 2) return "";
+  if (parts.length >= 3 && parts[parts.length - 1]) {
+    return parts[parts.length - 1];
+  }
   return parts[1] || "";
 }
 
+// TEST-17 bis B — Mapa estático para slugs que no están en CORE_MODULES
+// (no aparecen en navigationLabelMap del tenant-config) pero merecen un
+// label legible. Lo usa fallbackLabelFromSlug antes de "capitalizar".
+const STATIC_LABELS: Record<string, string> = {
+  "pre-facturacion": "Pre-facturación",
+  produccion: "Producción",
+  agenda: "Agenda",
+  "agenda-hoy": "Agenda hoy",
+  calendario: "Calendario",
+  reportes: "Reportes",
+  workflows: "Workflows",
+  "ajustes-cuenta": "Mi cuenta",
+  "ajustes-campos": "Campos personalizados",
+  integraciones: "Integraciones",
+};
+
 function fallbackLabelFromSlug(slug: string): string {
   if (!slug) return "Inicio";
+  if (STATIC_LABELS[slug]) {
+    const s = STATIC_LABELS[slug];
+    return s.length > MAX_LABEL ? s.slice(0, MAX_LABEL - 1) + "…" : s;
+  }
   const pretty = slug.replace(/[-_]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   return pretty.length > MAX_LABEL ? pretty.slice(0, MAX_LABEL - 1) + "…" : pretty;
 }
