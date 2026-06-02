@@ -1433,11 +1433,38 @@ export default function GenericModuleRuntimePage({
                       setQuery(cfg.query || "");
                       if (Array.isArray(cfg.hiddenCols)) setHiddenCols(new Set(cfg.hiddenCols));
                       setShowViews(false);
-                    }} style={popoverItemBtn} title={"Aplica los filtros: " + summary}>
+                    }} style={{ ...popoverItemBtn, paddingRight: 6 }} title={"Aplica los filtros: " + summary}>
                       <span>★</span>
                       <span style={{ flex: 1, textAlign: "left" }}>
                         {v.name}
                         <div style={{ fontSize: 11, color: "#94a3b8", fontWeight: 400 }}>{summary}</div>
+                      </span>
+                      {/* TEST-18 B — Botón × para eliminar la vista
+                          guardada. Pedro pide explícitamente la función. */}
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          if (!window.confirm("¿Eliminar la vista \"" + v.name + "\"?")) return;
+                          try {
+                            await fetch("/api/runtime/saved-views?id=" + encodeURIComponent(v.id), { method: "DELETE" });
+                            await loadViews();
+                          } catch { /* tolerar */ }
+                        }}
+                        title={"Eliminar vista \"" + v.name + "\""}
+                        aria-label={"Eliminar vista " + v.name}
+                        style={{
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 22, height: 22, borderRadius: 4,
+                          background: "transparent", color: "#94a3b8", cursor: "pointer", fontSize: 14,
+                          marginLeft: 4, flexShrink: 0,
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "#fee2e2"; e.currentTarget.style.color = "#dc2626"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#94a3b8"; }}
+                      >
+                        🗑
                       </span>
                     </button>
                   );
@@ -1830,15 +1857,24 @@ export default function GenericModuleRuntimePage({
                               email = String(item.email || "").trim();
                               tel = String(item.telefono || item.tel || "").trim();
                             }
-                            if (nombre || email || tel) {
+                            // TEST-18 A — En la columna CONTACTO solo se
+                            // muestra email/tel si el usuario los marca en
+                            // "Mostrar columnas" (mismo toggle que el
+                            // subtítulo bajo Empresa, ver showEmailSubtitle
+                            // / showTelSubtitle). Si no, solo el nombre.
+                            const showEmailEnContacto = !(moduleKey === "clientes" || moduleKey === "crm") || showEmailSubtitle;
+                            const showTelEnContacto = !(moduleKey === "clientes" || moduleKey === "crm") || showTelSubtitle;
+                            const emailLinea = showEmailEnContacto ? email : "";
+                            const telLinea = showTelEnContacto ? tel : "";
+                            if (nombre || emailLinea || telLinea) {
                               return (
                                 <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 400 }}>
                                   <div style={{ lineHeight: 1.3 }}>
                                     <div style={{ color: "#0f172a", fontWeight: 600 }}>{nombre || "—"}</div>
-                                    {(email || tel) && (
+                                    {(emailLinea || telLinea) && (
                                       <div style={{ fontSize: 11, color: "#64748b", marginTop: 2, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                        {email && <span title={email}>✉ {email}</span>}
-                                        {tel && <span title={tel}>☎ {tel}</span>}
+                                        {emailLinea && <span title={emailLinea}>✉ {emailLinea}</span>}
+                                        {telLinea && <span title={telLinea}>☎ {telLinea}</span>}
                                       </div>
                                     )}
                                   </div>

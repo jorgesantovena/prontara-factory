@@ -46,7 +46,11 @@ export async function POST(request: NextRequest) {
     const data = {
       moduleKey: String(body?.moduleKey || "").trim(),
       name: String(body?.name || "").trim(),
-      configJson: body?.config || {},
+      // TEST-18 B — Aceptar tanto `config` (legacy) como `configJson`
+      // (lo que envía el componente runtime). Antes solo leía `config`
+      // y las vistas guardadas quedaban con configJson:{} → al
+      // aplicarlas no se restauraba nada (parecía que no funcionaban).
+      configJson: body?.configJson || body?.config || {},
       esDefault: Boolean(body?.esDefault),
     };
     if (!data.moduleKey || !data.name) {
