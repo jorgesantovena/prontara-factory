@@ -1,11 +1,14 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
 
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
+
+/**
+ * TEST-17 bis 2 D — Pedro reporta "Vencimientos" del MP no funciona.
+ * Antes era un SectionPlaceholder estático; el moduleKey
+ * `vencimientos-factura` está modelado en CORE (factura, fecha,
+ * importe, formaPago, estado, fechaCobro), así que basta con montar
+ * el runtime genérico.
+ */
 export default function VencimientosFacturaPage() {
-  return (
-    <SectionPlaceholder
-      title="Vencimientos de factura"
-      subtitle="Calendario de cobros y pagos próximos generados desde Facturas y Compras."
-      hint="Aquí verás todos los vencimientos próximos (cobros y pagos) en una vista unificada. Mientras tanto, puedes consultarlos desde el listado de Facturas filtrando por fecha."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="vencimientos-factura" href="/vencimientos-factura" />;
 }

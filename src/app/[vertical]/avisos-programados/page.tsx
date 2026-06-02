@@ -1,11 +1,14 @@
-import SectionPlaceholder from "@/components/erp/section-placeholder";
+"use client";
 
+import GenericModuleRuntimePage from "@/components/erp/generic-module-runtime-page";
+
+/**
+ * TEST-17 bis 2 D — Pedro reporta "Avisos" del MP no funciona.
+ * Antes era un SectionPlaceholder estático ("Estamos terminando..."),
+ * pero el moduleKey `avisos-programados` ya está modelado en
+ * CORE_FIELDS y CORE_TABLE_COLUMNS, así que basta con montar el
+ * runtime genérico (mismo patrón que Tareas, Tickets, Compras, etc.).
+ */
 export default function AvisosProgramadosPage() {
-  return (
-    <SectionPlaceholder
-      title="Avisos programados"
-      subtitle="Recordatorios y notificaciones automáticas que se disparan a una fecha/hora concreta."
-      hint="Aquí podrás programar avisos para clientes, tareas pendientes o cobros próximos. Estamos terminando los disparadores antes de habilitarlo."
-    />
-  );
+  return <GenericModuleRuntimePage moduleKey="avisos-programados" href="/avisos-programados" />;
 }

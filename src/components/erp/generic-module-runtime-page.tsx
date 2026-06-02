@@ -56,7 +56,29 @@ type TableColumnDef = {
   isPrimary?: boolean;
 };
 
-type SavedView = { id: string; name: string; configJson: { filters?: Record<string, string | string[]>; query?: string }; esDefault?: boolean };
+// TEST-17 bis 2 C — La vista guardada ahora persiste además de los
+// filtros y la búsqueda, los filtros adicionales del Parte de horas
+// (segmento, responsable, empleado, cliente search, proyecto search,
+// fechaDesde, fechaHasta, fechaLimiteMax) y la lista de columnas
+// ocultas (hiddenCols). Al aplicar la vista todo se restaura.
+type SavedView = {
+  id: string;
+  name: string;
+  configJson: {
+    filters?: Record<string, string | string[]>;
+    query?: string;
+    hiddenCols?: string[];
+    segmento?: string[];
+    responsable?: string[];
+    empleado?: string[];
+    clienteSearch?: string;
+    proyectoSearch?: string;
+    fechaDesde?: string;
+    fechaHasta?: string;
+    fechaLimiteMax?: string;
+  };
+  esDefault?: boolean;
+};
 
 function readTenant() {
   if (typeof window === "undefined") return "";
@@ -517,6 +539,15 @@ export default function GenericModuleRuntimePage({
     if (ui.fields.some((f) => f.key === "responsable")) return "responsable";
     return null;
   }, [ui.fields]);
+  // TEST-17 bis 2 B — Algunos módulos (CRM/oportunidades) usan `fase`
+  // en vez de `estado`. El filtro "Estado" del listado salía vacío
+  // porque no había campo `estado`. Resolvemos el field "del estado"
+  // dinámicamente: primero `estado`, después `fase`.
+  const estadoFieldKey = useMemo(() => {
+    if (ui.fields.some((f) => f.key === "estado")) return "estado";
+    if (ui.fields.some((f) => f.key === "fase")) return "fase";
+    return null;
+  }, [ui.fields]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -525,7 +556,12 @@ export default function GenericModuleRuntimePage({
       // TEST-8bis2 — Filtros multi-select: cada Set permite varios valores.
       // Set vacío = no filtra. Si tiene valores, el item pasa si su valor
       // (lowercased) está en el set.
-      if (estadoFilter.size > 0 && !estadoFilter.has(String(item.estado || "").toLowerCase())) return false;
+      // TEST-17 bis 2 B — Filtrar por el campo de estado resuelto
+      // (estado o fase), no solo por `estado`.
+      if (estadoFilter.size > 0) {
+        const estadoVal = estadoFieldKey ? String(item[estadoFieldKey] || "").toLowerCase() : "";
+        if (!estadoFilter.has(estadoVal)) return false;
+      }
       if (segmentoFilter.size > 0) {
         const seg = String(item.segmento || item.tipo || "").toLowerCase();
         if (!segmentoFilter.has(seg)) return false;
@@ -697,7 +733,24 @@ export default function GenericModuleRuntimePage({
       });
     }
     if (moduleKey === "facturacion") {
-      return [...filtered].sort((a, b) => ABC(lower(a.cliente), lower(b.cliente)));
+      // TEST-17 bis 2 E — Facturas por rank de Estado y, a igual
+      // Estado, alfa Cliente. 0=borrador, 2=emitida, 4=cobrada,
+      // 7=vencida, 9=anulada (Pedro escribió "cobrada" dos veces,
+      // interpretado como anulada).
+      const rankEstado = (v: unknown) => {
+        const s = lower(v);
+        if (s.includes("borrador")) return 0;
+        if (s.includes("emitid")) return 2;
+        if (s.includes("cobrad")) return 4;
+        if (s.includes("vencid")) return 7;
+        if (s.includes("anulad")) return 9;
+        return 99;
+      };
+      return [...filtered].sort((a, b) => {
+        const r = rankEstado(a.estado) - rankEstado(b.estado);
+        if (r !== 0) return r;
+        return ABC(lower(a.cliente), lower(b.cliente));
+      });
     }
     if (moduleKey === "catalogo-servicios") {
       return [...filtered].sort((a, b) => ABC(lower(a.descripcion), lower(b.descripcion)));
@@ -1211,7 +1264,8 @@ export default function GenericModuleRuntimePage({
   const activeChips: Array<{ key: string; label: string; onClear: () => void }> = [];
   if (estadoFilter.size > 0) activeChips.push({
     key: "estado",
-    label: "Estado: " + Array.from(estadoFilter).join(", "),
+    // TEST-17 bis 2 B — Etiqueta del chip = Fase si el módulo usa fase.
+    label: (estadoFieldKey === "fase" ? "Fase: " : "Estado: ") + Array.from(estadoFilter).join(", "),
     onClear: () => setEstadoFilter(new Set()),
   });
   if (segmentoFilter.size > 0) activeChips.push({
@@ -1342,19 +1396,42 @@ export default function GenericModuleRuntimePage({
                 </button>
                 {savedViews.map((v) => {
                   // Resumir qué filtros guarda la vista (TEST-8bis2: arrays).
-                  const f = v.configJson?.filters || {};
+                  const cfg = v.configJson || {};
+                  const f = cfg.filters || {};
                   const tags: string[] = [];
                   const estadoVal = f.estado;
                   if (Array.isArray(estadoVal) && estadoVal.length > 0) tags.push("estado=" + estadoVal.join("|"));
                   else if (typeof estadoVal === "string" && estadoVal) tags.push("estado=" + estadoVal);
-                  if (v.configJson?.query) tags.push('"' + v.configJson.query + '"');
+                  if (cfg.query) tags.push('"' + cfg.query + '"');
+                  if (Array.isArray(cfg.empleado) && cfg.empleado.length > 0) tags.push("empleado=" + cfg.empleado.join("|"));
+                  if (cfg.clienteSearch) tags.push("cliente~" + cfg.clienteSearch);
+                  if (cfg.proyectoSearch) tags.push("proyecto~" + cfg.proyectoSearch);
+                  if (cfg.fechaDesde || cfg.fechaHasta) tags.push("fechas " + (cfg.fechaDesde || "?") + "→" + (cfg.fechaHasta || "?"));
+                  if (Array.isArray(cfg.hiddenCols) && cfg.hiddenCols.length > 0) tags.push(cfg.hiddenCols.length + " col. ocultas");
                   const summary = tags.length > 0 ? tags.join(" · ") : "Sin filtros guardados";
                   return (
                     <button key={v.id} type="button" onClick={() => {
-                      const ev = v.configJson?.filters?.estado;
+                      // TEST-17 bis 2 C — Aplicar TODA la vista: filtros,
+                      // búsqueda, filtros nuevos y columnas ocultas.
+                      const ev = cfg.filters?.estado;
                       if (Array.isArray(ev)) setEstadoFilter(new Set(ev.map((s: unknown) => String(s).toLowerCase())));
                       else if (typeof ev === "string" && ev) setEstadoFilter(new Set([ev.toLowerCase()]));
-                      if (v.configJson?.query) setQuery(v.configJson.query);
+                      else setEstadoFilter(new Set());
+                      setSegmentoFilter(new Set(Array.isArray(cfg.segmento) ? cfg.segmento.map((s) => s.toLowerCase()) : []));
+                      // En este componente, el filtro Empleado reutiliza
+                      // `responsableFilter` (ver comment en línea ~235),
+                      // así que ambos se restauran al mismo state.
+                      const respOrEmp = Array.isArray(cfg.responsable) && cfg.responsable.length > 0
+                        ? cfg.responsable
+                        : (Array.isArray(cfg.empleado) ? cfg.empleado : []);
+                      setResponsableFilter(new Set(respOrEmp.map((s) => s.toLowerCase())));
+                      setClienteQuery(cfg.clienteSearch || "");
+                      setProyectoQuery(cfg.proyectoSearch || "");
+                      setFechaMin(cfg.fechaDesde || "");
+                      setFechaMax(cfg.fechaHasta || "");
+                      setFechaLimiteMax(cfg.fechaLimiteMax || "");
+                      setQuery(cfg.query || "");
+                      if (Array.isArray(cfg.hiddenCols)) setHiddenCols(new Set(cfg.hiddenCols));
                       setShowViews(false);
                     }} style={popoverItemBtn} title={"Aplica los filtros: " + summary}>
                       <span>★</span>
@@ -1369,7 +1446,30 @@ export default function GenericModuleRuntimePage({
                   <button type="button" onClick={async () => {
                     const name = prompt("Nombre de la vista:");
                     if (!name) return;
-                    const body = { moduleKey, name, configJson: { filters: estadoFilter.size > 0 ? { estado: Array.from(estadoFilter) } : {}, query } };
+                    // TEST-17 bis 2 C — Snapshot completo del estado del
+                    // listado: filtros + búsqueda + filtros nuevos +
+                    // columnas ocultas. Antes solo se guardaba estado+query.
+                    const body = {
+                      moduleKey,
+                      name,
+                      configJson: {
+                        filters: estadoFilter.size > 0 ? { estado: Array.from(estadoFilter) } : {},
+                        query,
+                        segmento: Array.from(segmentoFilter),
+                        // `responsableFilter` se reutiliza también como
+                        // filtro Empleado (mismo state); lo serializamos
+                        // bajo ambas claves para que cualquier consumer
+                        // futuro pueda leerlo.
+                        responsable: Array.from(responsableFilter),
+                        empleado: Array.from(responsableFilter),
+                        clienteSearch: clienteQuery,
+                        proyectoSearch: proyectoQuery,
+                        fechaDesde: fechaMin,
+                        fechaHasta: fechaMax,
+                        fechaLimiteMax,
+                        hiddenCols: Array.from(hiddenCols),
+                      },
+                    };
                     await fetch("/api/runtime/saved-views", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
                     await loadViews();
                     setShowViews(false);
@@ -1395,11 +1495,14 @@ export default function GenericModuleRuntimePage({
             {showFilters ? (
               <div style={{ ...popover(280), padding: 12 }}>
                 <div style={popoverHeader}>Filtrar registros</div>
-                {/* TEST-10.2.a — El filtro de Estado ofrece TODOS los estados
-                    definidos en el campo (no solo los presentes en datos). */}
+                {/* TEST-10.2.a / TEST-17 bis 2 B — El filtro de Estado
+                    ofrece TODOS los estados definidos en el campo (no
+                    solo los presentes en datos). Si el módulo usa
+                    `fase` (CRM) en vez de `estado`, el filtro pasa a
+                    etiquetarse y a operar sobre `fase`. */}
                 <CheckboxFilterGroup
-                  label="Estado"
-                  options={fieldOptions("estado")}
+                  label={estadoFieldKey === "fase" ? "Fase" : "Estado"}
+                  options={estadoFieldKey ? fieldOptions(estadoFieldKey) : []}
                   selected={estadoFilter}
                   onChange={(next) => { setEstadoFilter(next); setPage(1); }}
                   accent={accent}
