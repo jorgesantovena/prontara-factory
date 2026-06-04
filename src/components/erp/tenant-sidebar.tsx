@@ -35,10 +35,13 @@ type RuntimeConfig = {
 const MODULE_ORDER = [
   "clientes",
   "crm",
+  // Preguntas 1.con / mail 2 punto 3 — Propuestas entre Oportunidades
+  // (crm) y Proyectos. Antes salía detrás de pre-facturación porque
+  // pertenecía a Administración; ahora va aquí en el pipeline comercial.
+  "presupuestos",
   "proyectos",
   "produccion",
   "pre-facturacion",
-  "presupuestos",
   "facturacion",
   "documentos",
   // TEST-5.S — Reportes en el sidebar (grupo Analítica).

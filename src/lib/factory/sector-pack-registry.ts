@@ -612,6 +612,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // duplicaban esa información, así que se quitan del listado.
     { moduleKey: "clientes", fieldKey: "contacto", label: "Contacto" },
     { moduleKey: "clientes", fieldKey: "segmento", label: "Segmento" },
+    // Preguntas 1.con / mail 2 puntos 14+15 — Tipo cliente y Zona en
+    // las columnas visibles para que se vean los datos del maestro
+    // (resueltos a código+nombre vía /api/erp/options).
+    { moduleKey: "clientes", fieldKey: "tipoCliente", label: "Tipo cliente" },
+    { moduleKey: "clientes", fieldKey: "zona", label: "Zona" },
     { moduleKey: "clientes", fieldKey: "responsable", label: "Account manager" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado" },
 

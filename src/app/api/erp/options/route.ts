@@ -67,6 +67,18 @@ export async function GET(request: NextRequest) {
           };
         }
 
+        // Preguntas 1.con / mail 2 puntos 15+17 — Maestros sin case
+        // explícito caían al default (value=id, label=algo extraño)
+        // y el listado mostraba UUIDs en las columnas relacionadas.
+        // Para `tipos-cliente`, `zonas-comerciales` y `grupos-empresa`
+        // usamos código + nombre como par legible.
+        if (moduleKey === "tipos-cliente" || moduleKey === "zonas-comerciales" || moduleKey === "grupos-empresa") {
+          return {
+            value: String(item.codigo || item.nombre || ""),
+            label: String(item.codigo || "") + (item.nombre ? " · " + String(item.nombre) : String(item.nombre || "")),
+          };
+        }
+
         // TEST-11 bis-5 — Empleados: value = nombre (legible) en lugar de
         // id. Coherente con clientes/proyectos para que los filtros y la
         // columna Empleado del listado muestren el nombre, no el UUID.

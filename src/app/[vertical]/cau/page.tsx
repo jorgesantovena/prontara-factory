@@ -102,8 +102,14 @@ export default function CauListPage() {
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             <Link href={link("kb")} style={btnSec}>📚 Base de conocimiento</Link>
-            {/* TEST-5.S — Botón crear ticket que faltaba. */}
-            <Link href={link("tickets")} style={{ background: "#1d4ed8", color: "#ffffff", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
+            {/* Preguntas 1.con/mail 2 — El botón llevaba a /tickets
+                (módulo CORE distinto al CAU SF, sin los campos del
+                CAU configurados → "Sin campos configurados"). Lo
+                redirigimos a `/cau-ticket-nuevo?action=new` que monta
+                el runtime genérico sobre el moduleKey "cau" (que sí
+                tiene asunto, cliente, aplicación, severidad, urgencia,
+                asignado, estado, descripción, solución). */}
+            <Link href={link("cau-ticket-nuevo") + "?action=new"} style={{ background: "#1d4ed8", color: "#ffffff", border: "none", borderRadius: 8, padding: "8px 14px", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
               + Alta de ticket
             </Link>
           </div>
