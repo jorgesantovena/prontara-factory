@@ -150,7 +150,11 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   tramites: "operacion",
   egresados: "operacion",
   // Administración — finanzas y stock (cosas que se tocan a diario/semana)
-  presupuestos: "administracion",
+  // Preguntas 1.con C — Pedro confirma: Propuestas pasa a Operación,
+  // entre Oportunidades y Proyectos. Conceptualmente forma parte del
+  // pipeline comercial (Oportunidad → Propuesta → Proyecto), no del
+  // cierre administrativo.
+  presupuestos: "operacion",
   "pre-facturacion": "administracion",
   facturacion: "administracion",
   albaranes: "administracion",

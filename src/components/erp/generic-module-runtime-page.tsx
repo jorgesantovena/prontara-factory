@@ -635,8 +635,20 @@ export default function GenericModuleRuntimePage({
     const ABC = (a: string, b: string) => a < b ? -1 : a > b ? 1 : 0;
     const lower = (v: unknown) => String(v ?? "").toLowerCase().trim();
     // Tarifas: Nivel ASC, Servicio ABC.
-    if (moduleKey === "tarifas-generales" || moduleKey === "tarifas-especiales") {
+    if (moduleKey === "tarifas-generales") {
       return [...filtered].sort((a, b) => {
+        const na = parseInt(String(a.nivel || "99"), 10) || 99;
+        const nb = parseInt(String(b.nivel || "99"), 10) || 99;
+        if (na !== nb) return na - nb;
+        return ABC(lower(a.servicio), lower(b.servicio));
+      });
+    }
+    if (moduleKey === "tarifas-especiales") {
+      // Preguntas 1.con P — Pedro: orden por Grupo ascendente.
+      // Después por Nivel y Servicio (mantener orden estable interno).
+      return [...filtered].sort((a, b) => {
+        const g = ABC(lower(a.grupo), lower(b.grupo));
+        if (g !== 0) return g;
         const na = parseInt(String(a.nivel || "99"), 10) || 99;
         const nb = parseInt(String(b.nivel || "99"), 10) || 99;
         if (na !== nb) return na - nb;
@@ -715,14 +727,15 @@ export default function GenericModuleRuntimePage({
       return [...filtered].sort((a, b) => ABC(lower(a.cliente), lower(b.cliente)));
     }
     if (moduleKey === "compras") {
-      // TEST-17 bis A — Estado por rank: 1=solicitada, 2=aprobada,
-      // 4=en curso, 6=recibida, 9=rechazada.
+      // Preguntas 1.con E — Estado por rank: solicitada(1) → aprobada(2)
+      // → en curso(4) → recibida(6) → pagada(8) → rechazada(9).
       const rankEstado = (v: unknown) => {
         const s = lower(v).replace(/[_\s]+/g, "");
         if (s.includes("solicit")) return 1;
         if (s.includes("aprobad")) return 2;
         if (s.includes("encurso")) return 4;
         if (s.includes("recibid")) return 6;
+        if (s.includes("pagad")) return 8;
         if (s.includes("rechaz")) return 9;
         return 99;
       };

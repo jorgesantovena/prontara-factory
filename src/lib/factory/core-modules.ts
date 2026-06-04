@@ -53,7 +53,8 @@ export const CORE_MODULES: SectorPackModule[] = [
   { moduleKey: "zonas-comerciales", enabled: true, label: "Zonas comerciales", navigationLabel: "Zonas", emptyState: "Sin zonas comerciales definidas." },
   { moduleKey: "grupos-empresa", enabled: true, label: "Grupos de empresa", navigationLabel: "Grupos", emptyState: "Sin grupos de empresa." },
   { moduleKey: "puntos-venta", enabled: true, label: "Puntos de venta", navigationLabel: "Puntos venta", emptyState: "Sin puntos de venta registrados." },
-  { moduleKey: "clases-condicion", enabled: true, label: "Clases de condición", navigationLabel: "Clases condición", emptyState: "Define clases de condición de tarifa." },
+  // Preguntas 1.con Q — Pedro: sin uso real desde TEST-14, fuera del MP.
+  { moduleKey: "clases-condicion", enabled: false, label: "Clases de condición", navigationLabel: "Clases condición", emptyState: "Define clases de condición de tarifa." },
   { moduleKey: "tarifas-generales", enabled: true, label: "Tarifas generales", navigationLabel: "Tarifas", emptyState: "Sin tarifas generales definidas." },
   { moduleKey: "tarifas-especiales", enabled: true, label: "Tarifas especiales", navigationLabel: "Tarifas especiales", emptyState: "Sin tarifas especiales por cliente/grupo." },
   { moduleKey: "albaranes", enabled: true, label: "Albaranes", navigationLabel: "Albaranes", emptyState: "Sin albaranes pendientes." },
@@ -106,10 +107,10 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "compras", fieldKey: "importe", label: "Importe", kind: "money", required: true },
   { moduleKey: "compras", fieldKey: "fechaSolicitud", label: "Fecha solicitud", kind: "date" },
   { moduleKey: "compras", fieldKey: "fechaEntregaPrevista", label: "Entrega prevista", kind: "date" },
-  // TEST-15 F — Sustituido "Comprada" por "En curso" (estado más
-  // descriptivo entre Aprobada y Recibida).
+  // Preguntas 1.con E — Pedro pide simetría con Facturas: añadir
+  // "Pagada" entre Recibida y Rechazada para cerrar el ciclo de compra.
   { moduleKey: "compras", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
-    { value: "solicitada", label: "Solicitada" }, { value: "aprobada", label: "Aprobada" }, { value: "en-curso", label: "En curso" }, { value: "recibida", label: "Recibida" }, { value: "rechazada", label: "Rechazada" },
+    { value: "solicitada", label: "Solicitada" }, { value: "aprobada", label: "Aprobada" }, { value: "en-curso", label: "En curso" }, { value: "recibida", label: "Recibida" }, { value: "pagada", label: "Pagada" }, { value: "rechazada", label: "Rechazada" },
   ] },
   { moduleKey: "compras", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
@@ -368,6 +369,9 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "mes", label: "€/mes" },
     { value: "hora", label: "€/hora" },
     { value: "unidad", label: "€" },
+    // Preguntas 1.con P — Pedro: la Tarifa especial admite también
+    // descuentos porcentuales sobre la tarifa general.
+    { value: "porcentaje", label: "%" },
   ] },
   { moduleKey: "tarifas-especiales", fieldKey: "fechaInicio", label: "Inicio", kind: "date", required: true },
   { moduleKey: "tarifas-especiales", fieldKey: "fechaFin", label: "Fin", kind: "date", defaultValue: "9999-12-31" },

@@ -45,7 +45,9 @@ const CLINICA_DENTAL_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Facturas", navigationLabel: "Facturas", emptyState: "Sin facturas emitidas." },
     { moduleKey: "documentos", enabled: true, label: "Historia clínica", navigationLabel: "Historia clínica", emptyState: "Sin documentos clínicos." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu clínica." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro). Conceptualmente
+    // pasará a ser una caja flotante en Inicio en una iteración futura.
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
   ],
   entities: [
     { key: "paciente", label: "Paciente", description: "Paciente de la clínica con su historia clínica.", moduleKey: "clientes", primaryFields: ["nombre", "telefono", "email", "fecha_nacimiento", "alergias"], relatedTo: ["tratamiento", "cita", "presupuesto", "factura", "documento"] },
@@ -302,7 +304,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Facturas", navigationLabel: "Facturas", emptyState: "Todavía no hay facturas." },
     { moduleKey: "documentos", enabled: true, label: "Entregables", navigationLabel: "Entregables", emptyState: "Todavía no hay entregables." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu software factory." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro). Conceptualmente
+    // pasará a ser una caja flotante en Inicio en una iteración futura.
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
     // Hub Producción — solo en Software Factory por ahora
     // TEST-14 — moduleKey `tareas` → "Asignaciones".
     { moduleKey: "tareas", enabled: true, label: "Asignaciones", navigationLabel: "Asignaciones", emptyState: "Sin asignaciones en este proyecto." },
@@ -364,6 +368,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "habitual", label: "Habitual" },
       { value: "ocasional", label: "Ocasional" },
     ] },
+    // Preguntas 1.con N + O — Tipo Cliente y Zona del maestro,
+    // útiles para estadísticas y para activar las pestañas de
+    // empleado=comercial. Ambos opcionales.
+    { moduleKey: "clientes", fieldKey: "tipoCliente", label: "Tipo cliente", kind: "relation", relationModuleKey: "tipos-cliente", placeholder: "Selecciona del catálogo" },
+    { moduleKey: "clientes", fieldKey: "zona", label: "Zona", kind: "relation", relationModuleKey: "zonas-comerciales", placeholder: "Selecciona la zona comercial" },
     { moduleKey: "clientes", fieldKey: "responsable", label: "Account manager", kind: "text", placeholder: "Quién lleva la cuenta internamente" },
     { moduleKey: "clientes", fieldKey: "fechaAlta", label: "Cliente desde", kind: "date" },
     // TEST-11 — Km hasta el cliente. Origen del Km heredado del parte de
@@ -989,7 +998,9 @@ const GIMNASIO_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Cuotas", navigationLabel: "Cuotas", emptyState: "Todavía no hay cuotas." },
     { moduleKey: "documentos", enabled: true, label: "Documentos", navigationLabel: "Documentos", emptyState: "Sin contratos ni consentimientos cargados." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu gimnasio." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro). Conceptualmente
+    // pasará a ser una caja flotante en Inicio en una iteración futura.
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
   ],
   entities: [
     { key: "socio", label: "Socio", description: "Persona inscrita en el gimnasio.", moduleKey: "clientes", primaryFields: ["nombre", "telefono", "email", "plan_actual", "estado"], relatedTo: ["plan", "clase", "cuota", "documento"] },
@@ -1212,7 +1223,9 @@ const PELUQUERIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Tickets", navigationLabel: "Tickets", emptyState: "Todavía no hay tickets." },
     { moduleKey: "documentos", enabled: true, label: "Fichas", navigationLabel: "Fichas", emptyState: "Sin fichas técnicas o consentimientos cargados." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu peluquería." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro). Conceptualmente
+    // pasará a ser una caja flotante en Inicio en una iteración futura.
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
   ],
   entities: [
     { key: "cliente", label: "Cliente", description: "Cliente del salón.", moduleKey: "clientes", primaryFields: ["nombre", "telefono", "color_actual", "ultimo_servicio"], relatedTo: ["cita", "ticket", "ficha"] },
@@ -1440,7 +1453,9 @@ const TALLER_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Facturas", navigationLabel: "Facturas", emptyState: "Sin facturas emitidas." },
     { moduleKey: "documentos", enabled: true, label: "Partes y fotos", navigationLabel: "Partes", emptyState: "Sin partes ni fotos del coche cargados." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu taller." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro). Conceptualmente
+    // pasará a ser una caja flotante en Inicio en una iteración futura.
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
   ],
   entities: [
     { key: "cliente", label: "Cliente", description: "Cliente del taller (particular o empresa).", moduleKey: "clientes", primaryFields: ["nombre", "telefono", "email", "tipo", "nif"], relatedTo: ["vehiculo", "orden", "presupuesto", "factura"] },
@@ -1735,7 +1750,9 @@ const COLEGIO_PACK: SectorPackDefinition = {
     { moduleKey: "actividades", enabled: true, label: "Extracurriculares", navigationLabel: "Extracurriculares", emptyState: "Sin actividades extracurriculares." },
     { moduleKey: "salidas", enabled: true, label: "Salidas", navigationLabel: "Salidas", emptyState: "Sin salidas pedagógicas planificadas." },
     { moduleKey: "egresados", enabled: true, label: "Egresados", navigationLabel: "Egresados", emptyState: "Sin egresados registrados." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro). Conceptualmente
+    // pasará a ser una caja flotante en Inicio en una iteración futura.
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Haz tu primera consulta." },
   ],
   entities: [
     { key: "familia", label: "Familia", description: "Unidad familiar pagadora del colegio.", moduleKey: "clientes", primaryFields: ["nombre", "telefono", "email", "tutor_principal", "estado"], relatedTo: ["alumno", "curso", "recibo", "expediente"] },
@@ -2465,7 +2482,8 @@ const VETERINARIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Facturas", navigationLabel: "Facturas", emptyState: "Sin facturas emitidas." },
     { moduleKey: "documentos", enabled: true, label: "Historial clínico", navigationLabel: "Historial", emptyState: "Sin documentos en historial." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu clínica veterinaria." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente sobre la agenda." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro).
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente sobre la agenda." },
   ],
   entities: [
     { key: "mascota", label: "Mascota", description: "Paciente de la clínica veterinaria.", moduleKey: "clientes", primaryFields: ["nombre", "especie", "raza", "edad", "propietario"], relatedTo: ["cita", "vacuna", "tratamiento", "factura"] },
@@ -2667,7 +2685,8 @@ const ABOGADOS_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Facturas", navigationLabel: "Facturas", emptyState: "Sin facturas." },
     { moduleKey: "documentos", enabled: true, label: "Expedientes", navigationLabel: "Expedientes", emptyState: "Sin documentos en expediente." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu despacho." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro).
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente." },
   ],
   entities: [
     { key: "cliente", label: "Cliente", description: "Persona física o jurídica.", moduleKey: "clientes", primaryFields: ["nombre", "tipoPersona", "nif", "telefono"], relatedTo: ["caso", "factura"] },
@@ -2826,7 +2845,8 @@ const HOSTELERIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Facturas", navigationLabel: "Facturas", emptyState: "Sin facturas." },
     { moduleKey: "documentos", enabled: true, label: "Documentos", navigationLabel: "Documentos", emptyState: "Sin documentos." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu local." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro).
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente." },
   ],
   entities: [
     { key: "cliente", label: "Cliente habitual", description: "Cliente que reserva mesa o pide a domicilio.", moduleKey: "clientes", primaryFields: ["nombre", "telefono"], relatedTo: ["evento"] },
@@ -2950,7 +2970,8 @@ const INMOBILIARIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Facturas comisión", navigationLabel: "Facturas", emptyState: "Sin facturas." },
     { moduleKey: "documentos", enabled: true, label: "Documentación", navigationLabel: "Documentos", emptyState: "Sin documentos." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu inmobiliaria." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro).
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente." },
   ],
   entities: [
     { key: "persona", label: "Persona", description: "Propietario o interesado.", moduleKey: "clientes", primaryFields: ["nombre", "tipo", "telefono"], relatedTo: ["inmueble", "oferta"] },
@@ -3086,7 +3107,8 @@ const ASESORIA_PACK: SectorPackDefinition = {
     { moduleKey: "facturacion", enabled: true, label: "Facturas", navigationLabel: "Facturas", emptyState: "Sin facturas." },
     { moduleKey: "documentos", enabled: true, label: "Documentación", navigationLabel: "Documentos", emptyState: "Sin documentos." },
     { moduleKey: "ajustes", enabled: true, label: "Ajustes", navigationLabel: "Ajustes", emptyState: "Configura tu asesoría." },
-    { moduleKey: "asistente", enabled: true, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente." },
+    // Preguntas 1.con K — Asistente fuera del MP (Pedro).
+    { moduleKey: "asistente", enabled: false, label: "Asistente", navigationLabel: "Asistente", emptyState: "Pregúntale al asistente." },
   ],
   entities: [
     { key: "cliente", label: "Cliente", description: "Empresa o autónomo.", moduleKey: "clientes", primaryFields: ["nombre", "cif", "tipoCuota"], relatedTo: ["encargo", "factura"] },
