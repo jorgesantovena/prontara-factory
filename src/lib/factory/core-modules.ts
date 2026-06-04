@@ -276,20 +276,27 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
 
   // H7-C5 Gastos
-  // Preguntas 1.con / mail 2 punto 7 — `tareaId` opcional, lo rellena
-  // la sublista "Gastos" de la ficha de Tarea via prefill. Si está
-  // vacío, es un gasto "suelto" (sin tarea).
-  { moduleKey: "gastos", fieldKey: "tareaId", label: "Tarea vinculada", kind: "text", placeholder: "Se rellena automáticamente desde la pestaña Gastos de una Tarea" },
+  // Test 18 bis 2 A — `tarea` (antes `tareaId`) como relation a
+  // `actividades` readOnly. Muestra el concepto de la tarea, no el
+  // UUID. Se sigue rellenando vía prefill desde la sublista Gastos
+  // de la ficha de Tarea.
+  { moduleKey: "gastos", fieldKey: "tarea", label: "Tarea vinculada", kind: "relation", relationModuleKey: "actividades", readOnly: true, placeholder: "Se rellena automáticamente desde la pestaña Gastos de una Tarea" },
   { moduleKey: "gastos", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
   { moduleKey: "gastos", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
+  // Test 18 bis 2 A — Eliminado "Kilometraje" (esos gastos ahora viven
+  // en Desplazamientos).
   { moduleKey: "gastos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
-    { value: "kilometraje", label: "Kilometraje" }, { value: "dietas", label: "Dietas" }, { value: "aparcamiento", label: "Aparcamiento / peaje" }, { value: "alojamiento", label: "Alojamiento" }, { value: "transporte", label: "Transporte público" }, { value: "suplido", label: "Suplido cliente" }, { value: "material", label: "Material" }, { value: "otro", label: "Otro" },
+    { value: "dietas", label: "Dietas" }, { value: "aparcamiento", label: "Aparcamiento / peaje" }, { value: "alojamiento", label: "Alojamiento" }, { value: "transporte", label: "Transporte público" }, { value: "suplido", label: "Suplido cliente" }, { value: "material", label: "Material" }, { value: "otro", label: "Otro" },
   ] },
   { moduleKey: "gastos", fieldKey: "descripcion", label: "Descripción", kind: "text", required: true },
-  { moduleKey: "gastos", fieldKey: "kilometros", label: "Km", kind: "number" },
+  // Test 18 bis 2 A — `kilometros` eliminado (vive en Desplazamientos).
+  // `justificante` eliminado (usar la pestaña Documentos del gasto).
   { moduleKey: "gastos", fieldKey: "importe", label: "Importe", kind: "money", required: true },
-  { moduleKey: "gastos", fieldKey: "justificante", label: "Justificante (URL)", kind: "text" },
-  { moduleKey: "gastos", fieldKey: "repercutibleA", label: "Repercutir a cliente", kind: "relation", relationModuleKey: "clientes" },
+  // Test 18 bis 2 A — `repercutibleA` (relation cliente) → booleano
+  // `repercutible` (sí/no). El cliente sale de la tarea vinculada.
+  { moduleKey: "gastos", fieldKey: "repercutible", label: "¿Repercutible al cliente?", kind: "status", required: true, defaultValue: "no", options: [
+    { value: "si", label: "Sí" }, { value: "no", label: "No" },
+  ] },
   // TEST-15 F — Gastos: estado por defecto = Pendiente.
   { moduleKey: "gastos", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "pendiente", options: [
     { value: "pendiente", label: "Pendiente" }, { value: "aprobado", label: "Aprobado" }, { value: "rechazado", label: "Rechazado" }, { value: "pagado", label: "Pagado" }, { value: "facturado", label: "Facturado al cliente" },
@@ -438,19 +445,26 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "tipos-urgencia", fieldKey: "color", label: "Color", kind: "text" },
 
   // H8-S5 Desplazamientos
-  // Preguntas 1.con / mail 2 punto 8 — `tareaId` opcional para vincular
-  // el desplazamiento a la tarea que lo motivó.
-  { moduleKey: "desplazamientos", fieldKey: "tareaId", label: "Tarea vinculada", kind: "text", placeholder: "Se rellena automáticamente desde la pestaña Desplazamientos de una Tarea" },
+  // Test 18 bis 2 B — `tarea` (antes `tareaId`) como relation a
+  // `actividades` readOnly: muestra el concepto de la tarea, no el UUID.
+  { moduleKey: "desplazamientos", fieldKey: "tarea", label: "Tarea vinculada", kind: "relation", relationModuleKey: "actividades", readOnly: true, placeholder: "Se rellena automáticamente desde la pestaña Desplazamientos de una Tarea" },
   { moduleKey: "desplazamientos", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
   { moduleKey: "desplazamientos", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
-  { moduleKey: "desplazamientos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
+  // Test 18 bis 2 B — `cliente` eliminado (ya está en la tarea).
+  // Punto: pendiente de decisión sobre el maestro `puntos-venta`. Lo
+  // dejamos como estaba (relación opcional).
   { moduleKey: "desplazamientos", fieldKey: "puntoVenta", label: "Punto", kind: "relation", relationModuleKey: "puntos-venta" },
-  { moduleKey: "desplazamientos", fieldKey: "kilometros", label: "Km", kind: "number", required: true },
+  // Test 18 bis 2 B — Km heredado del Cliente (.kilometrosBase) vía
+  // la herencia de la tarea origen. El editor lo rellena al elegir
+  // tarea (que a su vez tiene cliente). Editable si procede.
+  { moduleKey: "desplazamientos", fieldKey: "kilometros", label: "Km", kind: "number", required: true, inheritFrom: { from: "cliente", field: "kilometrosBase" }, placeholder: "Heredado del cliente al elegir tarea" },
   { moduleKey: "desplazamientos", fieldKey: "precioFijo", label: "Precio fijo (€)", kind: "money" },
   { moduleKey: "desplazamientos", fieldKey: "precioKm", label: "Precio €/km", kind: "money" },
   { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total", kind: "money" },
-  { moduleKey: "desplazamientos", fieldKey: "facturable", label: "Facturable", kind: "status", required: true, options: [{ value: "si", label: "Sí" }, { value: "no", label: "No" }] },
-  { moduleKey: "desplazamientos", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+  // Test 18 bis 2 B — Facturable heredado de la Tarea (actividades.facturable).
+  { moduleKey: "desplazamientos", fieldKey: "facturable", label: "Facturable", kind: "status", required: true, inheritFrom: { from: "tarea", field: "facturable" }, options: [{ value: "si", label: "Sí" }, { value: "no", label: "No" }] },
+  // Test 18 bis 2 B — Estado por defecto = Borrador.
+  { moduleKey: "desplazamientos", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "borrador", options: [
     { value: "borrador", label: "Borrador" }, { value: "validado", label: "Validado" }, { value: "facturado", label: "Facturado" },
   ] },
 
@@ -580,11 +594,15 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "actividades", fieldKey: "horaHasta", label: "Hasta" },
   { moduleKey: "actividades", fieldKey: "tiempoHoras", label: "Tiempo" },
   { moduleKey: "actividades", fieldKey: "estado", label: "Estado" },
+  // Test 18 bis 2 A — Columna "Tarea" en lugar de tareaId (muestra
+  // el concepto resuelto, no el UUID).
   { moduleKey: "gastos", fieldKey: "fecha", label: "Fecha", isPrimary: true },
   { moduleKey: "gastos", fieldKey: "empleado", label: "Empleado" },
+  { moduleKey: "gastos", fieldKey: "tarea", label: "Tarea" },
   { moduleKey: "gastos", fieldKey: "tipo", label: "Tipo" },
   { moduleKey: "gastos", fieldKey: "descripcion", label: "Descripción" },
   { moduleKey: "gastos", fieldKey: "importe", label: "Importe" },
+  { moduleKey: "gastos", fieldKey: "repercutible", label: "Repercutible" },
   { moduleKey: "gastos", fieldKey: "estado", label: "Estado" },
 
   // H8 columns
@@ -661,9 +679,12 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "tipos-urgencia", fieldKey: "nivel", label: "Nivel" },
   { moduleKey: "tipos-urgencia", fieldKey: "recargoPct", label: "Recargo %" },
 
+  // Test 18 bis 2 B — Lista de Desplazamientos: columna Tarea
+  // (concepto resuelto) en lugar de Cliente (el cliente sale de la
+  // tarea, no se repite).
   { moduleKey: "desplazamientos", fieldKey: "fecha", label: "Fecha", isPrimary: true },
   { moduleKey: "desplazamientos", fieldKey: "empleado", label: "Empleado" },
-  { moduleKey: "desplazamientos", fieldKey: "cliente", label: "Cliente" },
+  { moduleKey: "desplazamientos", fieldKey: "tarea", label: "Tarea" },
   { moduleKey: "desplazamientos", fieldKey: "kilometros", label: "Km" },
   { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total" },
   { moduleKey: "desplazamientos", fieldKey: "facturable", label: "Fact." },

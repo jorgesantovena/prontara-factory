@@ -74,7 +74,7 @@ type OptionItem = { value: string; label: string };
 // pestañas dentro de la ficha de Tarea (heredan fecha/empleado/cliente/
 // proyecto al añadir, y la opción del MP sigue activa para los casos sin
 // tarea). Las tabs se renderizan solo cuando moduleKey === "actividades".
-type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "propuestas" | "gastos" | "desplazamientos" | "vencimientos" | "documentos";
+type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "propuestas" | "gastos" | "desplazamientos" | "vencimientos" | "zonas" | "documentos";
 
 const TAB_LABELS: Record<TabKey, string> = {
   general: "Datos generales",
@@ -91,6 +91,10 @@ const TAB_LABELS: Record<TabKey, string> = {
   // cobro manual; el trigger del backend marca la Factura como cobrada
   // cuando se cobra el último).
   vencimientos: "Vencimientos",
+  // Test 18 bis 2 E — Pestaña Zonas en la ficha de Empleado (solo
+  // cuando el Rol contenga "comercial"). Lista las zonas-comerciales
+  // cuyo agenteResponsable es este empleado.
+  zonas: "Zonas",
   documentos: "Documentos",
 };
 
@@ -191,7 +195,7 @@ export default function ErpRecordEditor({
       // añadidos al record. Si moduleKey !== "actividades" no se ven
       // (el filtro `tabsConFields` solo incluye tabs con fields, y los
       // bloques de render por tab incluyen también la condición moduleKey).
-      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], propuestas: [], gastos: [], desplazamientos: [], vencimientos: [], documentos: [],
+      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], propuestas: [], gastos: [], desplazamientos: [], vencimientos: [], zonas: [], documentos: [],
     };
     // TEST-11 — En el Parte de horas (actividades) el orden EXACTO de
     // campos que define el sector pack importa (Empleado → Fecha → Hora
@@ -235,6 +239,11 @@ export default function ErpRecordEditor({
   // Preguntas 1.con / mail 2 punto 9 — Pestaña Vencimientos en Factura
   // (mode === "edit": necesitamos el número/id para filtrar).
   const showVencimientosTab = moduleKey === "facturacion" && mode === "edit" && Boolean(initialValue?.id);
+  // Test 18 bis 2 E — Pestaña Zonas en Empleado SOLO si rol contiene
+  // "comercial". El filtro busca zonas-comerciales cuyo agenteResponsable
+  // coincida con el nombre del empleado.
+  const showZonasTab = moduleKey === "empleados" && mode === "edit" && Boolean(initialValue?.id) &&
+    String(values.rol || initialValue?.rol || "").toLowerCase().includes("comercial");
   const visibleTabs: TabKey[] = tabsConFields.length > 0
     ? [
         ...tabsConFields,
@@ -243,6 +252,7 @@ export default function ErpRecordEditor({
         ...(showGastosTab ? ["gastos" as TabKey] : []),
         ...(showDesplazTab ? ["desplazamientos" as TabKey] : []),
         ...(showVencimientosTab ? ["vencimientos" as TabKey] : []),
+        ...(showZonasTab ? ["zonas" as TabKey] : []),
         "documentos" as TabKey,
       ]
     : []; // sin fields → no mostramos tabs, mostramos mensaje (ver render)
@@ -831,6 +841,11 @@ export default function ErpRecordEditor({
           ) : tab === "vencimientos" ? (
             <VencimientosSublist
               facturaNumero={String(initialValue?.numero || initialValue?.id || "")}
+              accent={accent}
+            />
+          ) : tab === "zonas" ? (
+            <ZonasEmpleadoSublist
+              empleadoNombre={String(initialValue?.nombre || "")}
               accent={accent}
             />
           ) : tab === "contacto" && (moduleKey === "clientes" || moduleKey === "crm") ? (
@@ -1714,8 +1729,9 @@ function SublistaTareaModule({
         return;
       }
       const all = (Array.isArray(data.rows) ? data.rows : []) as Array<Record<string, string>>;
-      // Filtra por tareaId (o por tareaCodigo si en su día se usó).
-      setRows(all.filter((row) => String(row.tareaId || row.tareaRef || "") === tareaId));
+      // Test 18 bis 2 A — Tras renombrar `tareaId`→`tarea`, filtrar por
+      // ambas claves para tolerar registros antiguos sin perder histórico.
+      setRows(all.filter((row) => String(row.tarea || row.tareaId || row.tareaRef || "") === tareaId));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error cargando " + label.toLowerCase() + ".");
     } finally {
@@ -1727,6 +1743,10 @@ function SublistaTareaModule({
   // Construye la URL de + Alta con los prefill heredados de la tarea.
   const qs: string[] = [];
   qs.push("action=new");
+  // Test 18 bis 2 A — Prefill bajo la nueva clave `tarea` (relation
+  // readOnly que muestra el concepto). Mantenemos también el legacy
+  // `tareaId` por compat backward por si quedaran registros antiguos.
+  qs.push("prefill_tarea=" + encodeURIComponent(tareaId));
   qs.push("prefill_tareaId=" + encodeURIComponent(tareaId));
   if (tareaValues.fecha) qs.push("prefill_fecha=" + encodeURIComponent(tareaValues.fecha));
   if (tareaValues.empleado) qs.push("prefill_empleado=" + encodeURIComponent(tareaValues.empleado));
@@ -1789,6 +1809,79 @@ function SublistaTareaModule({
   );
 }
 
+/**
+ * Test 18 bis 2 E — Sublista de Zonas comerciales asignadas al
+ * empleado actual. Se muestra solo cuando el rol contiene "comercial".
+ * Las zonas se asignan desde el maestro /zonas-comerciales con el
+ * campo `agenteResponsable`. Esta pestaña es de solo lectura — el alta
+ * y modificación de zonas se hace desde el maestro.
+ */
+function ZonasEmpleadoSublist({ empleadoNombre, accent }: { empleadoNombre: string; accent: string }) {
+  const { link } = useCurrentVertical();
+  const [rows, setRows] = useState<Array<Record<string, string>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function load() {
+    if (!empleadoNombre) { setLoading(false); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const r = await fetch("/api/erp/module?module=zonas-comerciales", { cache: "no-store" });
+      const data = await r.json();
+      const all = (r.ok && data.ok && Array.isArray(data.rows)) ? data.rows as Array<Record<string, string>> : [];
+      setRows(all.filter((z) => String(z.agenteResponsable || "") === empleadoNombre));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error cargando zonas.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [empleadoNombre]);
+
+  return (
+    <section>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Zonas asignadas</h3>
+          <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+            Zonas comerciales en las que este empleado es el agente responsable. Para reasignar zonas, abre el maestro <strong>Zonas</strong>.
+          </p>
+        </div>
+        <Link href={link("zonas-comerciales")} style={{ ...subBtn, textDecoration: "none", color: accent, borderColor: accent }}>Abrir maestro Zonas →</Link>
+      </div>
+      {error ? <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 13 }}>{error}</div> : null}
+      {loading ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando zonas…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+          Este empleado no tiene zonas asignadas. Abre el maestro Zonas y pon su nombre como agente responsable.
+        </div>
+      ) : (
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
+                <th style={subTh(110)}>Código</th>
+                <th style={subTh()}>Zona</th>
+                <th style={subTh(110)}>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((z) => (
+                <tr key={String(z.id || "")} style={{ borderTop: "1px solid #e5e7eb" }}>
+                  <td style={subTd}>{z.codigo || "—"}</td>
+                  <td style={subTd}>{z.nombre || "—"}</td>
+                  <td style={subTd}>{z.estado || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
 /**
  * Preguntas 1.con / mail 2 punto 9 — Sublista de Vencimientos de la
  * factura actual. Solo lectura: el alta se genera automáticamente al

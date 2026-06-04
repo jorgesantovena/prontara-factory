@@ -79,6 +79,28 @@ export async function GET(request: NextRequest) {
           };
         }
 
+        // Test 18 bis 2 A+B — `actividades` (Tareas / Parte de horas):
+        // las sublistas de Gastos y Desplazamientos guardan el id de
+        // la tarea como referencia, pero la UI debe enseñar el
+        // CONCEPTO (no el UUID). value = id, label = concepto + fecha.
+        if (moduleKey === "actividades") {
+          const concepto = String(item.concepto || item.descripcion || "(sin concepto)").trim();
+          const fecha = String(item.fecha || "").slice(0, 10);
+          return {
+            value: String(item.id || ""),
+            label: concepto + (fecha ? " · " + fecha : ""),
+          };
+        }
+
+        // Test 18 bis 2 C+D — `formas-pago` para el campo del cliente
+        // y la factura. value = codigo, label = codigo · nombre.
+        if (moduleKey === "formas-pago") {
+          return {
+            value: String(item.codigo || ""),
+            label: String(item.codigo || "") + (item.nombre ? " · " + String(item.nombre) : ""),
+          };
+        }
+
         // TEST-11 bis-5 — Empleados: value = nombre (legible) en lugar de
         // id. Coherente con clientes/proyectos para que los filtros y la
         // columna Empleado del listado muestren el nombre, no el UUID.

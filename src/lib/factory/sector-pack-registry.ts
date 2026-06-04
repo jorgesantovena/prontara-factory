@@ -373,6 +373,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // empleado=comercial. Ambos opcionales.
     { moduleKey: "clientes", fieldKey: "tipoCliente", label: "Tipo cliente", kind: "relation", relationModuleKey: "tipos-cliente", placeholder: "Selecciona del catálogo" },
     { moduleKey: "clientes", fieldKey: "zona", label: "Zona", kind: "relation", relationModuleKey: "zonas-comerciales", placeholder: "Selecciona la zona comercial" },
+    // Test 18 bis 2 C — Forma de pago por defecto del cliente. Se
+    // hereda al crear cualquier factura del cliente.
+    { moduleKey: "clientes", fieldKey: "formaPago", label: "Forma de pago", kind: "relation", relationModuleKey: "formas-pago", placeholder: "Forma de pago por defecto" },
     { moduleKey: "clientes", fieldKey: "responsable", label: "Account manager", kind: "text", placeholder: "Quién lleva la cuenta internamente" },
     { moduleKey: "clientes", fieldKey: "fechaAlta", label: "Cliente desde", kind: "date" },
     // TEST-11 — Km hasta el cliente. Origen del Km heredado del parte de
@@ -509,7 +512,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "anulada", label: "Anulada" },
     ] },
     { moduleKey: "facturacion", fieldKey: "fechaEmision", label: "Fecha emisión", kind: "date" },
-    { moduleKey: "facturacion", fieldKey: "fechaVencimiento", label: "Vencimiento", kind: "date" },
+    // Test 18 bis 2 D — `fechaVencimiento` eliminado del schema (ahora
+    // vive en la pestaña Vencimientos, generada automáticamente desde
+    // la forma de pago).
+    // Test 18 bis 2 D — `formaPago` heredado del Cliente al elegir.
+    { moduleKey: "facturacion", fieldKey: "formaPago", label: "Forma de pago", kind: "relation", relationModuleKey: "formas-pago", inheritFrom: { from: "cliente", field: "formaPago" }, placeholder: "Heredada del cliente, editable" },
     { moduleKey: "facturacion", fieldKey: "notas", label: "Notas", kind: "textarea", placeholder: "Observaciones internas sobre la factura" },
 
     // TEST-11 — Parte de horas (actividades) rediseñado por Pedro.
@@ -686,13 +693,14 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "presupuestos", fieldKey: "importe", label: "Importe" },
     { moduleKey: "presupuestos", fieldKey: "estado", label: "Estado" },
 
-    // Facturas — SF-14.
+    // Facturas — SF-14. Test 18 bis 2 D: quitada columna "Vencimiento"
+    // (vive en la pestaña de Vencimientos); añadida "Forma de pago".
     { moduleKey: "facturacion", fieldKey: "numero", label: "Nº", isPrimary: true },
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente" },
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe" },
+    { moduleKey: "facturacion", fieldKey: "formaPago", label: "Forma pago" },
     { moduleKey: "facturacion", fieldKey: "estado", label: "Estado" },
-    { moduleKey: "facturacion", fieldKey: "fechaVencimiento", label: "Vencimiento" },
   ],
   dashboardPriorities: [
     { key: "pipeline", label: "Pipeline", description: "Valor potencial del negocio.", order: 1 },
