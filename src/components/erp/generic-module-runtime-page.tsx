@@ -900,8 +900,15 @@ export default function GenericModuleRuntimePage({
     }
     return true;
   });
+  // TEST-18 bis — Bug: el flag `showTelSubtitle` usaba la OR de
+  // `telefono` y `tel`, pero `tel` NO es un fieldKey declarado del
+  // módulo, por lo tanto `hiddenCols.has("tel")` siempre era false y
+  // `showTelSubtitle` siempre quedaba en true (el teléfono salía aunque
+  // el usuario no lo hubiera marcado). Solo miramos el field real
+  // (`telefono`); el alias `tel` se sigue aceptando como dato de origen
+  // pero no como llave de visibilidad.
   const showEmailSubtitle = (moduleKey === "clientes" || moduleKey === "crm") && !hiddenCols.has("email");
-  const showTelSubtitle = (moduleKey === "clientes" || moduleKey === "crm") && (!hiddenCols.has("telefono") || !hiddenCols.has("tel"));
+  const showTelSubtitle = (moduleKey === "clientes" || moduleKey === "crm") && !hiddenCols.has("telefono");
 
   const titleField = ui.tableColumns.find((c) => c.isPrimary)?.fieldKey || allColumns[0]?.fieldKey || ui.fields[0]?.key || "id";
 
