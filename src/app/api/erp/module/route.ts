@@ -156,6 +156,18 @@ export async function POST(request: NextRequest) {
       }
 
       const created = await createModuleRecordAsync(moduleKey, body?.payload || {}, tenant);
+      // Preguntas 1.con / mail 2 punto 9 — Trigger post-create: si se
+      // acaba de dar de alta una FACTURA con formaPago que tiene N
+      // vencimientos, generamos automáticamente esos N registros en
+      // `vencimientos-factura`. Tolera errores: si falla la creación
+      // de vencimientos no se cancela la factura.
+      if (moduleKey === "facturacion" && created?.id) {
+        try {
+          await generarVencimientosDesdeFactura(created as Record<string, string>, tenant);
+        } catch (e) {
+          captureError(e, { scope: "facturacion → generarVencimientos" });
+        }
+      }
       return NextResponse.json({ ok: true, row: created });
     }
 
@@ -169,6 +181,17 @@ export async function POST(request: NextRequest) {
       }
 
       const updated = await updateModuleRecordAsync(moduleKey, recordId, body?.payload || {}, tenant);
+      // Preguntas 1.con / mail 2 punto 9 — Trigger post-edit: si se
+      // marca un vencimiento como cobrado, comprobar si TODOS los
+      // vencimientos de la misma factura ya están cobrados; si sí,
+      // marcar la factura como Cobrada.
+      if (moduleKey === "vencimientos-factura" && updated && String((updated as Record<string, string>).estado || "").toLowerCase() === "cobrado") {
+        try {
+          await trySetFacturaCobradaSiTodosLosVencimientosCobrados(updated as Record<string, string>, tenant);
+        } catch (e) {
+          captureError(e, { scope: "vencimientos-factura → factura.cobrada" });
+        }
+      }
       return NextResponse.json({ ok: true, row: updated });
     }
 
@@ -199,4 +222,75 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Preguntas 1.con / mail 2 punto 9 — Generación automática de
+ * vencimientos al crear una factura.
+ *
+ * Resuelve la forma de pago referenciada (por código o id) y crea N
+ * registros en `vencimientos-factura` repartiendo el importe e
+ * incrementando la fecha según `diasAplazamiento` y `numVencimientos`.
+ * Si la factura no tiene forma de pago, crea un único vencimiento con
+ * fecha = fechaEmision e importe completo.
+ */
+async function generarVencimientosDesdeFactura(factura: Record<string, string>, tenant: string): Promise<void> {
+  const formaPagoRef = String(factura.formaPago || "").trim();
+  const importeTotal = parseFloat(String(factura.importe || "0").replace(",", ".")) || 0;
+  const fechaEmision = String(factura.fechaEmision || factura.fecha || new Date().toISOString().slice(0, 10));
+
+  // Cargar formas-pago para resolver diasAplazamiento + numVencimientos.
+  let dias = 0;
+  let n = 1;
+  if (formaPagoRef) {
+    try {
+      const formas = await listModuleRecordsAsync("formas-pago", tenant);
+      const arr = (Array.isArray(formas) ? formas : []) as Array<Record<string, string>>;
+      const fp = arr.find((r) => String(r.codigo || "") === formaPagoRef || String(r.id || "") === formaPagoRef || String(r.nombre || "") === formaPagoRef);
+      if (fp) {
+        dias = parseInt(String(fp.diasAplazamiento || "0"), 10) || 0;
+        n = Math.max(1, parseInt(String(fp.numVencimientos || "1"), 10) || 1);
+      }
+    } catch { /* tolerar — fallback al venc. único */ }
+  }
+  const importeUnit = n > 0 ? (importeTotal / n) : importeTotal;
+
+  for (let i = 0; i < n; i++) {
+    const fecha = nuevaFechaPlus(fechaEmision, dias * (i + 1));
+    await createModuleRecordAsync("vencimientos-factura", {
+      factura: String(factura.numero || factura.id || ""),
+      nVencimiento: String(i + 1),
+      fecha,
+      importe: importeUnit.toFixed(2).replace(".", ","),
+      formaPago: formaPagoRef,
+      estado: "pendiente",
+    }, tenant);
+  }
+}
+
+function nuevaFechaPlus(baseIso: string, dias: number): string {
+  const d = new Date(baseIso);
+  if (Number.isNaN(d.getTime())) return baseIso;
+  d.setDate(d.getDate() + dias);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Preguntas 1.con / mail 2 punto 9 — Si todos los vencimientos de
+ * una factura están en estado "cobrado", la factura pasa a "cobrada".
+ */
+async function trySetFacturaCobradaSiTodosLosVencimientosCobrados(venc: Record<string, string>, tenant: string): Promise<void> {
+  const facturaRef = String(venc.factura || "").trim();
+  if (!facturaRef) return;
+  const vencs = await listModuleRecordsAsync("vencimientos-factura", tenant);
+  const hermanos = (Array.isArray(vencs) ? vencs : []).filter((v) => String((v as Record<string, string>).factura || "") === facturaRef) as Array<Record<string, string>>;
+  if (hermanos.length === 0) return;
+  const todosCobrados = hermanos.every((v) => String(v.estado || "").toLowerCase() === "cobrado");
+  if (!todosCobrados) return;
+  // Buscar la factura y marcarla como cobrada.
+  const facturas = await listModuleRecordsAsync("facturacion", tenant);
+  const f = (Array.isArray(facturas) ? facturas : []).find((row) => String((row as Record<string, string>).numero || "") === facturaRef || String((row as Record<string, string>).id || "") === facturaRef) as Record<string, string> | undefined;
+  if (!f) return;
+  if (String(f.estado || "").toLowerCase() === "cobrada") return; // ya está
+  await updateModuleRecordAsync("facturacion", String(f.id || ""), { ...f, estado: "cobrada" }, tenant);
 }

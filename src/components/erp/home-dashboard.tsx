@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
+// Preguntas 1.con / mail 2 punto 11 — Asistente como caja flotante
+// en el dashboard de Inicio (en vez de un item en el MP).
+import AsistenteFlotante from "@/components/erp/asistente-flotante";
 
 /**
  * Home Dashboard rediseñado (H12-D — según mockup limpio).
@@ -316,6 +319,10 @@ export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string 
           .prontara-home-3col { grid-template-columns: 1fr !important; }
         }
       `}</style>
+      {/* Preguntas 1.con / mail 2 punto 11 — Caja flotante del Asistente
+          en la esquina inferior derecha. Pedro lo quitó del MP y lo
+          quería aquí. La caja persiste su conversación en sessionStorage. */}
+      <AsistenteFlotante accent={accent} />
     </div>
   );
 }

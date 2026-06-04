@@ -276,6 +276,10 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
 
   // H7-C5 Gastos
+  // Preguntas 1.con / mail 2 punto 7 — `tareaId` opcional, lo rellena
+  // la sublista "Gastos" de la ficha de Tarea via prefill. Si está
+  // vacío, es un gasto "suelto" (sin tarea).
+  { moduleKey: "gastos", fieldKey: "tareaId", label: "Tarea vinculada", kind: "text", placeholder: "Se rellena automáticamente desde la pestaña Gastos de una Tarea" },
   { moduleKey: "gastos", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
   { moduleKey: "gastos", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
   { moduleKey: "gastos", fieldKey: "tipo", label: "Tipo", kind: "status", required: true, options: [
@@ -434,6 +438,9 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "tipos-urgencia", fieldKey: "color", label: "Color", kind: "text" },
 
   // H8-S5 Desplazamientos
+  // Preguntas 1.con / mail 2 punto 8 — `tareaId` opcional para vincular
+  // el desplazamiento a la tarea que lo motivó.
+  { moduleKey: "desplazamientos", fieldKey: "tareaId", label: "Tarea vinculada", kind: "text", placeholder: "Se rellena automáticamente desde la pestaña Desplazamientos de una Tarea" },
   { moduleKey: "desplazamientos", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
   { moduleKey: "desplazamientos", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
   { moduleKey: "desplazamientos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },

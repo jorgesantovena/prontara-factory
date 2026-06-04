@@ -70,7 +70,11 @@ type OptionItem = { value: string; label: string };
 // Solo visible cuando moduleKey === "crm" && mode === "edit" — lista las
 // propuestas vinculadas a la oportunidad y permite añadir desde el mismo
 // editor (mismo patrón que la sublista Contactos y Proyectos).
-type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "propuestas" | "documentos";
+// Preguntas 1.con / mail 2 puntos 7+8 — Gastos y Desplazamientos como
+// pestañas dentro de la ficha de Tarea (heredan fecha/empleado/cliente/
+// proyecto al añadir, y la opción del MP sigue activa para los casos sin
+// tarea). Las tabs se renderizan solo cuando moduleKey === "actividades".
+type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "propuestas" | "gastos" | "desplazamientos" | "vencimientos" | "documentos";
 
 const TAB_LABELS: Record<TabKey, string> = {
   general: "Datos generales",
@@ -80,6 +84,13 @@ const TAB_LABELS: Record<TabKey, string> = {
   notas: "Notas",
   proyectos: "Proyectos",
   propuestas: "Propuestas",
+  gastos: "Gastos",
+  desplazamientos: "Desplazamientos",
+  // Preguntas 1.con / mail 2 punto 9 — Pestaña Vencimientos en la
+  // ficha de Factura (sublista filtrada por número de factura, con
+  // cobro manual; el trigger del backend marca la Factura como cobrada
+  // cuando se cobra el último).
+  vencimientos: "Vencimientos",
   documentos: "Documentos",
 };
 
@@ -176,9 +187,11 @@ export default function ErpRecordEditor({
   // clientes, que aunque no tenga fields del pack siempre muestra la sublista.
   const grouped = useMemo(() => {
     const acc: Record<TabKey, UiFieldDefinition[]> = {
-      // TEST-15 E.2 — "propuestas" añadida al record (TabKey nuevo) para
-      // que el inicializador cubra TODAS las keys del type.
-      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], propuestas: [], documentos: [],
+      // Preguntas 1.con / mail 2 puntos 7+8 — gastos y desplazamientos
+      // añadidos al record. Si moduleKey !== "actividades" no se ven
+      // (el filtro `tabsConFields` solo incluye tabs con fields, y los
+      // bloques de render por tab incluyen también la condición moduleKey).
+      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], propuestas: [], gastos: [], desplazamientos: [], vencimientos: [], documentos: [],
     };
     // TEST-11 — En el Parte de horas (actividades) el orden EXACTO de
     // campos que define el sector pack importa (Empleado → Fecha → Hora
@@ -213,11 +226,23 @@ export default function ErpRecordEditor({
   const showProyectosTab = moduleKey === "clientes" && mode === "edit" && Boolean(initialValue?.id);
   // TEST-15 E.2 — Tab "Propuestas" en la ficha de Oportunidad (crm).
   const showPropuestasTab = moduleKey === "crm" && mode === "edit" && Boolean(initialValue?.id);
+  // Preguntas 1.con / mail 2 puntos 7+8 — Tabs Gastos y Desplazamientos
+  // SOLO en la ficha de Tarea (actividades) y solo en EDIT (necesitamos
+  // el id de la tarea para filtrar). En CREATE no se muestran porque la
+  // tarea aún no existe; el usuario primero guarda y luego añade gastos.
+  const showGastosTab = moduleKey === "actividades" && mode === "edit" && Boolean(initialValue?.id);
+  const showDesplazTab = moduleKey === "actividades" && mode === "edit" && Boolean(initialValue?.id);
+  // Preguntas 1.con / mail 2 punto 9 — Pestaña Vencimientos en Factura
+  // (mode === "edit": necesitamos el número/id para filtrar).
+  const showVencimientosTab = moduleKey === "facturacion" && mode === "edit" && Boolean(initialValue?.id);
   const visibleTabs: TabKey[] = tabsConFields.length > 0
     ? [
         ...tabsConFields,
         ...(showProyectosTab ? ["proyectos" as TabKey] : []),
         ...(showPropuestasTab ? ["propuestas" as TabKey] : []),
+        ...(showGastosTab ? ["gastos" as TabKey] : []),
+        ...(showDesplazTab ? ["desplazamientos" as TabKey] : []),
+        ...(showVencimientosTab ? ["vencimientos" as TabKey] : []),
         "documentos" as TabKey,
       ]
     : []; // sin fields → no mostramos tabs, mostramos mensaje (ver render)
@@ -783,6 +808,29 @@ export default function ErpRecordEditor({
               oportunidadId={String(initialValue?.id || "")}
               oportunidadNumero={String(initialValue?.numero || "")}
               empresaCliente={String(values.empresa || initialValue?.empresa || "")}
+              accent={accent}
+            />
+          ) : tab === "gastos" ? (
+            <SublistaTareaModule
+              moduleKey="gastos"
+              label="Gastos"
+              singular="gasto"
+              tareaId={String(initialValue?.id || "")}
+              tareaValues={values}
+              accent={accent}
+            />
+          ) : tab === "desplazamientos" ? (
+            <SublistaTareaModule
+              moduleKey="desplazamientos"
+              label="Desplazamientos"
+              singular="desplazamiento"
+              tareaId={String(initialValue?.id || "")}
+              tareaValues={values}
+              accent={accent}
+            />
+          ) : tab === "vencimientos" ? (
+            <VencimientosSublist
+              facturaNumero={String(initialValue?.numero || initialValue?.id || "")}
               accent={accent}
             />
           ) : tab === "contacto" && (moduleKey === "clientes" || moduleKey === "crm") ? (
@@ -1631,6 +1679,229 @@ type PropuestaRow = {
   estado: string;
   fechaEnvio: string;
 };
+/**
+ * Preguntas 1.con / mail 2 puntos 7+8 — Sublista de Gastos o
+ * Desplazamientos asociados a una Tarea (actividades). Lista los
+ * registros del módulo cuya `tareaId` coincide con la tarea actual.
+ * Botón "+ Alta" abre el alta del módulo con `tareaId`, `fecha`,
+ * `empleado`, `cliente` y `proyecto` ya prerrellenados.
+ */
+function SublistaTareaModule({
+  moduleKey, label, singular, tareaId, tareaValues, accent,
+}: {
+  moduleKey: "gastos" | "desplazamientos";
+  label: string;
+  singular: string;
+  tareaId: string;
+  tareaValues: Record<string, string>;
+  accent: string;
+}) {
+  const { link } = useCurrentVertical();
+  const [rows, setRows] = useState<Array<Record<string, string>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  async function load() {
+    if (!tareaId) { setLoading(false); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const r = await fetch("/api/erp/module?module=" + encodeURIComponent(moduleKey), { cache: "no-store" });
+      const data = await r.json();
+      if (!r.ok || !data.ok) {
+        setRows([]);
+        setLoading(false);
+        return;
+      }
+      const all = (Array.isArray(data.rows) ? data.rows : []) as Array<Record<string, string>>;
+      // Filtra por tareaId (o por tareaCodigo si en su día se usó).
+      setRows(all.filter((row) => String(row.tareaId || row.tareaRef || "") === tareaId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error cargando " + label.toLowerCase() + ".");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tareaId, moduleKey]);
+
+  // Construye la URL de + Alta con los prefill heredados de la tarea.
+  const qs: string[] = [];
+  qs.push("action=new");
+  qs.push("prefill_tareaId=" + encodeURIComponent(tareaId));
+  if (tareaValues.fecha) qs.push("prefill_fecha=" + encodeURIComponent(tareaValues.fecha));
+  if (tareaValues.empleado) qs.push("prefill_empleado=" + encodeURIComponent(tareaValues.empleado));
+  if (tareaValues.cliente) qs.push("prefill_cliente=" + encodeURIComponent(tareaValues.cliente));
+  if (tareaValues.proyecto) qs.push("prefill_proyecto=" + encodeURIComponent(tareaValues.proyecto));
+  // Desplazamientos: prerellenar km del cliente (igual que en el form
+  // principal de Tarea cuando Lugar=Casa cliente).
+  if (moduleKey === "desplazamientos" && tareaValues.km) qs.push("prefill_km=" + encodeURIComponent(tareaValues.km));
+  const nuevoHref = link(moduleKey) + "?" + qs.join("&");
+
+  return (
+    <section>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{label} de esta tarea</h3>
+          <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+            Los {label.toLowerCase()} dados de alta aquí heredan Fecha, Empleado, Cliente y Proyecto de la tarea. Para crear casos sueltos (sin tarea), usa el listado general.
+          </p>
+        </div>
+        <Link href={nuevoHref} style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+          + Alta de {singular}
+        </Link>
+      </div>
+
+      {error ? (
+        <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 13 }}>{error}</div>
+      ) : null}
+
+      {loading ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando {label.toLowerCase()}…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+          Sin {label.toLowerCase()} asociados a esta tarea. Pulsa &quot;+ Alta de {singular}&quot; para añadir el primero.
+        </div>
+      ) : (
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
+                <th style={subTh()}>Fecha</th>
+                <th style={subTh()}>{moduleKey === "gastos" ? "Tipo / Descripción" : "Origen → Destino"}</th>
+                <th style={subTh(110)}>{moduleKey === "gastos" ? "Importe" : "Km"}</th>
+                <th style={subTh(100)}>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={String(r.id || "")} style={{ borderTop: "1px solid #e5e7eb" }}>
+                  <td style={subTd}>{r.fecha ? fmtDateEs(String(r.fecha)) : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{moduleKey === "gastos" ? (r.tipo || r.descripcion || "—") : (String(r.origen || "") + " → " + String(r.destino || ""))}</td>
+                  <td style={subTd}>{moduleKey === "gastos" ? (r.importe || "—") : (r.kilometros || r.km || "—")}</td>
+                  <td style={subTd}>{r.estado || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Preguntas 1.con / mail 2 punto 9 — Sublista de Vencimientos de la
+ * factura actual. Solo lectura: el alta se genera automáticamente al
+ * crear la factura (ver `/api/erp/module` → trigger
+ * `generarVencimientosDesdeFactura`). El usuario puede marcar un
+ * vencimiento como cobrado y, si todos están cobrados, el backend
+ * dispara el cambio de la factura a estado "cobrada".
+ */
+function VencimientosSublist({ facturaNumero, accent }: { facturaNumero: string; accent: string }) {
+  const [rows, setRows] = useState<Array<Record<string, string>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  async function load() {
+    if (!facturaNumero) { setLoading(false); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const r = await fetch("/api/erp/module?module=vencimientos-factura", { cache: "no-store" });
+      const data = await r.json();
+      const all = (r.ok && data.ok && Array.isArray(data.rows)) ? data.rows as Array<Record<string, string>> : [];
+      const propios = all.filter((row) => String(row.factura || "") === facturaNumero);
+      // Orden ascendente por nVencimiento o por fecha.
+      propios.sort((a, b) => {
+        const na = parseInt(String(a.nVencimiento || "0"), 10) || 0;
+        const nb = parseInt(String(b.nVencimiento || "0"), 10) || 0;
+        if (na !== nb) return na - nb;
+        return String(a.fecha || "").localeCompare(String(b.fecha || ""));
+      });
+      setRows(propios);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error cargando vencimientos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [facturaNumero]);
+
+  async function marcarCobrado(v: Record<string, string>) {
+    setSavingId(String(v.id || ""));
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      await fetch("/api/erp/module", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ module: "vencimientos-factura", mode: "edit", recordId: v.id, payload: { ...v, estado: "cobrado", fechaCobro: v.fechaCobro || today } }),
+      });
+      await load();
+    } catch { /* tolerar */ }
+    finally { setSavingId(null); }
+  }
+
+  return (
+    <section>
+      <div style={{ marginBottom: 12 }}>
+        <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Vencimientos de esta factura</h3>
+        <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+          Generados automáticamente al crear la factura según la forma de pago. Marca cada vencimiento como cobrado conforme entren los pagos. Cuando el último se marque, la factura pasa a Cobrada.
+        </p>
+      </div>
+      {error ? <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 13 }}>{error}</div> : null}
+      {loading ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando vencimientos…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+          Esta factura todavía no tiene vencimientos generados (revisa la forma de pago al guardar).
+        </div>
+      ) : (
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
+                <th style={subTh(50)}>Nº</th>
+                <th style={subTh(120)}>Fecha vto.</th>
+                <th style={subTh(120)}>Importe</th>
+                <th style={subTh(110)}>Estado</th>
+                <th style={subTh(120)}>Fecha cobro</th>
+                <th style={subTh(130)}>Acción</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((v) => {
+                const cobrado = String(v.estado || "").toLowerCase() === "cobrado";
+                return (
+                  <tr key={String(v.id || "")} style={{ borderTop: "1px solid #e5e7eb", background: cobrado ? "#f0fdf4" : "transparent" }}>
+                    <td style={subTd}>{v.nVencimiento || "—"}</td>
+                    <td style={subTd}>{v.fecha ? fmtDateEs(String(v.fecha)) : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                    <td style={subTd}>{v.importe || "—"}</td>
+                    <td style={subTd}>
+                      <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: cobrado ? "#dcfce7" : "#fef3c7", color: cobrado ? "#15803d" : "#a16207" }}>
+                        {cobrado ? "Cobrado" : (v.estado || "Pendiente")}
+                      </span>
+                    </td>
+                    <td style={subTd}>{v.fechaCobro ? fmtDateEs(String(v.fechaCobro)) : <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                    <td style={subTd}>
+                      {!cobrado ? (
+                        <button type="button" onClick={() => marcarCobrado(v)} disabled={savingId === v.id} style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "5px 10px", fontSize: 12, fontWeight: 700, cursor: savingId === v.id ? "wait" : "pointer" }}>
+                          {savingId === v.id ? "…" : "Cobrado"}
+                        </button>
+                      ) : <span style={{ color: "#94a3b8", fontSize: 11 }}>—</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 function PropuestasSublist({ oportunidadId, oportunidadNumero, empresaCliente, accent }: {
   oportunidadId: string;
   oportunidadNumero: string;

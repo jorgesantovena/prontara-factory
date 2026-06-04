@@ -17,7 +17,12 @@ import { useEffect, useState } from "react";
 type LegacyAction =
   | { type: "notify"; title: string; message: string; severity?: string }
   | { type: "createTask"; titulo: string; asignado?: string; prioridad?: string }
-  | { type: "setEstado"; estado: string };
+  | { type: "setEstado"; estado: string }
+  // Preguntas 1.con / mail 2 punto 12 — "Aviso" como tipo de acción
+  // (Pedro). Programar el envío de un email/mensaje al cliente usando
+  // una plantilla. El motor lo encola en `jobs` para que el cron
+  // unifique con el resto de envíos.
+  | { type: "sendAviso"; canal: string; plantilla: string; asunto?: string };
 
 type Condition = {
   field: string;
@@ -43,12 +48,16 @@ type Rule = {
 type ActionDraft =
   | { type: "notify"; title: string; message: string; severity: string }
   | { type: "createTask"; titulo: string; asignado: string; prioridad: string }
-  | { type: "setEstado"; estado: string };
+  | { type: "setEstado"; estado: string }
+  // Preguntas 1.con / mail 2 punto 12 — Tipo "Aviso".
+  | { type: "sendAviso"; canal: string; plantilla: string; asunto: string };
 
 const ACTION_LABELS: Record<string, string> = {
   notify: "Notificar al operador",
-  createTask: "Crear tarea",
+  createTask: "Crear asignación",
   setEstado: "Cambiar estado",
+  // Preguntas 1.con / mail 2 punto 12 — "Aviso" como tipo de acción.
+  sendAviso: "Enviar aviso al cliente",
 };
 
 const OP_LABELS: Record<Condition["operator"], string> = {
@@ -64,6 +73,7 @@ const OP_LABELS: Record<Condition["operator"], string> = {
 function newAction(type: ActionDraft["type"]): ActionDraft {
   if (type === "notify") return { type, title: "", message: "", severity: "info" };
   if (type === "createTask") return { type, titulo: "", asignado: "", prioridad: "media" };
+  if (type === "sendAviso") return { type, canal: "email", plantilla: "", asunto: "" };
   return { type, estado: "" };
 }
 
@@ -140,6 +150,8 @@ export default function WorkflowsPage() {
           actionPayload = { type: "notify", title: a.title, message: a.message, severity: a.severity };
         } else if (a.type === "createTask") {
           actionPayload = { type: "createTask", titulo: a.titulo, asignado: a.asignado, prioridad: a.prioridad };
+        } else if (a.type === "sendAviso") {
+          actionPayload = { type: "sendAviso", canal: a.canal, plantilla: a.plantilla, asunto: a.asunto };
         } else {
           actionPayload = { type: "setEstado", estado: a.estado };
         }
@@ -150,6 +162,7 @@ export default function WorkflowsPage() {
           actions: actions.map((a) => {
             if (a.type === "notify") return { type: "notify", title: a.title, message: a.message, severity: a.severity };
             if (a.type === "createTask") return { type: "createTask", titulo: a.titulo, asignado: a.asignado, prioridad: a.prioridad };
+            if (a.type === "sendAviso") return { type: "sendAviso", canal: a.canal, plantilla: a.plantilla, asunto: a.asunto };
             return { type: "setEstado", estado: a.estado };
           }),
           conditions: conditions.filter((c) => c.field.trim() !== ""),
@@ -295,8 +308,9 @@ export default function WorkflowsPage() {
                   <Field label="Tipo de acción">
                     <select value={a.type} onChange={(e) => changeActionType(i, e.target.value as ActionDraft["type"])} style={ipt}>
                       <option value="notify">Notificar al operador</option>
-                      <option value="createTask">Crear tarea</option>
+                      <option value="createTask">Crear asignación</option>
                       <option value="setEstado">Cambiar estado del registro</option>
+                      <option value="sendAviso">Enviar aviso al cliente</option>
                     </select>
                   </Field>
                   {a.type === "notify" ? (
@@ -339,6 +353,24 @@ export default function WorkflowsPage() {
                     <Field label="Nuevo estado">
                       <input value={a.estado} onChange={(e) => updateAction(i, { estado: e.target.value })} placeholder="urgente, archivado..." style={ipt} />
                     </Field>
+                  ) : null}
+                  {a.type === "sendAviso" ? (
+                    <>
+                      <Field label="Canal">
+                        <select value={a.canal} onChange={(e) => updateAction(i, { canal: e.target.value })} style={ipt}>
+                          <option value="email">Email</option>
+                          <option value="sms">SMS</option>
+                          <option value="whatsapp">WhatsApp</option>
+                          <option value="push">Push</option>
+                        </select>
+                      </Field>
+                      <Field label="Plantilla (código)">
+                        <input value={a.plantilla} onChange={(e) => updateAction(i, { plantilla: e.target.value })} placeholder="REC-FACT-VENC" style={ipt} />
+                      </Field>
+                      <Field label="Asunto (override opcional)">
+                        <input value={a.asunto} onChange={(e) => updateAction(i, { asunto: e.target.value })} placeholder="Sustituye al de la plantilla" style={ipt} />
+                      </Field>
+                    </>
                   ) : null}
                 </div>
               </div>
