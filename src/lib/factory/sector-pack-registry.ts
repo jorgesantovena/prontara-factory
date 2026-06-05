@@ -386,6 +386,10 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     //   - Tipo = "normal" → tabla tarifas-generales por (servicio + nivel).
     //   - Tipo = "especial" → tabla tarifas-especiales por (servicio + cliente).
     //   - Nivel 0 = sin contrato de mantenimiento.
+    // TEST-20 F.1 — Pedro: rediseño completo del bloque Financiero del Cliente.
+    // Tipo Tarifa y Nivel pasan a estar en la pestaña Financiero (antes
+    // caían en "general" por la heurística classifyField). Nivel (0..4)
+    // mantiene su semántica de mantenimiento.
     { moduleKey: "clientes", fieldKey: "tipoTarifa", label: "Tipo Tarifa", kind: "status", required: true, defaultValue: "normal", options: [
       { value: "normal", label: "Normal" },
       { value: "especial", label: "Especial" },
@@ -397,6 +401,33 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "3", label: "3" },
       { value: "4", label: "4" },
     ] },
+    // TEST-20 F.1 — Modo de facturación del cliente:
+    //   - "fijo": cuota fija por periodo (la bolsa contratada se consume
+    //     contra esa cuota; el sobreconsumo se factura fuera).
+    //   - "variable": se factura todo lo consumido (h × tarifa o €
+    //     según unidad), sin cuota fija.
+    { moduleKey: "clientes", fieldKey: "modoFacturacion", label: "Modo", kind: "status", required: true, defaultValue: "fijo", options: [
+      { value: "fijo", label: "Fijo (cuota periódica)" },
+      { value: "variable", label: "Variable (a consumo)" },
+    ] },
+    // Bolsa contratada del cliente (en h o € según `unidadFacturacion`).
+    { moduleKey: "clientes", fieldKey: "bolsaCantidad", label: "Bolsa", kind: "number", defaultValue: "0", placeholder: "Cantidad contratada (en h o € según Unidad)" },
+    { moduleKey: "clientes", fieldKey: "unidadFacturacion", label: "Unidad", kind: "status", required: true, defaultValue: "h", options: [
+      { value: "h", label: "Horas (h)" },
+      { value: "eur", label: "Euros (€)" },
+    ] },
+    { moduleKey: "clientes", fieldKey: "margenPorcentaje", label: "Margen (%)", kind: "number", placeholder: "Margen aplicado sobre coste, ej. 30" },
+    { moduleKey: "clientes", fieldKey: "periodoFacturacion", label: "Periodo", kind: "status", required: true, defaultValue: "mes", options: [
+      { value: "mes", label: "Mensual" },
+      { value: "trimestre", label: "Trimestral" },
+      { value: "anio", label: "Anual" },
+      { value: "discreto", label: "Discreto" },
+    ] },
+    // Consumo y Facturado — SALIDA: el backend los recalcula al guardar
+    // una Tarea facturable (Consumo) o una Factura (Facturado). El
+    // usuario los ve crecer; no edita.
+    { moduleKey: "clientes", fieldKey: "consumoHoras", label: "Consumo (h)", kind: "text", readOnly: true, placeholder: "Suma de horas de Tareas de proyectos facturables" },
+    { moduleKey: "clientes", fieldKey: "facturadoHoras", label: "Facturado", kind: "text", readOnly: true, placeholder: "Importe acumulado facturado al cliente" },
     { moduleKey: "clientes", fieldKey: "notas", label: "Notas internas", kind: "textarea", placeholder: "Observaciones útiles del cliente" },
 
     // CRM (oportunidades) — SF-21.
@@ -434,18 +465,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "finalizado", label: "Finalizado" },
       { value: "expirado", label: "Expirado" },
     ] },
-    // TEST-11 — Método de facturación que se hereda al Parte de horas.
-    { moduleKey: "proyectos", fieldKey: "tipoFacturacion", label: "Método facturación", kind: "status", placeholder: "Cómo se factura este proyecto", options: [
-      { value: "fija", label: "Tarifa fija" },
-      { value: "contra-bolsa", label: "Contra bolsa de horas" },
-      { value: "fuera-bolsa", label: "Fuera de bolsa" },
-      { value: "por-hito", label: "Por hito" },
-      { value: "no-facturable", label: "No facturable" },
-    ] },
-    // TEST-13 E — Facturable es CAMPO DE SALIDA derivado de
-    // tipoFacturacion: "no-facturable" → no, resto → sí. El usuario no
-    // lo edita; se rellena automáticamente al cambiar el método.
-    { moduleKey: "proyectos", fieldKey: "facturable", label: "Facturable", kind: "status", readOnly: true, computed: { type: "derived", from: "tipoFacturacion", map: { "no-facturable": "no" }, default: "si" }, placeholder: "Se calcula a partir del Método facturación", options: [
+    // TEST-20 F.2 — Pedro: eliminado "Método facturación" del Proyecto.
+    // El método de facturación ahora vive en el Cliente (Modo/Bolsa/
+    // Unidad/Periodo). El Proyecto solo necesita decir si es facturable
+    // o no, y esa decisión la toma el usuario (no se deriva).
+    { moduleKey: "proyectos", fieldKey: "facturable", label: "Facturable", kind: "status", required: true, defaultValue: "si", placeholder: "Si las Tareas de este proyecto suman al Consumo del cliente", options: [
       { value: "si", label: "Sí" },
       { value: "no", label: "No" },
     ] },
@@ -466,9 +490,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // ← tarifa.unidad). Necesarios como columnas del listado TEST-16 E.
     { moduleKey: "proyectos", fieldKey: "nivelCliente", label: "Nivel cliente", kind: "text", readOnly: true, inheritFrom: { from: "cliente", field: "nivel" }, placeholder: "Heredado del Cliente" },
     { moduleKey: "proyectos", fieldKey: "unidadTarifa", label: "Unidad tarifa", kind: "text", readOnly: true, placeholder: "Se calcula desde Tarifas al elegir Cliente + Servicio" },
-    // TEST-13 E — Horas totales (bolsa) visible y obligatorio SOLO si
-    // Método facturación = "contra-bolsa".
-    { moduleKey: "proyectos", fieldKey: "horasTotales", label: "Horas totales (bolsa)", kind: "text", visibleWhen: { field: "tipoFacturacion", equals: "contra-bolsa" }, requiredWhen: { field: "tipoFacturacion", equals: "contra-bolsa" }, placeholder: "Total horas contratadas en la bolsa" },
+    // TEST-20 F.2 — Pedro: eliminado "Horas totales (bolsa)" del Proyecto.
+    // La bolsa pasa a vivir en Cliente.bolsaCantidad (un único contrato
+    // por cliente, no por proyecto).
     // TEST-8.1.d — Referencia a la propuesta que dio origen al proyecto.
     { moduleKey: "proyectos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Nº de la propuesta origen" },
     { moduleKey: "proyectos", fieldKey: "notas", label: "Notas", kind: "text", placeholder: "Condiciones específicas, observaciones..." },
@@ -546,13 +570,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "si", label: "Sí" },
       { value: "no", label: "No" },
     ] },
-    { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Método facturación", kind: "status", readOnly: true, inheritFrom: { from: "proyecto", field: "tipoFacturacion" }, placeholder: "Heredado del proyecto", options: [
-      { value: "fija", label: "Tarifa fija" },
-      { value: "contra-bolsa", label: "Contra bolsa de horas" },
-      { value: "fuera-bolsa", label: "Fuera de bolsa" },
-      { value: "por-hito", label: "Por hito" },
-      { value: "no-facturable", label: "No facturable" },
-    ] },
+    // TEST-20 F.2 — Pedro: eliminado "Método facturación" de la Tarea (ya
+    // no existe en Proyecto; el modo de facturación vive en el Cliente).
     { moduleKey: "actividades", fieldKey: "tarifaHora", label: "Tarifa €/h", kind: "text", inheritFrom: { from: "proyecto", field: "tarifaHoraOverride" }, placeholder: "Heredada del proyecto, editable aquí si procede" },
     { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado", kind: "status", readOnly: true, placeholder: "Se actualiza con el proceso de facturación", options: [
       { value: "si", label: "Sí" },
@@ -625,6 +644,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "clientes", fieldKey: "tipoCliente", label: "Tipo cliente" },
     { moduleKey: "clientes", fieldKey: "zona", label: "Zona" },
     { moduleKey: "clientes", fieldKey: "responsable", label: "Account manager" },
+    // TEST-20 F.1 — Columnas del nuevo bloque Financiero. El usuario
+    // puede ocultarlas desde el selector de columnas si no las necesita.
+    { moduleKey: "clientes", fieldKey: "modoFacturacion", label: "Modo" },
+    { moduleKey: "clientes", fieldKey: "consumoHoras", label: "Consumo" },
+    { moduleKey: "clientes", fieldKey: "facturadoHoras", label: "Facturado" },
     { moduleKey: "clientes", fieldKey: "estado", label: "Estado" },
 
     // CRM (oportunidades) — SF-21.

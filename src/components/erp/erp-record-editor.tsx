@@ -131,7 +131,14 @@ function classifyField(key: string): TabKey {
       k.includes("iban") || k.includes("forma") || k.includes("tarifa") ||
       k.includes("cuenta") || k.includes("vencimiento") || k.includes("descuento") ||
       k.includes("recargo") || k.includes("precio") || k.includes("moneda") ||
-      k === "iva" || k === "irpf") {
+      k === "iva" || k === "irpf" ||
+      // TEST-20 F.1 — Rediseño Métodos de facturación: el bloque vive en
+      // Financiero. Pedro: Tipo Tarifa, Nivel, Modo, Bolsa, Unidad,
+      // Margen, Periodo, Consumo, Facturado.
+      k === "tipotarifa" || k === "nivel" ||
+      k === "modofacturacion" || k === "bolsacantidad" || k === "unidadfacturacion" ||
+      k === "margenporcentaje" || k === "periodofacturacion" ||
+      k === "consumohoras" || k === "facturadohoras") {
     return "financiero";
   }
   if (k.includes("vendedor") || k.includes("comercial") || k.includes("zona") ||
@@ -406,7 +413,17 @@ export default function ErpRecordEditor({
       }
     }
     loadRelations();
-    return () => { cancelled = true; };
+    // TEST-20 E — Pedro: si el usuario crea un Servicio en otra pestaña
+    // y vuelve a la del Proyecto, el dropdown "Código de servicio" no
+    // refleja el alta. Re-cargamos las options cada vez que la ventana
+    // recupera el foco, así cualquier maestro recién dado de alta
+    // aparece sin recargar la página.
+    function onFocus() { loadRelations(); }
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onFocus);
+    };
   }, [fields, tenant]);
 
   // TEST-12 #3 — Autosave del draft a sessionStorage cada vez que
@@ -1672,7 +1689,11 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
 
   // TEST-4.2 — prefill_cliente recibe el NOMBRE del cliente (no el id) porque
   // la API /api/erp/options usa nombre como `value` del dropdown relation.
-  const nuevoHref = link("proyectos") + "?prefill_cliente=" + encodeURIComponent(clienteName || clienteId);
+  // TEST-20 D — Pedro: tras guardar/cancelar debe volver a la ficha del
+  // CLIENTE (no al listado general de Proyectos). Adjuntamos `returnTo`
+  // que el editor lee en su onCancel/onSubmit (ver erp-record-editor onCancel).
+  const returnTo = clienteId ? "/clientes?edit=" + encodeURIComponent(clienteId) : "/clientes";
+  const nuevoHref = link("proyectos") + "?prefill_cliente=" + encodeURIComponent(clienteName || clienteId) + "&returnTo=" + encodeURIComponent(returnTo);
 
   return (
     <section>

@@ -260,9 +260,9 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "actividades", fieldKey: "facturable", label: "Facturable", kind: "status", readOnly: true, inheritFrom: { from: "proyecto", field: "facturable" }, placeholder: "Heredado del proyecto", options: [
     { value: "si", label: "Sí" }, { value: "no", label: "No" },
   ] },
-  { moduleKey: "actividades", fieldKey: "tipoFacturacion", label: "Método facturación", kind: "status", readOnly: true, inheritFrom: { from: "proyecto", field: "tipoFacturacion" }, placeholder: "Heredado del proyecto", options: [
-    { value: "fija", label: "Tarifa fija" }, { value: "contra-bolsa", label: "Contra bolsa de horas" }, { value: "fuera-bolsa", label: "Fuera de bolsa" }, { value: "por-hito", label: "Por hito" }, { value: "no-facturable", label: "No facturable" },
-  ] },
+  // TEST-20 F.2 — Pedro: eliminado "Método facturación" de la Tarea
+  // (también en CORE, donde era heredado de proyecto.tipoFacturacion).
+  // El método de facturación ahora vive en el Cliente.
   { moduleKey: "actividades", fieldKey: "tarifaHora", label: "Tarifa €/h", kind: "text", inheritFrom: { from: "proyecto", field: "tarifaHoraOverride" }, placeholder: "Heredada del proyecto, editable" },
   { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado", kind: "status", readOnly: true, placeholder: "Se actualiza con el proceso de facturación", options: [
     { value: "si", label: "Sí" }, { value: "no", label: "No" },

@@ -74,6 +74,16 @@ export async function GET(request: NextRequest) {
       if (codigo) tipoServicioPorActividad.set(codigo, ts);
     }
 
+    // TEST-20 F.4 — Mapa proyecto → facturable (sí/no) para que el
+    // engine sepa qué tareas suman como facturables sin volver a
+    // recorrer proyectos en el bucle.
+    const facturablePorProyecto = new Map<string, "si" | "no">();
+    for (const p of proyectosRaw) {
+      const refs = [String(p.nombre || ""), String(p.id || "")].filter(Boolean);
+      const facturable = String(p.facturable || "").toLowerCase() === "si" ? "si" : "no";
+      for (const r of refs) facturablePorProyecto.set(r, facturable);
+    }
+
     const actividades: Actividad[] = actividadesRaw.map((a) => ({
       id: String(a.id || ""),
       fecha: String(a.fecha || "").slice(0, 10),
@@ -83,7 +93,8 @@ export async function GET(request: NextRequest) {
       actividad: String(a.actividad || ""),
       tipoServicio: tipoServicioPorActividad.get(String(a.actividad || "")) || "Otros servicios",
       tiempoHoras: parseHoras(a.tiempoHoras || a.horas),
-      tipoFacturacion: (String(a.tipoFacturacion || "no-facturable") as Actividad["tipoFacturacion"]),
+      tipoFacturacion: String(a.tipoFacturacion || ""), // legacy
+      proyectoFacturable: facturablePorProyecto.get(String(a.proyecto || "")) || "",
       estado: String(a.estado || "borrador"),
       descripcion: String(a.descripcion || ""),
       horaDesde: String(a.horaDesde || ""),
@@ -91,25 +102,45 @@ export async function GET(request: NextRequest) {
       lugar: String(a.lugar || ""),
     }));
 
-    // Inferir bolsa de cada cliente: buscamos el proyecto con codigoTipo BOLSA / MANT más reciente
+    // TEST-20 F.4 — La bolsa pasa a vivir en el Cliente (Modo/Bolsa/
+    // Unidad/Margen/Periodo). Mantenemos compat con el legacy: si el
+    // cliente no tiene bolsaCantidad pero sí un proyecto BOLSA/MANT,
+    // tomamos sus horas como bolsa.
     const bolsaPorCliente = new Map<string, BolsaCliente>();
+    for (const c of clientesRaw) {
+      const nombre = String(c.nombre || "");
+      if (!nombre) continue;
+      const horasBolsa = parseHoras(c.bolsaCantidad);
+      const tarifaFallback = 55;
+      bolsaPorCliente.set(nombre, {
+        cliente: nombre,
+        bolsaContratadaHoras: horasBolsa > 0 ? horasBolsa : 0,
+        bolsaConcepto: horasBolsa > 0 ? "Bolsa contratada" : "Sin bolsa",
+        tarifaHora: tarifaFallback,
+        modoFacturacion: String(c.modoFacturacion || "fijo"),
+        unidadFacturacion: String(c.unidadFacturacion || "h"),
+        margenPorcentaje: parseHoras(c.margenPorcentaje),
+        periodoFacturacion: String(c.periodoFacturacion || "mes"),
+      });
+    }
+    // Legacy: relleno desde proyecto BOLSA/MANT si el cliente no tiene
+    // bolsaCantidad informado.
     for (const p of proyectosRaw) {
       const cliente = String(p.cliente || "");
       const codigo = String(p.codigoTipo || "");
       if (!cliente || (codigo !== "BOLSA" && codigo !== "MANT")) continue;
+      const existente = bolsaPorCliente.get(cliente);
+      if (existente && existente.bolsaContratadaHoras > 0) continue;
       const horas = parseHoras(p.bolsaContratadaHoras || p.bolsa || 10);
       const tarifa = parseHoras(p.tarifaHoraOverride || 55);
-      // Nos quedamos con la primera bolsa encontrada por cliente (suficiente MVP)
-      if (!bolsaPorCliente.has(cliente)) {
-        bolsaPorCliente.set(cliente, {
-          cliente,
-          bolsaContratadaHoras: horas > 0 ? horas : 10,
-          bolsaConcepto: codigo === "MANT" ? "Mantenimiento anual" : "Bolsa de horas",
-          tarifaHora: tarifa > 0 ? tarifa : 55,
-          vigenciaInicio: String(p.fechaInicio || ""),
-          vigenciaFin: String(p.fechaCaducidad || ""),
-        });
-      }
+      bolsaPorCliente.set(cliente, {
+        ...(existente || { cliente, bolsaContratadaHoras: 0, bolsaConcepto: "Sin bolsa", tarifaHora: 55 }),
+        bolsaContratadaHoras: horas > 0 ? horas : 10,
+        bolsaConcepto: codigo === "MANT" ? "Mantenimiento anual" : "Bolsa de horas",
+        tarifaHora: tarifa > 0 ? tarifa : 55,
+        vigenciaInicio: String(p.fechaInicio || ""),
+        vigenciaFin: String(p.fechaCaducidad || ""),
+      });
     }
 
     // Para cada cliente con actividades en el periodo o anteriores, calculamos línea

@@ -1,20 +1,33 @@
 /**
  * Engine de pre-facturación estilo SISPYME (H7-S2 / H7-S3).
  *
- * Replica el cálculo del informe "Servicios Facturables" de Velneo
- * Control Diario:
+ * TEST-20 F.4 — Pedro: rediseño completo del método de facturación.
+ * El método ya NO vive en el Proyecto (campo eliminado); vive en el
+ * Cliente como (Modo, Bolsa, Unidad, Margen, Periodo).
  *
- *   Por cada cliente y periodo:
- *     hPeriodo            = Σ tareas del periodo
- *     hFacturable         = Σ tareas con tipoFacturacion in (contra-bolsa, fuera-bolsa)
- *     hContraCuota        = Σ tareas tipoFacturacion=contra-bolsa
- *     hGastadasAnteriores = saldo bolsa antes del periodo
- *     hImputadasCliente   = total imputado al cliente del periodo
- *     hOtrasFacturadas    = ya facturadas en otros periodos
- *     hAFacturar          = max(0, hContraCuota + hGastadasAnteriores - bolsaContratada) + hFueraBolsa
- *     importe             = hAFacturar × tarifa
+ *   Cliente.modoFacturacion = "fijo"     → cuota fija periódica; las
+ *                                          tareas consumen contra esa
+ *                                          bolsa; el sobreconsumo se
+ *                                          factura fuera.
+ *   Cliente.modoFacturacion = "variable" → cada hora/€ consumido se
+ *                                          factura directamente. La
+ *                                          bolsa, si existe, descuenta
+ *                                          un anticipo.
  *
- * Estado prefactura: Pendiente | Prefacturada | Facturada
+ *   Tarea facturable ⇔ Proyecto.facturable === "si"
+ *   (Compatibilidad con datos legacy: si la tarea trae el viejo
+ *   tipoFacturacion="no-facturable" lo respetamos como "no facturable",
+ *   y si trae "contra-bolsa"/"fuera-bolsa" lo respetamos como facturable
+ *   aunque el proyecto no esté marcado.)
+ *
+ * Por cada cliente y periodo:
+ *     hPeriodo            = Σ horas de tareas del periodo
+ *     hFacturable         = Σ horas de tareas facturables del periodo
+ *     hContraCuota        = min(bolsaContratada − gastadasAnteriores, hFacturable)
+ *     hFueraBolsa         = hFacturable − hContraCuota
+ *     hAFacturar (variable) = hFacturable
+ *     hAFacturar (fijo)     = hFueraBolsa
+ *     importe                = hAFacturar × tarifa × (1 + margen%)
  */
 
 export type Actividad = {
@@ -26,7 +39,10 @@ export type Actividad = {
   actividad?: string;
   tipoServicio?: string;
   tiempoHoras: number;
-  tipoFacturacion: "contra-bolsa" | "fuera-bolsa" | "no-facturable";
+  // Legacy — solo se usa si el proyecto no informa facturable y la tarea
+  // viene de datos antiguos. Nueva fuente canónica: proyecto.facturable.
+  tipoFacturacion?: "contra-bolsa" | "fuera-bolsa" | "no-facturable" | string;
+  proyectoFacturable?: "si" | "no" | string; // resuelto por el caller
   estado: string;
   descripcion?: string;
   horaDesde?: string;
@@ -39,6 +55,11 @@ export type BolsaCliente = {
   bolsaContratadaHoras: number;
   bolsaConcepto: string; // "Mant. Nivel 1", "Soporte 30h/año"...
   tarifaHora: number;
+  // TEST-20 F.4 — Nuevos campos heredados del schema clientes.
+  modoFacturacion?: "fijo" | "variable" | string;
+  unidadFacturacion?: "h" | "eur" | string;
+  margenPorcentaje?: number;
+  periodoFacturacion?: "mes" | "trimestre" | "anio" | "discreto" | string;
   vigenciaInicio?: string;
   vigenciaFin?: string;
 };
@@ -47,6 +68,10 @@ export type LineaPrefactura = {
   cliente: string;
   bolsaConcepto: string;
   bolsaContratada: number;
+  modoFacturacion: string;
+  unidadFacturacion: string;
+  margenPorcentaje: number;
+  periodoFacturacion: string;
   hPeriodo: number;
   hFacturable: number;
   hContraCuota: number;
@@ -78,6 +103,21 @@ function parseHoras(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+// TEST-20 F.4 — Una tarea es FACTURABLE si el proyecto lo dice. Para
+// datos legacy (sin proyectoFacturable resuelto), caemos en el viejo
+// tipoFacturacion.
+function tareaEsFacturable(a: Actividad): boolean {
+  const fproy = String(a.proyectoFacturable || "").toLowerCase();
+  if (fproy === "si") return true;
+  if (fproy === "no") return false;
+  // legacy fallback
+  const tf = String(a.tipoFacturacion || "").toLowerCase();
+  if (tf === "no-facturable") return false;
+  if (tf === "contra-bolsa" || tf === "fuera-bolsa") return true;
+  // Sin info: por defecto facturable (la mayoría de tareas SF lo son).
+  return true;
+}
+
 /**
  * Calcula la línea de pre-facturación de un cliente para un periodo.
  *
@@ -91,49 +131,61 @@ export function calcularPrefactura(
   actividadesAnteriores: Actividad[] = [],
 ): LineaPrefactura {
   let hPeriodo = 0;
-  let hContraCuota = 0;
-  let hFueraBolsa = 0;
+  let hFacturable = 0;
   let hNoFacturable = 0;
 
   for (const a of actividades) {
     const h = parseHoras(a.tiempoHoras);
     hPeriodo += h;
-    if (a.tipoFacturacion === "contra-bolsa") hContraCuota += h;
-    else if (a.tipoFacturacion === "fuera-bolsa") hFueraBolsa += h;
+    if (tareaEsFacturable(a)) hFacturable += h;
     else hNoFacturable += h;
   }
 
-  const hFacturable = hContraCuota + hFueraBolsa;
-
-  // Saldo previo: horas contra-bolsa de periodos anteriores
+  // Saldo previo de bolsa: horas facturables de periodos anteriores
+  // (gastadas ya contra la bolsa contratada).
   let hGastadasAnteriores = 0;
   let hOtrasFacturadas = 0;
   for (const a of actividadesAnteriores) {
     const h = parseHoras(a.tiempoHoras);
-    if (a.tipoFacturacion === "contra-bolsa") hGastadasAnteriores += h;
+    if (tareaEsFacturable(a)) hGastadasAnteriores += h;
     if (a.estado === "facturada") hOtrasFacturadas += h;
   }
 
-  // Saldo de bolsa = contratadas − ya gastadas anteriormente − contra-cuota del periodo
-  const saldoAntes = bolsa.bolsaContratadaHoras - hGastadasAnteriores;
-  const sobreconsumoCuota = Math.max(0, hContraCuota - saldoAntes);
-  const saldoFinal = Math.max(0, saldoAntes - hContraCuota);
+  // Bolsa restante antes de aplicar el periodo.
+  const saldoAntes = Math.max(0, bolsa.bolsaContratadaHoras - hGastadasAnteriores);
 
-  // hAFacturar = sobreconsumo de bolsa + horas fuera-bolsa
-  const hAFacturar = sobreconsumoCuota + hFueraBolsa;
-  const importe = hAFacturar * bolsa.tarifaHora;
+  // Horas del periodo que caben en la bolsa restante vs las que se
+  // facturan fuera.
+  const hContraCuota = Math.min(saldoAntes, hFacturable);
+  const hFueraBolsa = Math.max(0, hFacturable - hContraCuota);
+  const saldoFinal = Math.max(0, saldoAntes - hFacturable);
+
+  // TEST-20 F.4 — Cálculo del importe según Modo:
+  //   - fijo:     se factura solo lo que excede la bolsa (la cuota
+  //               periódica ya cobra "lo que cabe dentro").
+  //   - variable: se factura todo lo facturable, independientemente
+  //               de la bolsa (la bolsa es un anticipo separado).
+  const modo = String(bolsa.modoFacturacion || "fijo").toLowerCase();
+  const hAFacturar = modo === "variable" ? hFacturable : hFueraBolsa;
+  const margen = Number(bolsa.margenPorcentaje || 0);
+  const factor = 1 + (Number.isFinite(margen) ? margen : 0) / 100;
+  const importe = hAFacturar * bolsa.tarifaHora * factor;
 
   return {
     cliente: bolsa.cliente,
     bolsaConcepto: bolsa.bolsaConcepto,
     bolsaContratada: bolsa.bolsaContratadaHoras,
+    modoFacturacion: modo,
+    unidadFacturacion: String(bolsa.unidadFacturacion || "h"),
+    margenPorcentaje: Number.isFinite(margen) ? margen : 0,
+    periodoFacturacion: String(bolsa.periodoFacturacion || "mes"),
     hPeriodo,
     hFacturable,
     hContraCuota,
     hFueraBolsa,
     hNoFacturable,
     hGastadasAnteriores,
-    hImputadasCliente: hContraCuota + hFueraBolsa + hNoFacturable,
+    hImputadasCliente: hFacturable + hNoFacturable,
     hOtrasFacturadas,
     saldo: saldoFinal,
     hAFacturar,
