@@ -770,9 +770,9 @@ export default function ErpRecordEditor({
               ✨ Convertir en proyecto
             </a>
           ) : null}
-          <button type="button" onClick={() => { clearDraft(); onCancel(); }} disabled={busy} style={btnSecondary}>Cancelar</button>
+          <button type="button" onClick={() => { clearDraft(); onCancel(); }} disabled={busy} className="boton boton-secundario" style={btnSecondary}>Cancelar</button>
           {mode === "create" ? (
-            <button type="button" onClick={() => doSubmit(true)} disabled={busy} style={btnSecondaryAccent(accent)}>
+            <button type="button" onClick={() => doSubmit(true)} disabled={busy} className="boton boton-secundario" style={btnSecondaryAccent(accent)}>
               Guardar y nuevo
             </button>
           ) : null}
@@ -780,6 +780,7 @@ export default function ErpRecordEditor({
             type="button"
             onClick={() => doSubmit(false)}
             disabled={busy || fields.length === 0}
+            className="boton boton-primario"
             style={{ ...btnPrimary(accent), opacity: fields.length === 0 ? 0.5 : 1, cursor: fields.length === 0 ? "not-allowed" : "pointer" }}
             title={fields.length === 0 ? "No hay campos configurados en este módulo" : undefined}
           >
@@ -944,7 +945,10 @@ function FieldGrid({ fields, values, setField, optionsMap, accent }: {
       {visibleFields.map((f) => {
         const isWide = f.kind === "textarea";
         return (
-          <div key={f.key} style={{ gridColumn: isWide ? "1 / -1" : undefined }}>
+          // Hoja Pedro: cada campo es un `.grupo-formulario` con su
+          // label arriba (`label { display:block; ... }` del global)
+          // y su input estilizado por defecto (input[type=text], etc.).
+          <div key={f.key} className="grupo-formulario" style={{ gridColumn: isWide ? "1 / -1" : undefined, marginBottom: 0 }}>
             <FieldInput field={f} value={values[f.key] || ""} onChange={(v) => setField(f.key, v)} options={optionsMap[f.key]} accent={accent} />
           </div>
         );

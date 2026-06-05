@@ -65,14 +65,16 @@ export default function DangerConfirm({
   }
 
   return (
+    // Hoja Pedro — `.modal.visible` aplica overlay + centrado flex;
+    // `.modal-contenido` da la caja blanca con shadow. Mantengo el
+    // overlay/box absolutos como inline para no romper z-index ni
+    // transform pero añado las clases para coherencia visual.
     <>
-      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.65)", zIndex: 150 }} />
-      <div style={{
+      <div onClick={onClose} className="modal visible" style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.65)", zIndex: 150 }} />
+      <div className="modal-contenido" style={{
         position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
-        background: "var(--bg-card, #ffffff)", borderRadius: 12, padding: 28,
-        width: "min(480px, 92%)", zIndex: 151,
+        padding: 28, width: "min(480px, 92%)", zIndex: 151,
         boxShadow: "0 30px 80px rgba(0,0,0,0.3)",
-        fontFamily: "system-ui, -apple-system, sans-serif",
       }}>
         <div style={{ fontSize: 32, marginBottom: 12 }}>⚠️</div>
         <h2 style={{ margin: "0 0 8px 0", fontSize: 20, fontWeight: 800, color: "#dc2626" }}>{title}</h2>
@@ -102,14 +104,15 @@ export default function DangerConfirm({
             />
           </>
         ) : null}
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button type="button" onClick={onClose} style={{ padding: "10px 16px", border: "1px solid var(--border, #d1d5db)", background: "transparent", color: "var(--fg, #0f172a)", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
+        <div className="modal-botones" style={{ marginTop: 0 }}>
+          <button type="button" onClick={onClose} className="boton boton-secundario" style={{ padding: "10px 16px", border: "1px solid var(--border, #d1d5db)", background: "transparent", color: "var(--fg, #0f172a)", borderRadius: 6, fontSize: 14, fontWeight: 600, cursor: "pointer" }}>
             Cancelar
           </button>
           <button
             type="button"
             onClick={handleConfirm}
             disabled={!enabled || busy}
+            className="boton boton-error"
             style={{
               padding: "10px 16px",
               border: "none",

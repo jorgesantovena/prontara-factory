@@ -1402,12 +1402,13 @@ export default function GenericModuleRuntimePage({
             abajo, lo que recupera ~140px verticales de espacio para la
             propia tabla, que es lo que el usuario viene a ver. */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
-          <h1 style={{ margin: 0, fontSize: 24, fontWeight: 800, letterSpacing: -0.3 }}>{ui.label}</h1>
+          <h1 className="titulo-pagina" style={{ margin: 0, fontSize: 24 }}>{ui.label}</h1>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {extraActions}
             <button
               type="button"
               onClick={() => { setSelected(null); setModalMode("create"); }}
+              className="boton boton-primario"
               style={primaryBtn(accent)}
             >
               <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Alta de {singular(ui.label).toLowerCase()}
@@ -1415,7 +1416,7 @@ export default function GenericModuleRuntimePage({
             <ImportWrapper><ModuleImportButton modulo={moduleKey} /></ImportWrapper>
             <ExportWrapper><ModuleExportButton modulo={moduleKey} /></ExportWrapper>
             <div style={{ position: "relative" }}>
-              <button type="button" onClick={() => setShowMore(!showMore)} style={secondaryBtn}>
+              <button type="button" onClick={() => setShowMore(!showMore)} className="boton boton-secundario" style={secondaryBtn}>
                 Más acciones <span style={{ fontSize: 9, marginLeft: 4 }}>▾</span>
               </button>
               {showMore ? (
@@ -1842,7 +1843,7 @@ export default function GenericModuleRuntimePage({
             </div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <table className="tabla" style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: "#f8fafc", borderBottom: "1px solid #e5e7eb" }}>
                     <th style={{ ...thStyle, width: 36 }}>

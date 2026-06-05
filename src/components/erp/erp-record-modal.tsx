@@ -260,6 +260,7 @@ export default function ErpRecordModal({
       <button
         type="button"
         onClick={onClose}
+        className="boton boton-secundario"
         style={{
           border: "1px solid #d1d5db",
           borderRadius: 8,
@@ -277,6 +278,7 @@ export default function ErpRecordModal({
         type="submit"
         form="erp-record-form"
         disabled={busy}
+        className="boton boton-primario"
         style={{
           border: "none",
           borderRadius: 8,

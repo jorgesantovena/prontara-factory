@@ -161,21 +161,21 @@ export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string 
   const recentActivity = snap?.recentActivity || [];
 
   return (
-    <div style={{ fontFamily: "system-ui, -apple-system, sans-serif", color: "#0f172a" }}>
+    <div className="area-contenido" style={{ color: "#0f172a", padding: 0 }}>
       {/* Breadcrumb mini "Inicio" */}
-      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 4 }}>Inicio</div>
+      <div className="subtitulo" style={{ marginBottom: 4 }}>Inicio</div>
 
       {/* Header saludo */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16, marginBottom: 24 }}>
         <div>
-          <h1 style={{ margin: "0 0 6px 0", fontSize: 28, fontWeight: 800, letterSpacing: -0.4, color: "#0f172a" }}>
+          <h1 className="titulo-pagina" style={{ margin: "0 0 6px 0" }}>
             {saludoPorHora(today)}, {firstName || "tú"} <span style={{ display: "inline-block", transform: "rotate(-15deg)" }}>👋</span>
           </h1>
-          <div style={{ fontSize: 14, color: "#64748b" }}>
+          <div className="subtitulo" style={{ marginBottom: 0 }}>
             Esto es lo más importante de hoy.
           </div>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#64748b", fontSize: 13, paddingTop: 4, textTransform: "none" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#6b7280", fontSize: 13, paddingTop: 4 }}>
           <span>📅</span>
           <span>{fmtFecha(today)}</span>
         </div>
@@ -329,15 +329,15 @@ export default function HomeDashboard({ accent = "#1d4ed8" }: { accent?: string 
 
 // === Subcomponentes ===
 
-function Card({ title, children, linkLabel, linkHref, accent = "#1d4ed8" }: { title: string; children: React.ReactNode; linkLabel?: string; linkHref?: string; accent?: string }) {
+function Card({ title, children, linkLabel, linkHref, accent = "var(--color-primario)" }: { title: string; children: React.ReactNode; linkLabel?: string; linkHref?: string; accent?: string }) {
   const { link } = useCurrentVertical();
   const finalLinkHref = linkHref && linkHref.startsWith("/") && !linkHref.startsWith("/api/")
     ? link(linkHref.replace(/^\/+/, ""))
     : linkHref;
   return (
-    <section style={{ background: "#ffffff", border: "1px solid #e5e7eb", borderRadius: 14, padding: 18 }}>
+    <section className="tarjeta" style={{ marginBottom: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "#0f172a" }}>{title}</h3>
+        <h3 className="tarjeta-titulo" style={{ margin: 0, fontSize: 14 }}>{title}</h3>
         {linkLabel && finalLinkHref ? (
           <Link href={finalLinkHref} style={{ color: accent, fontSize: 12, fontWeight: 600, textDecoration: "none" }}>{linkLabel}</Link>
         ) : null}
@@ -350,15 +350,15 @@ function Card({ title, children, linkLabel, linkHref, accent = "#1d4ed8" }: { ti
 function KpiCard({ kpi, index, accent }: { kpi: Kpi; index: number; accent: string }) {
   const tint = KPI_TINTS[index % KPI_TINTS.length];
   const icon = KPI_ICONS[index % KPI_ICONS.length];
+  const toneClass = kpi.tone === "good" ? "positivo" : kpi.tone === "bad" ? "negativo" : "";
+  // Hoja Pedro: clase `.widget` para el contenedor (border + shadow Pedro),
+  // `.widget-etiqueta` para el label, `.widget-valor` para el número y
+  // `.widget-cambio.positivo|.negativo` para el helper coloreado.
   const inner = (
-    <div style={{
+    <div className="widget" style={{
       display: "flex",
       gap: 14,
       alignItems: "flex-start",
-      padding: 18,
-      background: "#ffffff",
-      border: "1px solid #e5e7eb",
-      borderRadius: 14,
       height: "100%",
     }}>
       <div style={{
@@ -368,9 +368,9 @@ function KpiCard({ kpi, index, accent }: { kpi: Kpi; index: number; accent: stri
         fontSize: 18, flexShrink: 0,
       }}>{icon}</div>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 4 }}>{kpi.label}</div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.1, marginBottom: 4 }}>{kpi.value}</div>
-        <div style={{ fontSize: 11, color: kpi.tone === "bad" ? "#dc2626" : kpi.tone === "warn" ? "#a16207" : kpi.tone === "good" ? "#15803d" : "#64748b" }}>
+        <div className="widget-etiqueta" style={{ marginBottom: 4 }}>{kpi.label}</div>
+        <div className="widget-valor" style={{ margin: 0, fontSize: 22, lineHeight: 1.1, marginBottom: 4 }}>{kpi.value}</div>
+        <div className={"widget-cambio " + toneClass} style={{ marginTop: 0 }}>
           {kpi.helper}
         </div>
       </div>
