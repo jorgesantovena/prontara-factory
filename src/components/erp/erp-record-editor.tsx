@@ -499,6 +499,34 @@ export default function ErpRecordEditor({
       }
     }
 
+    // Test 18 bis 3 — Herencia transitiva tarea → cliente → kilometrosBase
+    // para Desplazamientos y Gastos. La tarea (actividades) lleva `cliente`,
+    // y el cliente lleva `kilometrosBase`. Como el módulo Desplazamiento
+    // NO declara field `cliente` (Pedro lo eliminó), el bloque genérico
+    // anterior no resuelve el km. Aquí hacemos el segundo salto a mano:
+    // al elegir `tarea`, leer la tarea, obtener su cliente, leer el
+    // cliente, aplicar km del cliente.
+    if (key === "tarea" && value && (moduleKey === "desplazamientos" || moduleKey === "gastos")) {
+      const fieldsFromCliente = fields.filter((f) => f.inheritFrom?.from === "cliente");
+      if (fieldsFromCliente.length > 0) {
+        (async () => {
+          const tareaRec = await loadRelatedRecord("actividades", value);
+          const clienteRef = String(tareaRec?.cliente || "");
+          if (!clienteRef) return;
+          const clienteRec = await loadRelatedRecord("clientes", clienteRef);
+          if (!clienteRec) return;
+          setValues((v) => {
+            const next: Record<string, string> = { ...v };
+            for (const f of fieldsFromCliente) {
+              const incoming = String(clienteRec[f.inheritFrom!.field] || "");
+              if (incoming !== "") next[f.key] = incoming;
+            }
+            return next;
+          });
+        })();
+      }
+    }
+
     // TEST-15 D — Lookup de Tarifa €/h del Proyecto en función del
     // Cliente y del Servicio (codigoTipo). Reglas:
     //   - cliente.tipoTarifa = "normal" → tarifas-generales por
@@ -1905,12 +1933,15 @@ function VencimientosSublist({ facturaNumero, accent }: { facturaNumero: string;
       const data = await r.json();
       const all = (r.ok && data.ok && Array.isArray(data.rows)) ? data.rows as Array<Record<string, string>> : [];
       const propios = all.filter((row) => String(row.factura || "") === facturaNumero);
-      // Orden ascendente por nVencimiento o por fecha.
+      // Test 18 bis 3 — Pedro: ordenar por FECHA de vencimiento
+      // ascendente (antes por nVencimiento). A igual fecha, por número.
       propios.sort((a, b) => {
+        const fa = String(a.fecha || "").slice(0, 10);
+        const fb = String(b.fecha || "").slice(0, 10);
+        if (fa !== fb) return fa < fb ? -1 : 1;
         const na = parseInt(String(a.nVencimiento || "0"), 10) || 0;
         const nb = parseInt(String(b.nVencimiento || "0"), 10) || 0;
-        if (na !== nb) return na - nb;
-        return String(a.fecha || "").localeCompare(String(b.fecha || ""));
+        return na - nb;
       });
       setRows(propios);
     } catch (e) {

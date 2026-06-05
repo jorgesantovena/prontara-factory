@@ -210,6 +210,12 @@ export default function GenericModuleRuntimePage({
   // redirect a /acceso por el middleware.
   const { link } = useCurrentVertical();
   const [rows, setRows] = useState<Array<Record<string, string>>>([]);
+  // Test 18 bis 3 — Cache de labels por (moduleKey relacionado → id → label).
+  // Se usa en el listado para resolver el value crudo de una columna
+  // tipo `relation` (id) al label legible (concepto, nombre, etc.).
+  // Antes la lista mostraba "Tarea vinculada: 9f2a-…" en Gastos y
+  // Desplazamientos porque no había mapping.
+  const [columnRelationLabels, setColumnRelationLabels] = useState<Record<string, Record<string, string>>>({});
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
@@ -357,6 +363,41 @@ export default function GenericModuleRuntimePage({
     setPage(1);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moduleKey]);
+
+  // Test 18 bis 3 — Cargar las options de cada columna de tipo `relation`
+  // para poder resolver el value crudo (id) al label legible (concepto,
+  // nombre, etc.) en `labelForValue`. Se ejecuta cuando llegan los fields
+  // del módulo. Las options se almacenan por moduleKey relacionado para
+  // que columnas distintas con la misma relación compartan cache.
+  useEffect(() => {
+    if (!ui.fields.length) return;
+    const relModules = Array.from(new Set(
+      ui.fields
+        .filter((f) => f.kind === "relation" && f.relationModuleKey)
+        .map((f) => f.relationModuleKey as string)
+    ));
+    if (relModules.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      for (const mk of relModules) {
+        if (columnRelationLabels[mk]) continue; // ya cargado
+        try {
+          const tenant = readTenant();
+          const url = "/api/erp/options?module=" + encodeURIComponent(mk) + (tenant ? "&tenant=" + encodeURIComponent(tenant) : "");
+          const r = await fetch(url, { cache: "no-store" });
+          const d = await r.json();
+          if (cancelled || !r.ok || !d.ok || !Array.isArray(d.options)) continue;
+          const map: Record<string, string> = {};
+          for (const o of d.options as Array<{ value: string; label: string }>) {
+            map[String(o.value)] = String(o.label || o.value);
+          }
+          setColumnRelationLabels((prev) => ({ ...prev, [mk]: map }));
+        } catch { /* tolerar */ }
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ui.fields]);
 
   // TEST-13 D — Restaurar el foco del editor al volver a la solapa.
   // Cuando el usuario abandona la solapa con el formulario abierto y
@@ -777,6 +818,15 @@ export default function GenericModuleRuntimePage({
     if (moduleKey === "formas-pago") {
       return [...filtered].sort((a, b) => ABC(lower(a.nombre), lower(b.nombre)));
     }
+    if (moduleKey === "vencimientos-factura") {
+      // Test 18 bis 3 — Lista de Vencimientos ordenada por fecha asc.
+      return [...filtered].sort((a, b) => {
+        const fa = String(a.fecha || "").slice(0, 10);
+        const fb = String(b.fecha || "").slice(0, 10);
+        if (fa !== fb) return fa < fb ? -1 : 1;
+        return ABC(String(a.factura || ""), String(b.factura || ""));
+      });
+    }
     // Default: si el módulo tiene fechaLimite, fecha ASC + prioridad.
     const hasFechaLimite = ui.fields.some((f) => f.key === "fechaLimite");
     if (!hasFechaLimite) return filtered;
@@ -993,13 +1043,23 @@ export default function GenericModuleRuntimePage({
     }
     return out;
   }
-  // TEST-10.5 — Devuelve la etiqueta visible de un valor de campo con opciones
-  // (p.ej. prioridad "1" → "Urgente"). Si no hay opción, muestra el valor.
+  // TEST-10.5 / Test 18 bis 3 — Devuelve la etiqueta visible de un
+  // valor de campo. Primero busca en `f.options` (campos status); si
+  // no, busca en `columnRelationLabels` (mapping cargado desde
+  // /api/erp/options para fields de tipo relation, útil en columnas
+  // como `tarea`, `formaPago`, `tipoCliente`).
   function labelForValue(fieldKey: string, rawVal: string): string {
+    if (rawVal === "—" || rawVal === "") return rawVal;
     const f = ui.fields.find((x) => x.key === fieldKey);
-    if (!f?.options || rawVal === "—") return rawVal;
-    const hit = f.options.find((o) => String(o.value) === rawVal);
-    return hit ? String(hit.label || hit.value) : rawVal;
+    if (f?.options) {
+      const hit = f.options.find((o) => String(o.value) === rawVal);
+      if (hit) return String(hit.label || hit.value);
+    }
+    if (f?.kind === "relation" && f.relationModuleKey) {
+      const map = columnRelationLabels[f.relationModuleKey];
+      if (map && map[rawVal]) return map[rawVal];
+    }
+    return rawVal;
   }
 
   function openDetail(item: Record<string, string>) {
