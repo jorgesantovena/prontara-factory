@@ -1,101 +1,452 @@
-/* CSS vars de Prontara. Tailwind retirado el 28/04/2026 — el proyecto usa
-   estilos inline en cada componente, las utility classes no se usaban más
-   que en layout.tsx (migrado a inline). */
+/* ===========================================================================
+ * HOJA DE ESTILO de Pedro (5/06/26) — PARTE B (Claude Haiku 4.5).
+ *
+ * La hoja anterior se ha preservado en `globals.legacy-backup.css` por si
+ * hay que volver a activarla. Para revertir: renombrar este fichero a
+ * `globals.parte-b.css` y volver a poner `globals.legacy-backup.css` como
+ * `globals.css`.
+ *
+ * IMPORTANTE — Alcance real de los cambios:
+ * Las clases de esta hoja (.contenedor-principal, .barra-lateral, .tarjeta,
+ * .boton-primario, .widget…) NO están aplicadas en el ERP actual: los
+ * componentes (sidebar, listado, editor, dashboard, etc.) usan estilos
+ * INLINE (`style={{ ... }}`) por decisión de arquitectura (tras retirar
+ * Tailwind el 28/04/2026). Por tanto, mientras nadie use estas clases en
+ * el JSX, los selectores por clase NO tendrán efecto visible.
+ *
+ * Sí surtirán efecto inmediato los selectores globales:
+ *   - `:root { --color-* }`         → variables disponibles para inline.
+ *   - `*`                            → reset margin/padding/box-sizing.
+ *   - `body`                         → fuente, fondo, color base.
+ *   - `input/select/textarea/label`  → estilos por defecto de formularios.
+ *
+ * Esto puede ALTERAR espaciados existentes en pantallas que confían en
+ * los márgenes por defecto del navegador. Si algo se descuadra, basta con
+ * añadir `style` inline o restaurar el legacy.
+ * ===========================================================================
+ */
 
+/* ==================== VARIABLES Y BASE ==================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  /* H5-UX-01: variables semánticas usables por componentes */
-  --bg: #ffffff;
-  --bg-secondary: #f8fafc;
-  --bg-card: #ffffff;
-  --fg: #0f172a;
-  --fg-muted: #475569;
-  --border: #e5e7eb;
-  --accent: #1d4ed8;
-}
-
-[data-theme="dark"] {
-  --background: #0f172a;
-  --foreground: #f1f5f9;
-  --bg: #0f172a;
-  --bg-secondary: #1e293b;
-  --bg-card: #1e293b;
-  --fg: #f1f5f9;
-  --fg-muted: #94a3b8;
-  --border: #334155;
-  --accent: #60a5fa;
-  color-scheme: dark;
+  --color-primario: #2563eb;
+  --color-secundario: #1e40af;
+  --color-exito: #10b981;
+  --color-advertencia: #f59e0b;
+  --color-error: #ef4444;
+  --color-fondo: #f9fafb;
+  --color-texto: #1f2937;
+  --color-borde: #e5e7eb;
+  --fuente-principal: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 * {
+  margin: 0;
+  padding: 0;
   box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  margin: 0;
-  padding: 0;
+  font-family: var(--fuente-principal);
+  background-color: var(--color-fondo);
+  color: var(--color-texto);
+  line-height: 1.6;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+/* ==================== LAYOUT PRINCIPAL ==================== */
+.contenedor-principal {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
 }
 
-/* ===========================================================================
- * Mobile responsive overrides para páginas públicas y de acceso.
- * Las páginas usan inline styles con maxWidth y grids fijos. Estos overrides
- * los suavizan en pantallas estrechas sin reescribir cada archivo de página.
- * =========================================================================== */
+.barra-lateral {
+  width: 250px;
+  background-color: var(--color-secundario);
+  color: white;
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+}
 
-@media (max-width: 720px) {
-  main h1 {
-    font-size: 28px !important;
-    line-height: 1.2 !important;
-  }
-  main h2 {
-    font-size: 20px !important;
-  }
-  main h3 {
-    font-size: 17px !important;
+.contenido-principal {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ==================== BARRA SUPERIOR ==================== */
+.barra-superior {
+  background-color: white;
+  padding: 15px 30px;
+  border-bottom: 1px solid var(--color-borde);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.logo-empresa {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--color-primario);
+}
+
+.datos-usuario {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* ==================== MENÚ LATERAL ==================== */
+.menu-item {
+  padding: 12px 15px;
+  margin: 5px 0;
+  cursor: pointer;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.menu-item.activo {
+  background-color: var(--color-primario);
+  color: white;
+  font-weight: bold;
+}
+
+.submenu {
+  display: none;
+  padding-left: 20px;
+  margin-top: 5px;
+}
+
+.submenu.visible {
+  display: block;
+}
+
+/* ==================== ÁREA DE CONTENIDO ==================== */
+.area-contenido {
+  flex: 1;
+  padding: 30px;
+  overflow-y: auto;
+}
+
+.titulo-pagina {
+  font-size: 28px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--color-texto);
+}
+
+.subtitulo {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 25px;
+}
+
+/* ==================== TARJETAS ==================== */
+.tarjeta {
+  background-color: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--color-borde);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  transition: box-shadow 0.3s ease;
+}
+
+.tarjeta:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.tarjeta-titulo {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: var(--color-texto);
+}
+
+/* ==================== TABLAS ==================== */
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+.tabla thead {
+  background-color: var(--color-fondo);
+  border-bottom: 2px solid var(--color-borde);
+}
+
+.tabla th {
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--color-texto);
+}
+
+.tabla td {
+  padding: 12px;
+  border-bottom: 1px solid var(--color-borde);
+}
+
+.tabla tbody tr:hover {
+  background-color: #f3f4f6;
+}
+
+.tabla tbody tr:nth-child(even) {
+  background-color: #fafbfc;
+}
+
+/* ==================== FORMULARIOS ==================== */
+.grupo-formulario {
+  margin-bottom: 20px;
+}
+
+label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--color-texto);
+}
+
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="date"],
+select,
+textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--color-borde);
+  border-radius: 5px;
+  font-family: var(--fuente-principal);
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--color-primario);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+input:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+/* ==================== BOTONES ==================== */
+.boton {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.boton-primario {
+  background-color: var(--color-primario);
+  color: white;
+}
+
+.boton-primario:hover {
+  background-color: var(--color-secundario);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.boton-secundario {
+  background-color: white;
+  color: var(--color-primario);
+  border: 2px solid var(--color-primario);
+}
+
+.boton-exito {
+  background-color: var(--color-exito);
+  color: white;
+}
+
+.boton-error {
+  background-color: var(--color-error);
+  color: white;
+}
+
+.boton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ==================== ALERTAS ==================== */
+.alerta {
+  padding: 15px 20px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  border-left: 4px solid;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.alerta-exito {
+  background-color: #d1fae5;
+  border-color: var(--color-exito);
+  color: #065f46;
+}
+
+.alerta-error {
+  background-color: #fee2e2;
+  border-color: var(--color-error);
+  color: #7f1d1d;
+}
+
+.alerta-advertencia {
+  background-color: #fef3c7;
+  border-color: var(--color-advertencia);
+  color: #78350f;
+}
+
+.alerta-info {
+  background-color: #dbeafe;
+  border-color: var(--color-primario);
+  color: #0c2340;
+}
+
+/* ==================== GRID ==================== */
+.grid {
+  display: grid;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+/* ==================== WIDGETS ==================== */
+.widget {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  border: 1px solid var(--color-borde);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.widget-valor {
+  font-size: 32px;
+  font-weight: bold;
+  color: var(--color-primario);
+  margin: 10px 0;
+}
+
+.widget-etiqueta {
+  font-size: 14px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.widget-cambio {
+  font-size: 12px;
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+.widget-cambio.positivo {
+  color: var(--color-exito);
+}
+
+.widget-cambio.negativo {
+  color: var(--color-error);
+}
+
+/* ==================== MODALES ==================== */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.visible {
+  display: flex;
+}
+
+.modal-contenido {
+  background-color: white;
+  border-radius: 8px;
+  padding: 30px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.modal-titulo {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+}
+
+.modal-botones {
+  display: flex;
+  gap: 10px;
+  margin-top: 25px;
+  justify-content: flex-end;
+}
+
+/* ==================== RESPONSIVE ==================== */
+@media (max-width: 768px) {
+  .contenedor-principal {
+    flex-direction: column;
   }
 
-  /* Reducir padding lateral en móviles para aprovechar pantalla. */
-  main > section,
-  main > article {
-    padding-left: 16px !important;
-    padding-right: 16px !important;
+  .barra-lateral {
+    width: 100%;
+    height: auto;
+    display: none;
   }
 
-  /* Tablas con muchas columnas: permitir scroll horizontal interno. */
-  table {
+  .barra-lateral.visible {
     display: block;
-    overflow-x: auto;
-    white-space: nowrap;
   }
 
-  /* Auth/forms: padding interno reducido. */
-  .auth-card {
-    padding: 18px !important;
-  }
-}
-
-@media (max-width: 520px) {
-  main h1 {
-    font-size: 24px !important;
+  .grid-2,
+  .grid-3,
+  .grid-4 {
+    grid-template-columns: 1fr;
   }
 
-  main > section:first-of-type {
-    padding-top: 32px !important;
-    padding-bottom: 24px !important;
+  .area-contenido {
+    padding: 15px;
   }
-}
 
-/* Asegura que ningún elemento desborde lateralmente. */
-html, body {
-  overflow-x: hidden;
-  max-width: 100vw;
+  .titulo-pagina {
+    font-size: 20px;
+  }
 }
