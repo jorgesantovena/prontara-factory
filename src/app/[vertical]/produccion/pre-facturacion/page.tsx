@@ -30,7 +30,15 @@ type Linea = {
   estado: "pendiente" | "prefacturada" | "facturada";
 };
 
+type TipoPeriodo = "mensual" | "trimestral" | "anual" | "discreto";
+
 export default function PreFacturacionPage() {
+  // TEST-20 G — Pedro: "En Periodo dividir en dos campos: Período (Mensual,
+  // Trimestral, Anual, Discreto) y Fecha (mm de aaaa)". El selector controla
+  // la ventana temporal y el input de fecha fija la referencia (mm/aaaa).
+  // En modo "discreto" la fecha se deshabilita porque el rango lo elige el
+  // usuario manualmente más adelante (futuro selector de rango).
+  const [tipoPeriodo, setTipoPeriodo] = useState<TipoPeriodo>("mensual");
   const [periodo, setPeriodo] = useState(new Date().toISOString().slice(0, 7));
   const [estadoFiltro, setEstadoFiltro] = useState<"pendiente" | "prefacturada" | "todos">("todos");
   const [lineas, setLineas] = useState<Linea[]>([]);
@@ -42,7 +50,10 @@ export default function PreFacturacionPage() {
     setLoading(true);
     setError("");
     try {
-      const r = await fetch("/api/erp/prefacturacion?periodo=" + encodeURIComponent(periodo), { cache: "no-store" });
+      const params = new URLSearchParams();
+      params.set("periodo", periodo);
+      params.set("tipoPeriodo", tipoPeriodo);
+      const r = await fetch("/api/erp/prefacturacion?" + params.toString(), { cache: "no-store" });
       const data = await r.json();
       if (r.ok && data.ok) {
         setLineas((data.lineas || []) as Linea[]);
@@ -56,7 +67,7 @@ export default function PreFacturacionPage() {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); }, [periodo]);
+  useEffect(() => { load(); }, [periodo, tipoPeriodo]);
 
   // TEST-17 bis B — Ordenar por alfabético de cliente.
   const visibles = lineas
@@ -79,8 +90,26 @@ export default function PreFacturacionPage() {
       </p>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
-        <label style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Periodo:</label>
-        <input type="month" value={periodo} onChange={(e) => setPeriodo(e.target.value)} style={ipt} />
+        <label style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Período:</label>
+        <select
+          value={tipoPeriodo}
+          onChange={(e) => setTipoPeriodo(e.target.value as TipoPeriodo)}
+          style={ipt}
+        >
+          <option value="mensual">Mensual</option>
+          <option value="trimestral">Trimestral</option>
+          <option value="anual">Anual</option>
+          <option value="discreto">Discreto</option>
+        </select>
+        <label style={{ fontSize: 12, color: "#475569", fontWeight: 700, marginLeft: 12 }}>Fecha:</label>
+        <input
+          type="month"
+          value={periodo}
+          onChange={(e) => setPeriodo(e.target.value)}
+          disabled={tipoPeriodo === "discreto"}
+          style={{ ...ipt, opacity: tipoPeriodo === "discreto" ? 0.5 : 1 }}
+          title={tipoPeriodo === "discreto" ? "En modo Discreto el rango se elegirá manualmente" : "Mes y año de referencia"}
+        />
         <label style={{ fontSize: 12, color: "#475569", fontWeight: 700, marginLeft: 12 }}>Estado:</label>
         <select value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value as typeof estadoFiltro)} style={ipt}>
           <option value="todos">Todos</option>

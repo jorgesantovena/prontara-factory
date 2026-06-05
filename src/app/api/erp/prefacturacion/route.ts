@@ -48,6 +48,16 @@ export async function GET(request: NextRequest) {
     if (!/^\d{4}-\d{2}$/.test(periodo)) {
       return NextResponse.json({ ok: false, error: "periodo debe ser YYYY-MM." }, { status: 400 });
     }
+    // TEST-20 G — Pedro: el periodo se divide en "tipo" (mensual/trimestral/anual/
+    // discreto) + fecha. De momento aceptamos el parámetro y lo devolvemos en la
+    // respuesta para que el front pueda confirmar, pero el motor sigue agregando
+    // por mes calendario. La ampliación a ventana trimestral/anual queda como
+    // siguiente paso (filtrarPorClientePeriodo recibirá un rango en vez de YYYY-MM).
+    const tipoPeriodoRaw = String(request.nextUrl.searchParams.get("tipoPeriodo") || "mensual").toLowerCase();
+    const tipoPeriodo: "mensual" | "trimestral" | "anual" | "discreto" =
+      tipoPeriodoRaw === "trimestral" || tipoPeriodoRaw === "anual" || tipoPeriodoRaw === "discreto"
+        ? (tipoPeriodoRaw as "trimestral" | "anual" | "discreto")
+        : "mensual";
 
     const [actividadesRaw, proyectosRaw, clientesRaw, catalogoRaw] = await Promise.all([
       listModuleRecordsAsync("actividades", session.clientId),
@@ -122,6 +132,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       ok: true,
       periodo,
+      tipoPeriodo,
       lineas,
       totales: {
         clientesActivos: lineas.length,
