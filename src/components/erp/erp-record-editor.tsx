@@ -339,6 +339,53 @@ export default function ErpRecordEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mode, fields, initialValue, initialTab]);
 
+  // Test 18 bis 4 — Cascada transitiva tarea → cliente → kilometrosBase
+  // al CARGAR el editor (no solo al teclear). Pedro vio "Km no se hereda
+  // en Desplazamientos" porque el field `tarea` es readOnly: viene por
+  // prefill (no por edición), así que el handler de cascada del setField
+  // nunca se disparaba. Aquí ejecutamos el lookup justo después de que
+  // values queda asignado, si hay tarea preasignada. Idem en Gastos.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!values.tarea) return;
+    if (moduleKey !== "desplazamientos" && moduleKey !== "gastos") return;
+    const fieldsFromTarea = fields.filter((f) => f.inheritFrom?.from === "tarea");
+    const fieldsFromCliente = fields.filter((f) => f.inheritFrom?.from === "cliente");
+    if (fieldsFromTarea.length === 0 && fieldsFromCliente.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const tareaRec = await loadRelatedRecord("actividades", String(values.tarea));
+      if (cancelled || !tareaRec) return;
+      // Aplica los campos heredados directos de la tarea (facturable, etc.).
+      if (fieldsFromTarea.length > 0) {
+        setValues((v) => {
+          const nx: Record<string, string> = { ...v };
+          for (const f of fieldsFromTarea) {
+            const incoming = String(tareaRec[f.inheritFrom!.field] || "");
+            if (incoming) nx[f.key] = incoming;
+          }
+          return nx;
+        });
+      }
+      // Segundo salto: tarea.cliente → cliente.kilometrosBase, etc.
+      if (fieldsFromCliente.length > 0) {
+        const clienteRef = String(tareaRec.cliente || "");
+        if (!clienteRef) return;
+        const clienteRec = await loadRelatedRecord("clientes", clienteRef);
+        if (cancelled || !clienteRec) return;
+        setValues((v) => {
+          const nx: Record<string, string> = { ...v };
+          for (const f of fieldsFromCliente) {
+            const incoming = String(clienteRec[f.inheritFrom!.field] || "");
+            if (incoming) nx[f.key] = incoming;
+          }
+          return nx;
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [values.tarea, moduleKey, fields]);
+
   // Cargar opciones de relación
   useEffect(() => {
     let cancelled = false;
