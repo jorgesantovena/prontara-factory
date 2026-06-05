@@ -105,8 +105,10 @@ function parseHoras(v: unknown): number {
 
 // TEST-20 F.4 — Una tarea es FACTURABLE si el proyecto lo dice. Para
 // datos legacy (sin proyectoFacturable resuelto), caemos en el viejo
-// tipoFacturacion.
-function tareaEsFacturable(a: Actividad): boolean {
+// tipoFacturacion. Exportado para que el PDF Detalle Servicios use
+// exactamente la misma regla y el asterisco siempre cuadre con el
+// engine (TEST-20 F.7).
+export function tareaEsFacturable(a: Actividad): boolean {
   const fproy = String(a.proyectoFacturable || "").toLowerCase();
   if (fproy === "si") return true;
   if (fproy === "no") return false;

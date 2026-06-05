@@ -751,14 +751,19 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { codigo: "FORM", nombre: "Formación a usuarios" },
     ]},
     { moduleKey: "clientes", records: [
-      { nombre: "Acme Labs", email: "laura@acme.com", telefono: "+34 600 111 101", estado: "activo", segmento: "Industria" },
-      { nombre: "Nova Retail", email: "it@novaretail.com", telefono: "+34 600 111 102", estado: "activo", segmento: "Retail" },
-      { nombre: "Binary Forge", email: "hola@binaryforge.es", telefono: "+34 600 111 103", estado: "seguimiento", segmento: "SaaS" },
-      { nombre: "Talleres López", email: "admin@tallereslopez.com", telefono: "+34 600 111 104", estado: "activo", segmento: "Automoción" },
-      { nombre: "Clínica Ardor", email: "direccion@clinicaardor.com", telefono: "+34 600 111 105", estado: "seguimiento", segmento: "Salud" },
-      { nombre: "Polígono Demo SL", email: "admin@poligonodemo.es", telefono: "+34 600 111 106", estado: "activo", segmento: "Industrial" },
+      // TEST-20 F.6 — Clientes demo con el nuevo bloque Financiero:
+      // modoFacturacion (Fijo/Variable), bolsaCantidad (h contratadas),
+      // unidadFacturacion (h/eur), margenPorcentaje, periodoFacturacion.
+      // Consumo/Facturado los rellena automáticamente el backend al
+      // imputar tareas / emitir facturas (triggers TEST-20 F.3).
+      { nombre: "Acme Labs", email: "laura@acme.com", telefono: "+34 600 111 101", estado: "activo", segmento: "Industria", modoFacturacion: "fijo", bolsaCantidad: "30", unidadFacturacion: "h", margenPorcentaje: "0", periodoFacturacion: "mes" },
+      { nombre: "Nova Retail", email: "it@novaretail.com", telefono: "+34 600 111 102", estado: "activo", segmento: "Retail", modoFacturacion: "fijo", bolsaCantidad: "0", unidadFacturacion: "h", margenPorcentaje: "0", periodoFacturacion: "mes" },
+      { nombre: "Binary Forge", email: "hola@binaryforge.es", telefono: "+34 600 111 103", estado: "seguimiento", segmento: "SaaS", modoFacturacion: "fijo", bolsaCantidad: "30", unidadFacturacion: "h", margenPorcentaje: "0", periodoFacturacion: "mes" },
+      { nombre: "Talleres López", email: "admin@tallereslopez.com", telefono: "+34 600 111 104", estado: "activo", segmento: "Automoción", modoFacturacion: "fijo", bolsaCantidad: "24", unidadFacturacion: "h", margenPorcentaje: "0", periodoFacturacion: "mes" },
+      { nombre: "Clínica Ardor", email: "direccion@clinicaardor.com", telefono: "+34 600 111 105", estado: "seguimiento", segmento: "Salud", modoFacturacion: "variable", bolsaCantidad: "0", unidadFacturacion: "h", margenPorcentaje: "0", periodoFacturacion: "mes" },
+      { nombre: "Polígono Demo SL", email: "admin@poligonodemo.es", telefono: "+34 600 111 106", estado: "activo", segmento: "Industrial", modoFacturacion: "fijo", bolsaCantidad: "60", unidadFacturacion: "h", margenPorcentaje: "0", periodoFacturacion: "mes" },
       // H7-S6 — Cliente real referencia (escenario Delca)
-      { nombre: "Almacenes Delca SA", email: "info@delca.es", telefono: "+34 985 000 001", estado: "activo", segmento: "Distribución" },
+      { nombre: "Almacenes Delca SA", email: "info@delca.es", telefono: "+34 985 000 001", estado: "activo", segmento: "Distribución", modoFacturacion: "fijo", bolsaCantidad: "10", unidadFacturacion: "h", margenPorcentaje: "0", periodoFacturacion: "anio" },
     ]},
     { moduleKey: "crm", records: [
       { empresa: "Acme Labs", contacto: "Laura Martín", email: "laura@acme.com", telefono: "+34 600 111 101", fase: "propuesta", valorEstimado: "14500 EUR", proximoPaso: "Revisar hitos de fase 2" },
@@ -768,7 +773,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     ]},
     { moduleKey: "proyectos", records: [
       // ===== H7-S6 Demo escenario Delca (réplica del PDF de SISPYME) =====
-      { nombre: "Mant. Nivel 1 Delca", cliente: "Almacenes Delca SA", codigoTipo: "MANT", responsable: "JJ", estado: "activo", facturable: "no", tipoFacturacion: "contra-bolsa", fechaInicio: "2026-01-01", fechaCaducidad: "2026-12-31", kilometros: "0", tarifaHoraOverride: "55", bolsaContratadaHoras: "10", notas: "Bolsa anual 10h. Cuando se supere, sobreconsumo a 55€/h." },
+      // TEST-20 F.6 — facturable="si": las tareas de este proyecto restan
+      // de la bolsa contratada del cliente (Almacenes Delca, 10 h/año).
+      { nombre: "Mant. Nivel 1 Delca", cliente: "Almacenes Delca SA", codigoTipo: "MANT", responsable: "JJ", estado: "activo", facturable: "si", tipoFacturacion: "contra-bolsa", fechaInicio: "2026-01-01", fechaCaducidad: "2026-12-31", kilometros: "0", tarifaHoraOverride: "55", bolsaContratadaHoras: "10", notas: "Bolsa anual 10h. Cuando se supere, sobreconsumo a 55€/h." },
       { nombre: "Movilidad almacén (Kit digital)", cliente: "Almacenes Delca SA", codigoTipo: "FASE_I", responsable: "MAR", estado: "activo", facturable: "si", tipoFacturacion: "fuera-bolsa", fechaInicio: "2026-01-01", fechaCaducidad: "2026-06-30", kilometros: "0", tarifaHoraOverride: "60", notas: "Proyecto Kit digital — fuera de bolsa, facturable por horas." },
 
       // ===== Acme Labs — iniciativa grande + servicios recurrentes =====

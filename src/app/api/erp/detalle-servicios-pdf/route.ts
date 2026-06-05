@@ -47,9 +47,10 @@ export async function GET(request: NextRequest) {
     if (!cliente) return new Response("Falta cliente.", { status: 400 });
     if (!/^\d{4}-\d{2}$/.test(periodo)) return new Response("periodo debe ser YYYY-MM.", { status: 400 });
 
-    const [actividadesRaw, proyectosRaw, catalogoRaw, runtime] = await Promise.all([
+    const [actividadesRaw, proyectosRaw, clientesRaw, catalogoRaw, runtime] = await Promise.all([
       listModuleRecordsAsync("actividades", session.clientId),
       listModuleRecordsAsync("proyectos", session.clientId),
+      listModuleRecordsAsync("clientes", session.clientId),
       listModuleRecordsAsync("actividades-catalogo", session.clientId).catch(() => []),
       resolveRequestTenantRuntimeAsync(request),
     ]);
@@ -61,6 +62,15 @@ export async function GET(request: NextRequest) {
       if (codigo) tipoServicioPorActividad.set(codigo, ts);
     }
 
+    // TEST-20 F.7 — Mapa proyecto → facturable para que cada Actividad
+    // se entregue al engine y al PDF con `proyectoFacturable` resuelto.
+    const facturablePorProyecto = new Map<string, "si" | "no">();
+    for (const p of proyectosRaw) {
+      const refs = [String(p.nombre || ""), String(p.id || "")].filter(Boolean);
+      const facturable = String(p.facturable || "").toLowerCase() === "si" ? "si" : "no";
+      for (const r of refs) facturablePorProyecto.set(r, facturable);
+    }
+
     const actividades: Actividad[] = actividadesRaw.map((a) => ({
       id: String(a.id || ""),
       fecha: String(a.fecha || "").slice(0, 10),
@@ -70,7 +80,8 @@ export async function GET(request: NextRequest) {
       actividad: String(a.actividad || ""),
       tipoServicio: tipoServicioPorActividad.get(String(a.actividad || "")) || "Otros servicios",
       tiempoHoras: parseHoras(a.tiempoHoras || a.horas),
-      tipoFacturacion: (String(a.tipoFacturacion || "no-facturable") as Actividad["tipoFacturacion"]),
+      tipoFacturacion: String(a.tipoFacturacion || ""), // legacy
+      proyectoFacturable: facturablePorProyecto.get(String(a.proyecto || "")) || "",
       estado: String(a.estado || "borrador"),
       descripcion: String(a.descripcion || ""),
       horaDesde: String(a.horaDesde || ""),
@@ -84,18 +95,37 @@ export async function GET(request: NextRequest) {
     }
     const previas = actividadesAnterioresAlPeriodo(actividades, cliente, periodo);
 
-    let bolsa: BolsaCliente = { cliente, bolsaContratadaHoras: 10, bolsaConcepto: "Sin bolsa", tarifaHora: 55 };
-    for (const p of proyectosRaw) {
-      const c = String(p.cliente || "");
-      const codigo = String(p.codigoTipo || "");
-      if (c === cliente && (codigo === "BOLSA" || codigo === "MANT")) {
-        bolsa = {
-          cliente,
-          bolsaContratadaHoras: parseHoras(p.bolsaContratadaHoras || p.bolsa || 10),
-          bolsaConcepto: codigo === "MANT" ? "Mant. Nivel 1" : "Bolsa horas",
-          tarifaHora: parseHoras(p.tarifaHoraOverride || 55),
-        };
-        break;
+    // TEST-20 F.7 — Bolsa: leer primero del Cliente (nuevo modelo
+    // Modo/Bolsa/Unidad/Margen/Periodo). Si el cliente no tiene
+    // `bolsaCantidad`, fallback al legacy proyecto BOLSA/MANT.
+    let bolsa: BolsaCliente = { cliente, bolsaContratadaHoras: 0, bolsaConcepto: "Sin bolsa", tarifaHora: 55 };
+    const cli = clientesRaw.find((c) => String((c as Record<string, string>).nombre || "") === cliente) as Record<string, string> | undefined;
+    if (cli) {
+      const horas = parseHoras(cli.bolsaCantidad);
+      bolsa = {
+        cliente,
+        bolsaContratadaHoras: horas > 0 ? horas : 0,
+        bolsaConcepto: horas > 0 ? "Bolsa contratada" : "Sin bolsa",
+        tarifaHora: 55,
+        modoFacturacion: String(cli.modoFacturacion || "fijo"),
+        unidadFacturacion: String(cli.unidadFacturacion || "h"),
+        margenPorcentaje: parseHoras(cli.margenPorcentaje),
+        periodoFacturacion: String(cli.periodoFacturacion || "mes"),
+      };
+    }
+    if (bolsa.bolsaContratadaHoras === 0) {
+      for (const p of proyectosRaw) {
+        const c = String(p.cliente || "");
+        const codigo = String(p.codigoTipo || "");
+        if (c === cliente && (codigo === "BOLSA" || codigo === "MANT")) {
+          bolsa = {
+            ...bolsa,
+            bolsaContratadaHoras: parseHoras(p.bolsaContratadaHoras || p.bolsa || 10),
+            bolsaConcepto: codigo === "MANT" ? "Mant. Nivel 1" : "Bolsa horas",
+            tarifaHora: parseHoras(p.tarifaHoraOverride || 55),
+          };
+          break;
+        }
       }
     }
 

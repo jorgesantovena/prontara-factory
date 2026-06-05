@@ -15,6 +15,7 @@
 import PDFDocument from "pdfkit";
 import {
   agruparPorTipoServicio,
+  tareaEsFacturable,
   type Actividad,
   type LineaPrefactura,
 } from "@/lib/verticals/software-factory/prefacturacion-engine";
@@ -129,7 +130,12 @@ export function generateDetalleServiciosPdf(input: DetalleServiciosInput): Promi
         doc.text(String(t.horaHasta || "—"), tableCols.hasta, y);
         doc.text(String(t.empleado || "—").slice(0, 14), tableCols.empleado, y);
         const proyectoText = String(t.proyecto || "—");
-        const facturableMarker = (t.tipoFacturacion === "fuera-bolsa") ? " *" : "";
+        // TEST-20 F.7 — Asterisco "facturable" usa la regla única del
+        // engine (proyecto.facturable === "si"; legacy tipoFacturacion
+        // como fallback). Antes solo marcaba "fuera-bolsa", dejando
+        // fuera contra-bolsa.
+        const esFacturable = tareaEsFacturable(t);
+        const facturableMarker = esFacturable ? " *" : "";
         doc.text(proyectoText.slice(0, 22) + facturableMarker, tableCols.proyecto, y);
         const desc = String(t.descripcion || "");
         doc.text(desc.slice(0, 50), tableCols.descripcion, y, { width: 165 });
@@ -137,7 +143,7 @@ export function generateDetalleServiciosPdf(input: DetalleServiciosInput): Promi
         const lineHeight = Math.max(12, Math.ceil(desc.length / 50) * 12);
         y += lineHeight;
         totalTipo += t.tiempoHoras;
-        if (t.tipoFacturacion === "fuera-bolsa") totalFacturableTipo += t.tiempoHoras;
+        if (esFacturable) totalFacturableTipo += t.tiempoHoras;
       }
 
       checkPageBreak(30);
