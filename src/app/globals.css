@@ -450,3 +450,130 @@ input:disabled {
     font-size: 20px;
   }
 }
+
+/* ==========================================================================
+ * OVERRIDES SOBRE EL ERP EXISTENTE
+ *
+ * El ERP actual usa estilos INLINE en cada componente (decisión de
+ * arquitectura tras retirar Tailwind). Por eso las clases por componente
+ * de Pedro (.tarjeta, .widget, .boton-primario...) no se aplicarían
+ * solas a la app: nadie las pone en el JSX.
+ *
+ * Aquí mapeo el look & feel de Pedro a los SELECTORES QUE YA EXISTEN
+ * en el DOM actual:
+ *   - .prontara-sidebar         → barra lateral (sidebar del tenant)
+ *   - .prontara-topbar          → cabecera superior
+ *   - .prontara-tenant-main     → área principal de cada pantalla
+ *   - .prontara-toolbar-action  → wrappers de import/export en listados
+ *
+ * Uso !important con cabeza para vencer los inline donde haga falta
+ * (fondo, color, fuente) y dejar libres las propiedades de layout (que
+ * los componentes calculan dinámicamente: marginLeft, gridTemplate,
+ * etc.) para no romper estado existente.
+ * ========================================================================== */
+
+/* Tipografía Segoe UI universal en el chrome del tenant (sidebar, topbar,
+   contenido). Los inline `fontFamily: "system-ui..."` se sobrescriben. */
+.prontara-sidebar,
+.prontara-sidebar *,
+.prontara-topbar,
+.prontara-topbar *,
+.prontara-tenant-main,
+.prontara-tenant-main * {
+  font-family: var(--fuente-principal) !important;
+}
+
+/* Sidebar — fondo color-secundario, texto blanco. */
+.prontara-sidebar {
+  background-color: var(--color-secundario) !important;
+  color: white !important;
+  box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1) !important;
+}
+.prontara-sidebar a,
+.prontara-sidebar button,
+.prontara-sidebar span,
+.prontara-sidebar div {
+  color: rgba(255, 255, 255, 0.85);
+}
+.prontara-sidebar a:hover {
+  background-color: rgba(255, 255, 255, 0.08) !important;
+  color: white !important;
+}
+.prontara-sidebar a[aria-current="page"],
+.prontara-sidebar a.activo {
+  background-color: var(--color-primario) !important;
+  color: white !important;
+  font-weight: 700 !important;
+}
+
+/* TopBar — blanco, separador inferior gris claro. */
+.prontara-topbar {
+  background-color: white !important;
+  border-bottom: 1px solid var(--color-borde) !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Área principal — fondo color-fondo Pedro. */
+.prontara-tenant-main {
+  background-color: var(--color-fondo) !important;
+}
+
+/* Tablas dentro del runtime — alternancia de filas, hover, header gris.
+   Aplica a los listados del ERP que renderiza generic-module-runtime-page. */
+.prontara-tenant-main table {
+  border-collapse: collapse;
+}
+.prontara-tenant-main thead {
+  background-color: var(--color-fondo);
+  border-bottom: 2px solid var(--color-borde);
+}
+.prontara-tenant-main tbody tr:nth-child(even) {
+  background-color: #fafbfc;
+}
+.prontara-tenant-main tbody tr:hover {
+  background-color: #f3f4f6;
+}
+
+/* Botones genéricos del runtime — radio + transición consistentes con
+   Pedro. NO forzamos fondo/color para no pisar los buttons coloreados
+   por intención (Crear, Eliminar, Workflows, etc.). */
+.prontara-tenant-main button {
+  border-radius: 5px;
+  transition: all 0.15s ease;
+}
+
+/* Tarjetas/cards del Home Dashboard — shadow + hover. Selecciono los
+   contenedores que ya usan className para no afectar otros divs. */
+.prontara-home-3col > div,
+.prontara-home-2col > div {
+  border-radius: 8px !important;
+  border: 1px solid var(--color-borde) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  transition: box-shadow 0.25s ease !important;
+}
+.prontara-home-3col > div:hover,
+.prontara-home-2col > div:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+/* Aliases para que los componentes que ya usan var(--accent), var(--bg),
+   var(--fg), var(--border) hereden los colores de Pedro automáticamente. */
+:root {
+  --accent: var(--color-primario);
+  --bg: var(--color-fondo);
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --fg: var(--color-texto);
+  --fg-muted: #6b7280;
+  --border: var(--color-borde);
+}
+
+/* Las páginas públicas (auth, landing) NO heredan el reset agresivo de
+   `* { margin: 0; padding: 0 }` porque sus h1/h2/p tenían márgenes
+   esperados. Restauramos margins dentro de <main> para no descuadrar
+   tipografía documental. */
+main h1, main h2, main h3, main h4, main h5, main h6,
+main p, main ul, main ol, main li {
+  margin: revert;
+  padding: revert;
+}

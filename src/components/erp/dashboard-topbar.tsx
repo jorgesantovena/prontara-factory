@@ -76,7 +76,7 @@ export default function DashboardTopBar({ accent = "#1d4ed8" }: { accent?: strin
   const activeCompany = companies.find((c) => c.id === activeCompanyId);
 
   return (
-    <header style={{
+    <header className="prontara-topbar" style={{
       display: "flex",
       alignItems: "center",
       justifyContent: "space-between",
