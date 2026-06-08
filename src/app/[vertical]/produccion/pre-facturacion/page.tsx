@@ -1,66 +1,64 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
 import TenantShell from "@/components/erp/tenant-shell";
 
 /**
- * Pre-facturación — Facturación.pptx (Pedro).
+ * Pre-facturación — TEST 19 (Pedro).
  *
- * Una línea por contrato. Columnas:
- *   Contrato | Cliente | Nivel | Modelo | Periodo | Bolsa | Horas |
- *   Cubiertas | Exceso | Importe | Exceso € | Acciones
+ * Diálogo previo con dos parámetros:
+ *   - Modelo: Cuota / Horas
+ *   - Periodo: Mensual / Trimestral / Semestral / Anual / Discreto
  *
- * Filtro por periodo (YYYY-MM) + tipo (Mensual/Trimestral/Anual/
- * Discreto) + estado (Pendientes / Prefacturados / Todos).
+ * Devuelve una línea por contrato. Caso A (Cuota): Importe=Bolsa×Precio.
+ * Caso B (Horas, solo Tipo M, Periodo Mensual):
+ * Importe = max(0, Consumo − Bolsa − Facturadas) × Precio.
  */
 type Linea = {
-  cliente: string;
+  caso: "A" | "B";
   contrato: string;
-  nivel: string;
-  modelo: string;
+  cliente: string;
+  tipoNivel: string;
+  subtipo: string;
   periodo: string;
-  bolsaContratada: number;
-  hPeriodo: number;
-  hFacturable: number;
-  hCubiertasPorCuota: number;
-  hExceso: number;
-  hGastadasAnteriores: number;
-  hImputadasCliente: number;
-  hOtrasFacturadas: number;
-  saldoBolsa: number;
-  hAFacturar: number;
-  tarifaHora: number;
+  modelo: "cuota" | "horas";
+  bolsa: number;
+  precio: number;
+  consumo: number;
+  facturadas: number;
+  horasAFacturar: number;
   importe: number;
-  importeExceso: number;
-  bolsaConcepto: string;
-  tareasIncluidas: number;
-  estado: "pendiente" | "prefacturada" | "facturada";
+  notas: string;
 };
 
-type TipoPeriodo = "mensual" | "trimestral" | "anual" | "discreto";
+type Modelo = "cuota" | "horas";
+type Periodo = "mensual" | "trimestral" | "semestral" | "anual" | "discreto";
+
+const PERIODO_LABEL: Record<Periodo, string> = {
+  mensual: "Mensual",
+  trimestral: "Trimestral",
+  semestral: "Semestral",
+  anual: "Anual",
+  discreto: "Discreto",
+};
 
 export default function PreFacturacionPage() {
-  // TEST-20 G — Pedro: "En Periodo dividir en dos campos: Período (Mensual,
-  // Trimestral, Anual, Discreto) y Fecha (mm de aaaa)". El selector controla
-  // la ventana temporal y el input de fecha fija la referencia (mm/aaaa).
-  // En modo "discreto" la fecha se deshabilita porque el rango lo elige el
-  // usuario manualmente más adelante (futuro selector de rango).
-  const [tipoPeriodo, setTipoPeriodo] = useState<TipoPeriodo>("mensual");
-  const [periodo, setPeriodo] = useState(new Date().toISOString().slice(0, 7));
-  const [estadoFiltro, setEstadoFiltro] = useState<"pendiente" | "prefacturada" | "todos">("todos");
+  const [modelo, setModelo] = useState<Modelo>("cuota");
+  const [periodo, setPeriodo] = useState<Periodo>("mensual");
   const [lineas, setLineas] = useState<Linea[]>([]);
-  const [totales, setTotales] = useState<{ clientesActivos: number; horasPeriodo: number; importe: number } | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [totales, setTotales] = useState<{ contratos: number; clientes: number; horasAFacturar: number; importe: number } | null>(null);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [ejecutado, setEjecutado] = useState(false);
 
-  async function load() {
+  async function ejecutar() {
     setLoading(true);
     setError("");
+    setEjecutado(true);
     try {
       const params = new URLSearchParams();
+      params.set("modelo", modelo);
       params.set("periodo", periodo);
-      params.set("tipoPeriodo", tipoPeriodo);
       const r = await fetch("/api/erp/prefacturacion?" + params.toString(), { cache: "no-store" });
       const data = await r.json();
       if (r.ok && data.ok) {
@@ -68,18 +66,27 @@ export default function PreFacturacionPage() {
         setTotales(data.totales);
       } else {
         setError(data.error || "Error.");
+        setLineas([]);
+        setTotales(null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Error.");
+      setLineas([]);
+      setTotales(null);
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); }, [periodo, tipoPeriodo]);
+  // Auto-ejecutar al montar para que se vean líneas por defecto.
+  useEffect(() => { ejecutar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  // TEST-17 bis B — Ordenar por alfabético de cliente.
+  // Caso B solo permite periodo Mensual — si el usuario está en Horas
+  // y cambia a otro periodo, forzamos a Mensual.
+  useEffect(() => {
+    if (modelo === "horas" && periodo !== "mensual") setPeriodo("mensual");
+  }, [modelo, periodo]);
+
   const visibles = lineas
-    .filter((l) => estadoFiltro === "todos" || l.estado === estadoFiltro)
     .slice()
     .sort((a, b) => {
       const ca = String(a.cliente || "").toLowerCase();
@@ -90,105 +97,91 @@ export default function PreFacturacionPage() {
   return (
     <TenantShell>
       <div style={{ maxWidth: 1400, margin: "0 auto", fontFamily: "system-ui, -apple-system, sans-serif" }}>
-      {/* TEST-17 bis B — Pedro: el título decía "Servicios facturables"
-          (concepto antiguo), debe ser "Tareas facturables". */}
-      <h1 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>Tareas facturables</h1>
-      <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 16 }}>
-        Pre-facturación del periodo. Una línea por contrato: Cuotas (importe fijo), Horas (h × precio) y Bonos (compra puntual). El exceso sobre la bolsa se factura aparte.
-      </p>
+        <h1 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>Pre-facturación</h1>
+        <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 16 }}>
+          {modelo === "cuota"
+            ? "Cuotas / Tarifa plana / Bonos. Una línea por contrato con periodo seleccionado. Importe = Bolsa × Precio del Nivel."
+            : "Excesos sobre cuota de mantenimiento. Solo Tipo M con periodo mensual. Importe = (Consumo − Bolsa − Facturadas) × Precio."}
+        </p>
 
-      <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
-        <label style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Período:</label>
-        <select
-          value={tipoPeriodo}
-          onChange={(e) => setTipoPeriodo(e.target.value as TipoPeriodo)}
-          style={ipt}
-        >
-          <option value="mensual">Mensual</option>
-          <option value="trimestral">Trimestral</option>
-          <option value="anual">Anual</option>
-          <option value="discreto">Discreto</option>
-        </select>
-        <label style={{ fontSize: 12, color: "#475569", fontWeight: 700, marginLeft: 12 }}>Fecha:</label>
-        <input
-          type="month"
-          value={periodo}
-          onChange={(e) => setPeriodo(e.target.value)}
-          disabled={tipoPeriodo === "discreto"}
-          style={{ ...ipt, opacity: tipoPeriodo === "discreto" ? 0.5 : 1 }}
-          title={tipoPeriodo === "discreto" ? "En modo Discreto el rango se elegirá manualmente" : "Mes y año de referencia"}
-        />
-        <label style={{ fontSize: 12, color: "#475569", fontWeight: 700, marginLeft: 12 }}>Estado:</label>
-        <select value={estadoFiltro} onChange={(e) => setEstadoFiltro(e.target.value as typeof estadoFiltro)} style={ipt}>
-          <option value="todos">Todos</option>
-          <option value="pendiente">Pendientes</option>
-          <option value="prefacturada">Prefacturados</option>
-        </select>
-        <button type="button" onClick={load} style={btn}>↻ Recargar</button>
-      </div>
-
-      {error ? <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 13 }}>{error}</div> : null}
-      {loading ? <p>Cargando…</p> : null}
-
-      {totales ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 16 }}>
-          <Kpi label="Clientes con actividad" value={String(totales.clientesActivos)} accent="#1d4ed8" />
-          <Kpi label="Horas periodo" value={totales.horasPeriodo.toFixed(2)} accent="#0891b2" />
-          <Kpi label="A facturar" value={totales.importe.toFixed(2) + " €"} accent="#16a34a" />
+        {/* Diálogo de parámetros (TEST 19 Pedro). */}
+        <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16, flexWrap: "wrap", padding: 14, border: "1px solid #e5e7eb", background: "#f8fafc", borderRadius: 8 }}>
+          <label style={{ fontSize: 12, color: "#475569", fontWeight: 700 }}>Modelo:</label>
+          <select value={modelo} onChange={(e) => setModelo(e.target.value as Modelo)} style={ipt}>
+            <option value="cuota">Cuota</option>
+            <option value="horas">Horas (excesos)</option>
+          </select>
+          <label style={{ fontSize: 12, color: "#475569", fontWeight: 700, marginLeft: 12 }}>Periodo:</label>
+          <select
+            value={periodo}
+            onChange={(e) => setPeriodo(e.target.value as Periodo)}
+            disabled={modelo === "horas"}
+            style={{ ...ipt, opacity: modelo === "horas" ? 0.5 : 1 }}
+            title={modelo === "horas" ? "El caso Horas (excesos) solo opera con periodo Mensual" : "Frecuencia del periodo"}
+          >
+            <option value="mensual">Mensual</option>
+            <option value="trimestral">Trimestral</option>
+            <option value="semestral">Semestral</option>
+            <option value="anual">Anual</option>
+            <option value="discreto">Discreto</option>
+          </select>
+          <button type="button" onClick={ejecutar} style={btnPrimary} disabled={loading}>
+            {loading ? "Calculando…" : "Ejecutar pre-facturación"}
+          </button>
         </div>
-      ) : null}
 
-      <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: 8, background: "#ffffff" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-          <thead style={{ background: "#f8fafc" }}>
-            <tr>
-              <Th>Contrato</Th>
-              <Th>Cliente</Th>
-              <Th>Nivel</Th>
-              <Th>Modelo</Th>
-              <Th>Periodo</Th>
-              <Th align="right">Bolsa</Th>
-              <Th align="right">Horas</Th>
-              <Th align="right">Cubiertas</Th>
-              <Th align="right">Exceso</Th>
-              <Th align="right">Saldo</Th>
-              <Th align="right">Importe</Th>
-              <Th align="right">Exceso €</Th>
-              <Th>Acciones</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibles.map((l) => (
-              <tr key={l.contrato + "-" + l.cliente} style={{ borderTop: "1px solid #f1f5f9" }}>
-                <Td><strong>{l.contrato}</strong></Td>
-                <Td>{l.cliente}</Td>
-                <Td>{l.nivel}</Td>
-                <Td style={{ textTransform: "capitalize" }}>{l.modelo}</Td>
-                <Td style={{ textTransform: "capitalize" }}>{l.periodo}</Td>
-                <Td align="right">{l.bolsaContratada.toFixed(2)}</Td>
-                <Td align="right" style={{ color: "#1d4ed8", fontWeight: 700 }}>{l.hFacturable.toFixed(2)}</Td>
-                <Td align="right">{l.hCubiertasPorCuota.toFixed(2)}</Td>
-                <Td align="right" style={{ color: l.hExceso > 0 ? "#dc2626" : "#94a3b8", fontWeight: l.hExceso > 0 ? 700 : 400 }}>{l.hExceso.toFixed(2)}</Td>
-                <Td align="right" style={{ color: l.saldoBolsa > 0 ? "#16a34a" : "#dc2626", fontWeight: 700 }}>{l.saldoBolsa.toFixed(2)}</Td>
-                <Td align="right" style={{ fontWeight: 700 }}>{l.importe.toFixed(2)} €</Td>
-                <Td align="right" style={{ color: l.importeExceso > 0 ? "#dc2626" : "#94a3b8", fontWeight: l.importeExceso > 0 ? 700 : 400 }}>{l.importeExceso > 0 ? l.importeExceso.toFixed(2) + " €" : "—"}</Td>
-                <Td>
-                  <Link
-                    href={"/api/erp/detalle-servicios-pdf?cliente=" + encodeURIComponent(l.cliente) + "&periodo=" + periodo + "&contrato=" + encodeURIComponent(l.contrato)}
-                    target="_blank"
-                    style={{ fontSize: 10, color: "#1d4ed8", fontWeight: 700, textDecoration: "none", border: "1px solid #cbd5e1", padding: "3px 8px", borderRadius: 4 }}
-                  >
-                    PDF
-                  </Link>
-                </Td>
+        {error ? <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 12, marginBottom: 12, fontSize: 13 }}>{error}</div> : null}
+
+        {totales ? (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
+            <Kpi label="Contratos a facturar" value={String(totales.contratos)} accent="#1d4ed8" />
+            <Kpi label="Clientes" value={String(totales.clientes)} accent="#0891b2" />
+            <Kpi label="Horas a facturar" value={totales.horasAFacturar.toFixed(2)} accent="#a16207" />
+            <Kpi label="Importe total" value={totales.importe.toFixed(2) + " €"} accent="#16a34a" />
+          </div>
+        ) : null}
+
+        <div style={{ overflowX: "auto", border: "1px solid #e5e7eb", borderRadius: 8, background: "#ffffff" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+            <thead style={{ background: "#f8fafc" }}>
+              <tr>
+                <Th>Contrato</Th>
+                <Th>Cliente</Th>
+                <Th>Tipo</Th>
+                <Th>Subtipo</Th>
+                <Th>Periodo</Th>
+                <Th align="right">Bolsa</Th>
+                <Th align="right">Precio</Th>
+                <Th align="right">{modelo === "horas" ? "Consumo" : ""}</Th>
+                <Th align="right">{modelo === "horas" ? "Facturadas" : ""}</Th>
+                <Th align="right">{modelo === "horas" ? "Exceso (h)" : "Horas"}</Th>
+                <Th align="right">Importe</Th>
+                <Th>Notas</Th>
               </tr>
-            ))}
-            {visibles.length === 0 && !loading ? (
-              <tr><td colSpan={13} style={{ padding: 32, textAlign: "center", color: "#94a3b8" }}>Sin contratos con actividad este periodo.</td></tr>
-            ) : null}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {visibles.map((l) => (
+                <tr key={l.contrato} style={{ borderTop: "1px solid #f1f5f9" }}>
+                  <Td><strong>{l.contrato}</strong></Td>
+                  <Td>{l.cliente}</Td>
+                  <Td>{l.tipoNivel}</Td>
+                  <Td>{l.subtipo}</Td>
+                  <Td style={{ textTransform: "capitalize" }}>{PERIODO_LABEL[l.periodo as Periodo] || l.periodo}</Td>
+                  <Td align="right">{l.bolsa.toFixed(2)}</Td>
+                  <Td align="right">{l.precio.toFixed(2)}</Td>
+                  <Td align="right">{modelo === "horas" ? l.consumo.toFixed(2) : ""}</Td>
+                  <Td align="right">{modelo === "horas" ? l.facturadas.toFixed(2) : ""}</Td>
+                  <Td align="right" style={{ color: modelo === "horas" ? "#dc2626" : "#1d4ed8", fontWeight: 700 }}>{l.horasAFacturar.toFixed(2)}</Td>
+                  <Td align="right" style={{ fontWeight: 700, color: "#16a34a" }}>{l.importe.toFixed(2)} €</Td>
+                  <Td style={{ color: "#6b7280", fontSize: 11 }}>{l.notas}</Td>
+                </tr>
+              ))}
+              {visibles.length === 0 && !loading && ejecutado ? (
+                <tr><td colSpan={12} style={{ padding: 32, textAlign: "center", color: "#94a3b8" }}>{modelo === "horas" ? "Ningún contrato con exceso para emitir." : "Ningún contrato con el periodo seleccionado."}</td></tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
     </TenantShell>
   );
@@ -209,18 +202,5 @@ function Kpi({ label, value, accent }: { label: string; value: string; accent: s
   );
 }
 
-const ipt: React.CSSProperties = {
-  padding: "6px 10px",
-  border: "1px solid #d1d5db",
-  borderRadius: 6,
-  fontSize: 13,
-};
-const btn: React.CSSProperties = {
-  padding: "6px 12px",
-  border: "1px solid #d1d5db",
-  background: "#ffffff",
-  borderRadius: 6,
-  fontSize: 13,
-  cursor: "pointer",
-  fontWeight: 600,
-};
+const ipt: React.CSSProperties = { padding: "6px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13 };
+const btnPrimary: React.CSSProperties = { padding: "6px 14px", border: "1px solid #1d4ed8", background: "#2563eb", color: "#fff", borderRadius: 6, fontSize: 13, cursor: "pointer", fontWeight: 700, marginLeft: "auto" };

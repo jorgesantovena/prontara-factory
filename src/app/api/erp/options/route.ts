@@ -113,26 +113,32 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // Facturación.pptx (Pedro) — Niveles: value=codigo (1..4, A, B),
-        // label="codigo · nombre" para que el dropdown del Contrato sea
-        // legible. Coherente con actividades-catalogo y catalogo-servicios.
+        // TEST 19 (Pedro) — Niveles tienen clave compuesta
+        // (tipoNivel, subtipo, modelo). Como el value tiene que ser
+        // string único, usamos "tipo-subtipo-modelo". El label es
+        // legible para el usuario. Esta key se usa raramente como
+        // referencia directa: lo normal es que el Contrato guarde
+        // tipoNivel y subtipo por separado y el engine resuelva el
+        // Nivel completo en runtime.
         if (moduleKey === "niveles") {
+          const t = String(item.tipoNivel || "");
+          const s = String(item.subtipo || "");
+          const m = String(item.modelo || "");
           return {
-            value: String(item.codigo || ""),
-            label: String(item.codigo || "") + (item.nombre ? " · " + String(item.nombre) : ""),
+            value: t + "-" + s + "-" + m,
+            label: t + " · " + s + " · " + m + (item.descripcion ? " — " + String(item.descripcion).slice(0, 40) : ""),
           };
         }
 
-        // Facturación.pptx (Pedro) — Contratos: value=numero, label=
-        // "numero · cliente · modelo" para que el dropdown del Proyecto
-        // y de la Factura sea legible.
+        // TEST 19 (Pedro) — Contratos: value=codigo (libre, otorgado al
+        // alta). Label legible con cliente y nivel.
         if (moduleKey === "contratos") {
           const partes: string[] = [];
           if (item.cliente) partes.push(String(item.cliente));
-          if (item.modelo) partes.push(String(item.modelo));
+          if (item.tipoNivel || item.subtipo) partes.push(String(item.tipoNivel || "") + (item.subtipo ? " " + String(item.subtipo) : ""));
           return {
-            value: String(item.numero || item.id || ""),
-            label: String(item.numero || "") + (partes.length > 0 ? " · " + partes.join(" · ") : ""),
+            value: String(item.codigo || item.numero || item.id || ""),
+            label: String(item.codigo || item.numero || "") + (partes.length > 0 ? " · " + partes.join(" · ") : ""),
           };
         }
 

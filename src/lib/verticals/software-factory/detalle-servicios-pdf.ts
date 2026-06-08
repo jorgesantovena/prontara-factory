@@ -1,34 +1,41 @@
 /**
- * Generador PDF "Detalle servicios <Cliente>" estilo SISPYME (H7-S3).
+ * Generador PDF "Detalle servicios" — TEST 19 (Pedro).
  *
- * Replica visualmente el informe que SISPYME envía a sus clientes
- * (ver delca.pdf como referencia):
- *   - Cabecera con razón social del emisor + datos contacto + paginación
- *   - Título "Detalle servicios <Cliente>" + Periodo
- *   - Resumen bolsa: Contratadas / Gastadas anteriormente / Imputadas / A facturar / Saldo
- *   - Tareas agrupadas por Tipo de Servicio
- *     - Para cada tarea: Fecha · Desde · Hasta · Empleado · Proyecto · Descripción · Tiempo
- *     - Asterisco * si es facturable
- *   - Total por Tipo de Servicio + "A Facturar"
- *   - Pie: "(*) Servicio facturable. El importe a facturar será 0 mientras no se superen las horas contratadas"
+ * Cabecera con datos del Contrato (Tipo + Subtipo + Periodo + Bolsa)
+ * + resumen año (Consumo, Facturadas, Exceso, Importe exceso) +
+ * tareas del periodo agrupadas por Tipo de Servicio. Asterisco en
+ * tareas facturables.
  */
 import PDFDocument from "pdfkit";
 import {
   agruparPorTipoServicio,
   tareaEsFacturable,
   type Actividad,
-  type LineaPrefactura,
 } from "@/lib/verticals/software-factory/prefacturacion-engine";
 
 export type DetalleServiciosInput = {
   emisor: { razonSocial: string; direccion?: string; telefono?: string; email?: string };
   cliente: string;
-  periodo: string; // YYYY-MM o "/"
-  prefactura: LineaPrefactura;
+  periodo: string; // YYYY-MM
+  prefactura: {
+    contrato: string;
+    tipoNivel: string;
+    subtipo: string;
+    modelo: string; // texto libre informativo
+    periodoContrato: string;
+    bolsa: number;
+    precioCuota: number;
+    precioHoras: number;
+    consumoAnio: number;
+    consumoPeriodo: number;
+    facturadas: number;
+    exceso: number;
+    importeExceso: number;
+  };
   actividades: Actividad[];
 };
 
-const LABEL_FACTURABLE = "(*) Servicio facturable. El importe a facturar será 0 mientras no se superen las horas contratadas";
+const LABEL_FACTURABLE = "(*) Tarea facturable. El importe a facturar será 0 mientras no se superen las horas contratadas del año.";
 
 export function generateDetalleServiciosPdf(input: DetalleServiciosInput): Promise<Buffer> {
   return new Promise((resolve, reject) => {
@@ -42,7 +49,6 @@ export function generateDetalleServiciosPdf(input: DetalleServiciosInput): Promi
     const totalGroups = agruparPorTipoServicio(input.actividades);
     const totalPagesEstimate = Math.max(1, Math.ceil(totalGroups.size / 4));
 
-    // === Cabecera (se repite en cada página) ===
     const header = (n: number) => {
       doc.fontSize(8).fillColor("#475569");
       doc.text(input.emisor.direccion || "", 36, 30);
@@ -54,37 +60,38 @@ export function generateDetalleServiciosPdf(input: DetalleServiciosInput): Promi
 
     header(pageNumber);
 
-    // === Título + periodo ===
+    // Título + periodo + contrato.
     doc.fontSize(14).fillColor("#0f172a").font("Helvetica-Bold");
     doc.text("Detalle servicios " + input.cliente, 36, 75);
     doc.fontSize(10).font("Helvetica").fillColor("#475569");
     doc.text("Periodo  " + (input.periodo || "/"), 400, 80, { align: "right", width: 159 });
 
-    // === Resumen contrato (Facturación.pptx — Pedro) ===
     let y = 105;
     doc.fontSize(10).fillColor("#0f172a").font("Helvetica-Bold");
-    const cabecera = "Contrato " + input.prefactura.contrato + " · Nivel " + input.prefactura.nivel + " · " + input.prefactura.modelo + " (" + input.prefactura.periodo + ")";
+    const cabecera = "Contrato " + input.prefactura.contrato +
+      " · Tipo " + input.prefactura.tipoNivel + " Subtipo " + input.prefactura.subtipo +
+      " · " + input.prefactura.periodoContrato;
     doc.text(cabecera, 36, y);
     y += 16;
     doc.fontSize(8).font("Helvetica-Bold").fillColor("#475569");
     const colW = 90;
     const colsX = [36, 130, 224, 318, 412, 506];
-    ["Bolsa", "Gastadas ant.", "Imputadas", "Cubiertas", "Exceso (h)", "Saldo"].forEach((label, i) => {
+    ["Bolsa", "Consumo año", "Facturadas", "Exceso", "Precio €/h", "Importe exceso"].forEach((label, i) => {
       doc.text(label, colsX[i], y, { width: colW });
     });
     y += 12;
     doc.fontSize(11).font("Helvetica").fillColor("#0f172a");
     [
-      input.prefactura.bolsaContratada.toFixed(2) + " h",
-      input.prefactura.hGastadasAnteriores.toFixed(2),
-      input.prefactura.hImputadasCliente.toFixed(2),
-      input.prefactura.hCubiertasPorCuota.toFixed(2),
-      input.prefactura.hExceso.toFixed(2),
-      input.prefactura.saldoBolsa.toFixed(2),
+      input.prefactura.bolsa.toFixed(2) + " h",
+      input.prefactura.consumoAnio.toFixed(2),
+      input.prefactura.facturadas.toFixed(2),
+      input.prefactura.exceso.toFixed(2),
+      input.prefactura.precioHoras.toFixed(2) + " €",
+      input.prefactura.importeExceso.toFixed(2) + " €",
     ].forEach((v, i) => doc.text(v, colsX[i], y, { width: colW }));
     y += 22;
 
-    // === Detalle por Tipo de Servicio ===
+    // Detalle por Tipo de Servicio.
     doc.fontSize(8).font("Helvetica-Bold").fillColor("#475569");
     const tableCols = { fecha: 36, desde: 90, hasta: 130, empleado: 170, proyecto: 240, descripcion: 360, tiempo: 530 };
     doc.text("Fecha", tableCols.fecha, y);
@@ -132,10 +139,6 @@ export function generateDetalleServiciosPdf(input: DetalleServiciosInput): Promi
         doc.text(String(t.horaHasta || "—"), tableCols.hasta, y);
         doc.text(String(t.empleado || "—").slice(0, 14), tableCols.empleado, y);
         const proyectoText = String(t.proyecto || "—");
-        // TEST-20 F.7 — Asterisco "facturable" usa la regla única del
-        // engine (proyecto.facturable === "si"; legacy tipoFacturacion
-        // como fallback). Antes solo marcaba "fuera-bolsa", dejando
-        // fuera contra-bolsa.
         const esFacturable = tareaEsFacturable(t);
         const facturableMarker = esFacturable ? " *" : "";
         doc.text(proyectoText.slice(0, 22) + facturableMarker, tableCols.proyecto, y);
@@ -162,9 +165,7 @@ export function generateDetalleServiciosPdf(input: DetalleServiciosInput): Promi
       totalGeneralFacturable += totalFacturableTipo;
     }
 
-    // === Pie ===
     checkPageBreak(40);
-    y = Math.max(y, 770);
     doc.fontSize(7).font("Helvetica").fillColor("#94a3b8");
     doc.text(LABEL_FACTURABLE, 36, 770, { width: 523 });
 

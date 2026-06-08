@@ -431,7 +431,7 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "proyectos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
     // Facturación.pptx (Pedro) — Proyecto se asocia al Contrato del
     // cliente que cubre sus horas. Las Tareas heredan este contrato y
-    // sus horas alimentan contrato.consumoHoras al guardar.
+    // sus `horas` alimentan contrato.facturadas al guardar.
     { moduleKey: "proyectos", fieldKey: "contrato", label: "Contrato", kind: "relation", relationModuleKey: "contratos", placeholder: "Contrato del cliente que cubre las horas del proyecto" },
     { moduleKey: "proyectos", fieldKey: "codigoTipo", label: "Código de servicio", kind: "relation", relationModuleKey: "catalogo-servicios", placeholder: "INST, MANT, NUEDES, SOP, FORM..." },
     { moduleKey: "proyectos", fieldKey: "responsable", label: "Project lead", kind: "text", placeholder: "Responsable" },
@@ -458,22 +458,12 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // mantiene el backend cuando se imputa un trabajo). El usuario no
     // edita; lo ve crecer.
     { moduleKey: "proyectos", fieldKey: "kilometros", label: "Km acumulados", kind: "text", readOnly: true, placeholder: "Se actualiza al imputar trabajos al proyecto" },
-    // TEST-15 D — Tarifa €/h es SALIDA: la calcula el editor por
-    // lookup en Tarifas según (Cliente.tipoTarifa, Cliente.nivel,
-    // Servicio). Ver erp-record-editor.tsx lookup TEST-15 D.
-    { moduleKey: "proyectos", fieldKey: "tarifaHoraOverride", label: "Tarifa €/h", kind: "text", readOnly: true, placeholder: "Se calcula desde Tarifas al elegir Cliente + Servicio" },
-    // Facturación.pptx (Pedro) — Nivel ya no está en el Cliente, vive
-    // en el Contrato. Este campo del Proyecto se llena desde
-    // contrato.nivel y se usa para el lookup de Tarifas. Mantenemos
-    // el nombre `nivelCliente` por compat con datos existentes en
-    // disco; la fuente de verdad ahora es proyecto.contrato → nivel.
-    { moduleKey: "proyectos", fieldKey: "nivelCliente", label: "Nivel", kind: "text", readOnly: true, inheritFrom: { from: "contrato", field: "nivel" }, placeholder: "Heredado del Contrato asignado al proyecto" },
-    { moduleKey: "proyectos", fieldKey: "unidadTarifa", label: "Unidad tarifa", kind: "text", readOnly: true, placeholder: "Se calcula desde Tarifas al elegir Cliente + Servicio" },
-    // TEST-20 F.2 — Pedro: eliminado "Horas totales (bolsa)" del Proyecto.
-    // La bolsa pasa a vivir en Cliente.bolsaCantidad (un único contrato
-    // por cliente, no por proyecto).
-    // TEST-8.1.d — Referencia a la propuesta que dio origen al proyecto.
-    { moduleKey: "proyectos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Nº de la propuesta origen" },
+    // TEST 19 (Pedro) — Eliminados del Proyecto: `tarifaHoraOverride`,
+    // `nivelCliente`, `unidadTarifa` y `referenciaPropuesta`. El
+    // precio €/h ya no se calcula en el Proyecto; se obtiene del
+    // Nivel al pre-facturar (Cuota o Horas, según Tipo+Subtipo del
+    // Contrato asignado al Proyecto). La referencia a la propuesta
+    // ahora vive en el Contrato.
     { moduleKey: "proyectos", fieldKey: "notas", label: "Notas", kind: "text", placeholder: "Condiciones específicas, observaciones..." },
 
     { moduleKey: "documentos", fieldKey: "nombre", label: "Entregable", kind: "text", required: true, placeholder: "Acta, backlog, documentación..." },
@@ -504,10 +494,11 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // Facturas — SF-14.
     { moduleKey: "facturacion", fieldKey: "numero", label: "Nº factura", kind: "text", placeholder: "Déjalo vacío y se autoasigna FAC-YYYY-NNN" },
     { moduleKey: "facturacion", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
-    // Facturación.pptx (Pedro) — Factura ligada al Contrato del cliente
-    // que cubre el cargo. Si se rellena, el backend acumula su importe
-    // en contrato.facturadoHoras.
+    // TEST 19 (Pedro) — Factura ligada al Contrato. Si se rellena,
+    // sus `horas` suman a contrato.facturadas y descuentan el saldo
+    // disponible para futuros excesos del año en curso.
     { moduleKey: "facturacion", fieldKey: "contrato", label: "Contrato", kind: "relation", relationModuleKey: "contratos", placeholder: "Contrato del cliente al que se imputa esta factura" },
+    { moduleKey: "facturacion", fieldKey: "horas", label: "Horas", kind: "number", defaultValue: "0", placeholder: "Horas facturadas (alimenta contrato.facturadas)" },
     { moduleKey: "facturacion", fieldKey: "concepto", label: "Concepto", kind: "text", required: true, placeholder: "Concepto facturado" },
     { moduleKey: "facturacion", fieldKey: "importe", label: "Importe", kind: "money", required: true, placeholder: "Ej. 4500 EUR" },
     // TEST-15 F — Añadido "Borrador" como primer estado de Factura.
@@ -556,9 +547,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "si", label: "Sí" },
       { value: "no", label: "No" },
     ] },
-    // TEST-20 F.2 — Pedro: eliminado "Método facturación" de la Tarea (ya
-    // no existe en Proyecto; el modo de facturación vive en el Cliente).
-    { moduleKey: "actividades", fieldKey: "tarifaHora", label: "Tarifa €/h", kind: "text", inheritFrom: { from: "proyecto", field: "tarifaHoraOverride" }, placeholder: "Heredada del proyecto, editable aquí si procede" },
+    // TEST 19 (Pedro) — Eliminada `tarifaHora` de la Tarea. El precio
+    // se obtiene del Nivel del Contrato al pre-facturar, no se
+    // imputa por tarea.
     { moduleKey: "actividades", fieldKey: "facturado", label: "Facturado", kind: "status", readOnly: true, placeholder: "Se actualiza con el proceso de facturación", options: [
       { value: "si", label: "Sí" },
       { value: "no", label: "No" },
@@ -598,28 +589,27 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "activa", label: "Activa" }, { value: "obsoleta", label: "Obsoleta" }, { value: "retirada", label: "Retirada" },
     ] },
 
-    // Facturación.pptx (Pedro) — Contratos: el portador del método de
-    // facturación. Cada Contrato ata un Cliente con un Nivel
-    // (catálogo) y define cómo se factura: Modelo (cuota/horas/bono),
-    // Periodo, Bolsa (h), Precio. Consumo y Facturado los recalcula
-    // el backend al guardar Tareas y Facturas.
-    { moduleKey: "contratos", fieldKey: "numero", label: "Nº contrato", kind: "text", placeholder: "Déjalo vacío y se autoasigna CON-YYYY-NNN" },
-    { moduleKey: "contratos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes" },
-    { moduleKey: "contratos", fieldKey: "nivel", label: "Nivel", kind: "relation", required: true, relationModuleKey: "niveles", placeholder: "1, 2, 3, 4, A (Acuerdo), B (Bono)" },
-    { moduleKey: "contratos", fieldKey: "modelo", label: "Modelo", kind: "status", required: true, defaultValue: "cuota", placeholder: "Cuota (cuota fija periódica) / Horas (h × precio) / Bono (compra puntual de horas)", options: [
-      { value: "cuota", label: "Cuota" },
-      { value: "horas", label: "Horas" },
-      { value: "bono", label: "Bono" },
-    ] },
-    { moduleKey: "contratos", fieldKey: "periodo", label: "Periodo", kind: "status", required: true, defaultValue: "mensual", options: [
+    // TEST 19 (Pedro) — Contratos: submaestra de Cliente. Atan un
+    // Cliente a un Nivel (Tipo + Subtipo) durante un Periodo. El
+    // Modelo, la Bolsa y el Precio NO viven aquí — viven en Niveles
+    // (cada Contrato Tipo M tiene asociadas dos rows del Nivel: una
+    // Cuota y otra Horas, ambas con mismo Subtipo).
+    { moduleKey: "contratos", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "Libre, otorgado al alta. Ej. CON-2026-001 / Acme-Mant-2026" },
+    { moduleKey: "contratos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes", placeholder: "Asumido de la Propuesta si nace de una" },
+    { moduleKey: "contratos", fieldKey: "periodo", label: "Periodo", kind: "status", required: true, defaultValue: "mensual", placeholder: "Frecuencia con la que se emite la Cuota (y se cierra el cómputo de excesos)", options: [
       { value: "mensual", label: "Mensual" },
       { value: "trimestral", label: "Trimestral" },
       { value: "semestral", label: "Semestral" },
       { value: "anual", label: "Anual" },
       { value: "discreto", label: "Discreto (un disparo)" },
     ] },
-    { moduleKey: "contratos", fieldKey: "bolsaHoras", label: "Bolsa (h)", kind: "number", defaultValue: "0", placeholder: "Horas contratadas; aplica a Cuota (cobertura) y Bono (compra)" },
-    { moduleKey: "contratos", fieldKey: "precio", label: "Precio (€)", kind: "money", required: true, placeholder: "Precio cuota (Cuota) / €/h (Horas, Excesos) / Precio total bolsa (Bono)" },
+    { moduleKey: "contratos", fieldKey: "tipoNivel", label: "Tipo Nivel", kind: "status", required: true, defaultValue: "M", placeholder: "M (Mantenimiento) / A (Acuerdo) / B (Bono)", options: [
+      { value: "M", label: "M (Mantenimiento)" },
+      { value: "A", label: "A (Acuerdo)" },
+      { value: "B", label: "B (Bono)" },
+    ] },
+    { moduleKey: "contratos", fieldKey: "subtipo", label: "Subtipo", kind: "text", required: true, placeholder: "Subtipo del Nivel asociado (1..4 para Tipo M, libre para A y B)" },
+    { moduleKey: "contratos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Código de la Propuesta de origen (opcional)" },
     { moduleKey: "contratos", fieldKey: "fechaInicio", label: "Inicio", kind: "date", placeholder: "Fecha de inicio de vigencia" },
     { moduleKey: "contratos", fieldKey: "fechaFin", label: "Fin", kind: "date", defaultValue: "9999-12-31", placeholder: "Fecha de fin (9999-12-31 = sin vencimiento)" },
     { moduleKey: "contratos", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "activo", options: [
@@ -628,8 +618,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "finalizado", label: "Finalizado" },
       { value: "cancelado", label: "Cancelado" },
     ] },
-    { moduleKey: "contratos", fieldKey: "consumoHoras", label: "Consumo (h)", kind: "text", readOnly: true, placeholder: "Σ horas de tareas de proyectos asociados a este contrato" },
-    { moduleKey: "contratos", fieldKey: "facturadoHoras", label: "Facturado (€)", kind: "text", readOnly: true, placeholder: "Σ importe de facturas asociadas a este contrato" },
+    { moduleKey: "contratos", fieldKey: "consumo", label: "Consumo (h)", kind: "text", readOnly: true, placeholder: "Σ horas del año en curso de tareas facturables. Reset el 1 de enero." },
+    { moduleKey: "contratos", fieldKey: "facturadas", label: "Facturadas (h)", kind: "text", readOnly: true, placeholder: "Σ horas ya facturadas del año en curso. Reset el 1 de enero." },
     { moduleKey: "contratos", fieldKey: "notas", label: "Notas", kind: "textarea", placeholder: "Condiciones específicas del contrato" },
 
     // H7-S5 — CAU: tickets de soporte sobre una aplicación
@@ -682,9 +672,7 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "proyectos", fieldKey: "codigoTipo", label: "Código", isPrimary: true },
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Proyecto" },
     { moduleKey: "proyectos", fieldKey: "cliente", label: "Cliente" },
-    { moduleKey: "proyectos", fieldKey: "nivelCliente", label: "Nivel" },
-    { moduleKey: "proyectos", fieldKey: "tarifaHoraOverride", label: "Tarifa" },
-    { moduleKey: "proyectos", fieldKey: "unidadTarifa", label: "Unidad" },
+    { moduleKey: "proyectos", fieldKey: "contrato", label: "Contrato" },
     { moduleKey: "proyectos", fieldKey: "facturable", label: "Facturable" },
     { moduleKey: "proyectos", fieldKey: "fechaCaducidad", label: "Caducidad" },
     { moduleKey: "proyectos", fieldKey: "estado", label: "Estado" },
@@ -704,16 +692,14 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "aplicaciones", fieldKey: "version", label: "Versión" },
     { moduleKey: "aplicaciones", fieldKey: "estado", label: "Estado" },
 
-    // Facturación.pptx (Pedro) — Contratos
-    { moduleKey: "contratos", fieldKey: "numero", label: "Nº", isPrimary: true },
+    // TEST 19 (Pedro) — Contratos
+    { moduleKey: "contratos", fieldKey: "codigo", label: "Código", isPrimary: true },
     { moduleKey: "contratos", fieldKey: "cliente", label: "Cliente" },
-    { moduleKey: "contratos", fieldKey: "nivel", label: "Nivel" },
-    { moduleKey: "contratos", fieldKey: "modelo", label: "Modelo" },
+    { moduleKey: "contratos", fieldKey: "tipoNivel", label: "Tipo" },
+    { moduleKey: "contratos", fieldKey: "subtipo", label: "Subtipo" },
     { moduleKey: "contratos", fieldKey: "periodo", label: "Periodo" },
-    { moduleKey: "contratos", fieldKey: "bolsaHoras", label: "Bolsa" },
-    { moduleKey: "contratos", fieldKey: "precio", label: "Precio" },
-    { moduleKey: "contratos", fieldKey: "consumoHoras", label: "Consumo" },
-    { moduleKey: "contratos", fieldKey: "facturadoHoras", label: "Facturado" },
+    { moduleKey: "contratos", fieldKey: "consumo", label: "Consumo" },
+    { moduleKey: "contratos", fieldKey: "facturadas", label: "Facturadas" },
     { moduleKey: "contratos", fieldKey: "estado", label: "Estado" },
 
     // H7-S5 CAU
@@ -790,27 +776,29 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       // H7-S6 — Cliente real referencia (escenario Delca)
       { nombre: "Almacenes Delca SA", email: "info@delca.es", telefono: "+34 985 000 001", estado: "activo", segmento: "Distribución", tipoTarifa: "normal" },
     ]},
-    // Facturación.pptx (Pedro) — Contratos demo: mix de modelos para
-    // probar todas las fórmulas (cuota, horas, bono). Algunos clientes
-    // tienen 2 contratos (cuota mensual + horas mensual; o cuota + bono).
+    // TEST 19 (Pedro) — Contratos demo con el nuevo modelo:
+    // (codigo, cliente, periodo, tipoNivel + subtipo). Modelo/Bolsa/
+    // Precio cuelgan del Nivel correspondiente. Códigos `CON-2026-*`
+    // se mantienen idénticos para no romper referencias en proyectos
+    // demo.
     { moduleKey: "contratos", records: [
-      // Acme Labs: cuota mensual nivel 2 + horas mensual nivel 1
-      { numero: "CON-2026-001", cliente: "Acme Labs", nivel: "2", modelo: "cuota", periodo: "mensual", bolsaHoras: "30", precio: "1200", fechaInicio: "2026-01-01", fechaFin: "9999-12-31", estado: "activo", notas: "Mantenimiento estándar mensual con bolsa de 30h." },
-      { numero: "CON-2026-002", cliente: "Acme Labs", nivel: "1", modelo: "horas", periodo: "mensual", bolsaHoras: "0", precio: "60", fechaInicio: "2026-01-01", fechaFin: "9999-12-31", estado: "activo", notas: "Evolutivos por horas a 60€/h." },
-      // Nova Retail: solo horas nivel 1
-      { numero: "CON-2026-003", cliente: "Nova Retail", nivel: "1", modelo: "horas", periodo: "mensual", bolsaHoras: "0", precio: "60", fechaInicio: "2026-03-15", fechaFin: "9999-12-31", estado: "activo", notas: "Integración POS por horas." },
-      // Binary Forge: cuota anual nivel 3 + bono puntual nivel B
-      { numero: "CON-2026-004", cliente: "Binary Forge", nivel: "3", modelo: "cuota", periodo: "anual", bolsaHoras: "30", precio: "8400", fechaInicio: "2026-02-01", fechaFin: "2027-01-31", estado: "activo", notas: "Mantenimiento anual nivel 3, bolsa 30h." },
-      { numero: "CON-2026-005", cliente: "Binary Forge", nivel: "B", modelo: "bono", periodo: "discreto", bolsaHoras: "15", precio: "900", fechaInicio: "2026-04-15", fechaFin: "2026-12-31", estado: "activo", notas: "Bono puntual 15h a 60€/h." },
-      // Talleres López: cuota trimestral nivel 1
-      { numero: "CON-2026-006", cliente: "Talleres López", nivel: "1", modelo: "cuota", periodo: "trimestral", bolsaHoras: "24", precio: "1800", fechaInicio: "2026-01-01", fechaFin: "9999-12-31", estado: "activo", notas: "Mantenimiento nivel 1, cuota trimestral, bolsa 24h." },
-      // Clínica Ardor: solo horas, piloto
-      { numero: "CON-2026-007", cliente: "Clínica Ardor", nivel: "1", modelo: "horas", periodo: "mensual", bolsaHoras: "0", precio: "55", fechaInicio: "2026-04-01", fechaFin: "9999-12-31", estado: "borrador", notas: "Piloto a la espera de aprobación." },
-      // Polígono Demo SL: tarifa plana acuerdo (nivel A) + bono puntual
-      { numero: "CON-2026-008", cliente: "Polígono Demo SL", nivel: "A", modelo: "cuota", periodo: "mensual", bolsaHoras: "60", precio: "2500", fechaInicio: "2024-01-15", fechaFin: "9999-12-31", estado: "activo", notas: "Tarifa plana mensual; todo lo que cabe en 60h cubierto." },
-      { numero: "CON-2026-009", cliente: "Polígono Demo SL", nivel: "B", modelo: "bono", periodo: "discreto", bolsaHoras: "20", precio: "1100", fechaInicio: "2026-04-01", fechaFin: "2026-12-31", estado: "activo", notas: "Bono 20h adicionales para evolutivos puntuales." },
-      // Almacenes Delca SA: cuota anual nivel 1 (escenario PDF SISPYME)
-      { numero: "CON-2026-010", cliente: "Almacenes Delca SA", nivel: "1", modelo: "cuota", periodo: "anual", bolsaHoras: "10", precio: "650", fechaInicio: "2026-01-01", fechaFin: "2026-12-31", estado: "activo", notas: "Mant. Nivel 1 anual, bolsa 10h. Excesos a precio €/h." },
+      // Acme Labs: Mantenimiento nivel 2 mensual + Bono puntual
+      { codigo: "CON-2026-001", cliente: "Acme Labs", periodo: "mensual", tipoNivel: "M", subtipo: "2", referenciaPropuesta: "", fechaInicio: "2026-01-01", fechaFin: "9999-12-31", estado: "activo", notas: "Mantenimiento Nivel 2 mensual (bolsa 30h)." },
+      { codigo: "CON-2026-002", cliente: "Acme Labs", periodo: "discreto", tipoNivel: "B", subtipo: "B15", referenciaPropuesta: "", fechaInicio: "2026-04-01", fechaFin: "2026-12-31", estado: "activo", notas: "Bono 15h adicionales para evolutivos." },
+      // Nova Retail: Mantenimiento nivel 1 mensual
+      { codigo: "CON-2026-003", cliente: "Nova Retail", periodo: "mensual", tipoNivel: "M", subtipo: "1", referenciaPropuesta: "PRE-TECH-016", fechaInicio: "2026-03-15", fechaFin: "9999-12-31", estado: "activo", notas: "Mantenimiento Nivel 1 mensual." },
+      // Binary Forge: Mantenimiento nivel 3 anual + Bono
+      { codigo: "CON-2026-004", cliente: "Binary Forge", periodo: "anual", tipoNivel: "M", subtipo: "3", referenciaPropuesta: "PRE-TECH-015", fechaInicio: "2026-02-01", fechaFin: "2027-01-31", estado: "activo", notas: "Mantenimiento Nivel 3 anual (bolsa 30h)." },
+      { codigo: "CON-2026-005", cliente: "Binary Forge", periodo: "discreto", tipoNivel: "B", subtipo: "B15", referenciaPropuesta: "", fechaInicio: "2026-04-15", fechaFin: "2026-12-31", estado: "activo", notas: "Bono 15h activado por sobreconsumo." },
+      // Talleres López: Mantenimiento nivel 1 trimestral
+      { codigo: "CON-2026-006", cliente: "Talleres López", periodo: "trimestral", tipoNivel: "M", subtipo: "1", referenciaPropuesta: "", fechaInicio: "2026-01-01", fechaFin: "9999-12-31", estado: "activo", notas: "Mantenimiento Nivel 1 trimestral." },
+      // Clínica Ardor: piloto, borrador
+      { codigo: "CON-2026-007", cliente: "Clínica Ardor", periodo: "mensual", tipoNivel: "M", subtipo: "1", referenciaPropuesta: "PRE-TECH-017", fechaInicio: "2026-04-01", fechaFin: "9999-12-31", estado: "borrador", notas: "Piloto a la espera de aprobación." },
+      // Polígono Demo SL: Acuerdo Tarifa plana + Bono
+      { codigo: "CON-2026-008", cliente: "Polígono Demo SL", periodo: "mensual", tipoNivel: "A", subtipo: "A1", referenciaPropuesta: "", fechaInicio: "2024-01-15", fechaFin: "9999-12-31", estado: "activo", notas: "Tarifa plana A1 mensual." },
+      { codigo: "CON-2026-009", cliente: "Polígono Demo SL", periodo: "discreto", tipoNivel: "B", subtipo: "B20", referenciaPropuesta: "", fechaInicio: "2026-04-01", fechaFin: "2026-12-31", estado: "activo", notas: "Bono 20h adicionales." },
+      // Almacenes Delca SA: Mantenimiento nivel 1 anual (escenario PDF SISPYME)
+      { codigo: "CON-2026-010", cliente: "Almacenes Delca SA", periodo: "anual", tipoNivel: "M", subtipo: "1", referenciaPropuesta: "", fechaInicio: "2026-01-01", fechaFin: "2026-12-31", estado: "activo", notas: "Mant. Nivel 1 anual (bolsa 10h). Excesos a 55€/h." },
     ]},
     { moduleKey: "crm", records: [
       { empresa: "Acme Labs", contacto: "Laura Martín", email: "laura@acme.com", telefono: "+34 600 111 101", fase: "propuesta", valorEstimado: "14500 EUR", proximoPaso: "Revisar hitos de fase 2" },
@@ -868,12 +856,12 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { numero: "PRE-TECH-017", cliente: "Clínica Ardor", concepto: "Piloto gestión de citas", importe: "6500 EUR", estado: "borrador" }
     ]},
     { moduleKey: "facturacion", records: [
-      // Facturación.pptx (Pedro) — Facturas demo ligadas a contratos
-      // para que `contrato.facturadoHoras` (€) se rellene al cargar.
-      { numero: "FAC-TECH-031", cliente: "Acme Labs", contrato: "CON-2026-001", concepto: "Cuota mantenimiento mes 1", importe: "1200 EUR", estado: "cobrada" },
-      { numero: "FAC-TECH-032", cliente: "Acme Labs", contrato: "CON-2026-001", concepto: "Cuota mantenimiento mes 2", importe: "1200 EUR", estado: "emitida" },
-      { numero: "FAC-TECH-033", cliente: "Talleres López", contrato: "CON-2026-006", concepto: "Cuota trimestral T1", importe: "1800 EUR", estado: "emitida" },
-      { numero: "FAC-TECH-034", cliente: "Binary Forge", contrato: "CON-2026-005", concepto: "Bono 15h activado", importe: "900 EUR", estado: "vencida" },
+      // TEST 19 (Pedro) — Facturas demo ligadas a contratos. `horas`
+      // alimenta contrato.facturadas (reset anual).
+      { numero: "FAC-TECH-031", cliente: "Acme Labs", contrato: "CON-2026-001", concepto: "Cuota mantenimiento mes 1", horas: "1", importe: "1200 EUR", fechaEmision: "2026-01-31", estado: "cobrada" },
+      { numero: "FAC-TECH-032", cliente: "Acme Labs", contrato: "CON-2026-001", concepto: "Cuota mantenimiento mes 2", horas: "1", importe: "1200 EUR", fechaEmision: "2026-02-28", estado: "emitida" },
+      { numero: "FAC-TECH-033", cliente: "Talleres López", contrato: "CON-2026-006", concepto: "Cuota trimestral T1", horas: "1", importe: "1800 EUR", fechaEmision: "2026-03-31", estado: "emitida" },
+      { numero: "FAC-TECH-034", cliente: "Binary Forge", contrato: "CON-2026-005", concepto: "Bono 15h activado", horas: "15", importe: "900 EUR", fechaEmision: "2026-04-15", estado: "vencida" },
     ]},
     { moduleKey: "documentos", records: [
       { nombre: "Backlog inicial ERP Acme", tipo: "backlog", cliente: "Acme Labs", entidadOrigen: "ERP comercial Acme — Fase 2", estado: "vigente" },

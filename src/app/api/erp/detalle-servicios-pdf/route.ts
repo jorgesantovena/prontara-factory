@@ -2,11 +2,11 @@ import { type NextRequest } from "next/server";
 import { requireTenantSession } from "@/lib/saas/auth-session";
 import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 import {
-  calcularPrefactura,
-  filtrarPorContratoPeriodo,
-  actividadesAnterioresAlPeriodoContrato,
+  findNivel,
+  tareaEsFacturable,
   type Actividad,
   type Contrato,
+  type Nivel,
 } from "@/lib/verticals/software-factory/prefacturacion-engine";
 import { generateDetalleServiciosPdf } from "@/lib/verticals/software-factory/detalle-servicios-pdf";
 import { resolveTenantEmisorAsync } from "@/lib/saas/tenant-emisor-resolver";
@@ -14,12 +14,11 @@ import { resolveRequestTenantRuntimeAsync } from "@/lib/saas/request-tenant-runt
 import { captureError } from "@/lib/observability/error-capture";
 
 /**
- * GET /api/erp/detalle-servicios-pdf?cliente=...&periodo=YYYY-MM&contrato=...
+ * GET /api/erp/detalle-servicios-pdf?contrato=...&periodo=YYYY-MM
  *
- * Facturación.pptx (Pedro) — PDF "Detalle servicios <Cliente>" estilo
- * SISPYME. La unidad de agregación es el CONTRATO: si se pasa
- * `&contrato=`, se usa ese contrato concreto. Si no, se elige el
- * primer contrato activo del cliente.
+ * TEST 19 (Pedro) — PDF "Detalle servicios" por Contrato y mes.
+ * Muestra el resumen del contrato (Bolsa, Consumo año, Facturadas,
+ * Exceso a la fecha) + las tareas del periodo agrupadas por servicio.
  */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -43,16 +42,19 @@ export async function GET(request: NextRequest) {
     const session = requireTenantSession(request);
     if (!session) return new Response("Unauthorized", { status: 401 });
 
-    const cliente = String(request.nextUrl.searchParams.get("cliente") || "").trim();
-    const periodo = String(request.nextUrl.searchParams.get("periodo") || new Date().toISOString().slice(0, 7));
     const contratoParam = String(request.nextUrl.searchParams.get("contrato") || "").trim();
-    if (!cliente) return new Response("Falta cliente.", { status: 400 });
+    const periodo = String(request.nextUrl.searchParams.get("periodo") || new Date().toISOString().slice(0, 7));
+    // Compat: aceptamos cliente= para enlaces antiguos (toma el primer
+    // contrato activo del cliente).
+    const clienteParam = String(request.nextUrl.searchParams.get("cliente") || "").trim();
+    if (!contratoParam && !clienteParam) return new Response("Falta contrato (o cliente).", { status: 400 });
     if (!/^\d{4}-\d{2}$/.test(periodo)) return new Response("periodo debe ser YYYY-MM.", { status: 400 });
 
-    const [actividadesRaw, proyectosRaw, contratosRaw, catalogoRaw, runtime] = await Promise.all([
+    const [actividadesRaw, proyectosRaw, contratosRaw, nivelesRaw, catalogoRaw, runtime] = await Promise.all([
       listModuleRecordsAsync("actividades", session.clientId),
       listModuleRecordsAsync("proyectos", session.clientId),
       listModuleRecordsAsync("contratos", session.clientId),
+      listModuleRecordsAsync("niveles", session.clientId),
       listModuleRecordsAsync("actividades-catalogo", session.clientId).catch(() => []),
       resolveRequestTenantRuntimeAsync(request),
     ]);
@@ -64,33 +66,42 @@ export async function GET(request: NextRequest) {
       if (codigo) tipoServicioPorActividad.set(codigo, ts);
     }
 
-    // Resolver contrato: si viene por URL lo usamos; si no, el primer
-    // contrato activo del cliente.
-    const contratosCliente = (contratosRaw as Array<Record<string, string>>).filter((c) => String(c.cliente || "") === cliente);
-    if (contratosCliente.length === 0) {
-      return new Response("El cliente " + cliente + " no tiene contratos.", { status: 404 });
+    const contratosArr = contratosRaw as Array<Record<string, string>>;
+    const contratoRow: Record<string, string> | undefined = contratoParam
+      ? contratosArr.find((c) => String(c.codigo || "") === contratoParam || String(c.numero || "") === contratoParam || String(c.id || "") === contratoParam)
+      : contratosArr.find((c) => String(c.cliente || "") === clienteParam && String(c.estado || "").toLowerCase() === "activo") || contratosArr.find((c) => String(c.cliente || "") === clienteParam);
+    if (!contratoRow) {
+      return new Response("Contrato no encontrado.", { status: 404 });
     }
-    const contratoRow: Record<string, string> = (contratoParam
-      ? contratosCliente.find((c) => String(c.numero || "") === contratoParam || String(c.id || "") === contratoParam)
-      : contratosCliente.find((c) => String(c.estado || "").toLowerCase() === "activo") || contratosCliente[0]
-    ) || contratosCliente[0];
     const contrato: Contrato = {
       id: String(contratoRow.id || ""),
-      numero: String(contratoRow.numero || contratoRow.id || ""),
-      cliente,
-      nivel: String(contratoRow.nivel || ""),
-      modelo: String(contratoRow.modelo || "cuota"),
+      codigo: String(contratoRow.codigo || contratoRow.numero || contratoRow.id || ""),
+      cliente: String(contratoRow.cliente || ""),
       periodo: String(contratoRow.periodo || "mensual"),
-      bolsaHoras: parseHoras(contratoRow.bolsaHoras),
-      precio: parseHoras(contratoRow.precio),
+      tipoNivel: String(contratoRow.tipoNivel || "M"),
+      subtipo: String(contratoRow.subtipo || ""),
+      consumo: parseHoras(contratoRow.consumo),
+      facturadas: parseHoras(contratoRow.facturadas),
       estado: String(contratoRow.estado || "activo"),
     };
-    const contratoRef = contrato.numero;
+    const niveles: Nivel[] = (nivelesRaw as Array<Record<string, string>>).map((n) => ({
+      tipoNivel: String(n.tipoNivel || ""),
+      subtipo: String(n.subtipo || ""),
+      modelo: String(n.modelo || "cuota"),
+      bolsa: parseHoras(n.bolsa),
+      precio: parseHoras(n.precio),
+      descripcion: String(n.descripcion || ""),
+    }));
+    const nivelCuota = findNivel(niveles, contrato.tipoNivel, contrato.subtipo, "cuota");
+    const nivelHoras = findNivel(niveles, contrato.tipoNivel, contrato.subtipo, "horas");
+    const bolsa = (nivelCuota?.bolsa ?? nivelHoras?.bolsa ?? 0);
+    const precioCuota = nivelCuota?.precio ?? 0;
+    const precioHoras = nivelHoras?.precio ?? 0;
 
-    // Mapas proyecto → facturable / contrato.
+    // Resolver mapa proyecto → (facturable, contrato).
     const proyectoFacturablePorRef = new Map<string, "si" | "no">();
     const proyectoContratoPorRef = new Map<string, string>();
-    for (const p of proyectosRaw) {
+    for (const p of proyectosRaw as Array<Record<string, string>>) {
       const refs = [String(p.nombre || ""), String(p.id || "")].filter(Boolean);
       const facturable = String(p.facturable || "").toLowerCase() === "si" ? "si" : "no";
       const c = String(p.contrato || "");
@@ -100,7 +111,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const actividades: Actividad[] = actividadesRaw.map((a) => ({
+    const actividades: Actividad[] = (actividadesRaw as Array<Record<string, string>>).map((a) => ({
       id: String(a.id || ""),
       fecha: String(a.fecha || "").slice(0, 10),
       cliente: String(a.cliente || ""),
@@ -120,12 +131,20 @@ export async function GET(request: NextRequest) {
       lugar: String(a.lugar || ""),
     }));
 
-    const acts = filtrarPorContratoPeriodo(actividades, contratoRef, periodo);
+    // Filtrar tareas del contrato dentro del mes.
+    const acts = actividades.filter((a) => {
+      const cRef = String(a.contrato || a.proyectoContrato || "");
+      if (cRef !== contrato.codigo) return false;
+      if (!tareaEsFacturable(a)) return false;
+      return String(a.fecha).slice(0, 7) === periodo;
+    });
     if (acts.length === 0) {
-      return new Response("Sin actividades del contrato " + contratoRef + " para el periodo " + periodo + ".", { status: 404 });
+      return new Response("Sin tareas del contrato " + contrato.codigo + " para el periodo " + periodo + ".", { status: 404 });
     }
-    const previas = actividadesAnterioresAlPeriodoContrato(actividades, contratoRef, periodo);
-    const prefactura = calcularPrefactura(acts, contrato, previas);
+
+    const consumoPeriodo = acts.reduce((s, a) => s + a.tiempoHoras, 0);
+    const consumoAnio = contrato.consumo; // ya viene precalculado (reset anual)
+    const exceso = Math.max(0, consumoAnio - bolsa - contrato.facturadas);
 
     const tenantEmisor = await resolveTenantEmisorAsync({
       clientId: session.clientId,
@@ -140,9 +159,23 @@ export async function GET(request: NextRequest) {
         telefono: tenantEmisor.telefono || "",
         email: tenantEmisor.email || "",
       },
-      cliente,
+      cliente: contrato.cliente,
       periodo,
-      prefactura,
+      prefactura: {
+        contrato: contrato.codigo,
+        tipoNivel: contrato.tipoNivel,
+        subtipo: contrato.subtipo,
+        modelo: contrato.tipoNivel === "B" ? "Bono" : "Mant",
+        periodoContrato: contrato.periodo,
+        bolsa,
+        precioCuota,
+        precioHoras,
+        consumoAnio,
+        consumoPeriodo,
+        facturadas: contrato.facturadas,
+        exceso,
+        importeExceso: exceso * precioHoras,
+      },
       actividades: acts,
     });
 
@@ -150,7 +183,7 @@ export async function GET(request: NextRequest) {
       status: 200,
       headers: {
         "Content-Type": "application/pdf",
-        "Content-Disposition": "inline; filename=\"detalle-servicios-" + cliente.replace(/\s+/g, "_") + "-" + periodo + ".pdf\"",
+        "Content-Disposition": "inline; filename=\"detalle-" + contrato.codigo + "-" + periodo + ".pdf\"",
       },
     });
   } catch (e) {

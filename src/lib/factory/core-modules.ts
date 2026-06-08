@@ -522,19 +522,23 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
   { moduleKey: "cuentas-bancarias", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
-  // Facturación.pptx (Pedro) — Niveles: catálogo de niveles que se
-  // referencian desde Contrato. Pedro define 1,2,3,4 (mantenimiento
-  // con bolsa), A (Acuerdo / tarifa plana) y B (Bono puntual).
-  // `modeloSugerido` es ayuda al alta de Contrato: al elegir un nivel,
-  // el formulario propone su modelo más típico.
-  { moduleKey: "niveles", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "1, 2, 3, 4, A, B" },
-  { moduleKey: "niveles", fieldKey: "nombre", label: "Nombre", kind: "text", required: true, placeholder: "Nivel 1 mantenimiento, Acuerdo tarifa plana, Bono puntual..." },
-  { moduleKey: "niveles", fieldKey: "modeloSugerido", label: "Modelo sugerido", kind: "status", placeholder: "Modelo de facturación típico de este nivel", options: [
+  // TEST 19 (Pedro) — Niveles rediseñado: clave compuesta
+  // (tipoNivel, subtipo, modelo). El Modelo, la Bolsa y el Precio
+  // VIVEN AQUÍ — un mismo Contrato (Tipo M, Subtipo 1) puede leerse
+  // como Cuota (cuota mensual) o como Horas (precio del exceso).
+  { moduleKey: "niveles", fieldKey: "tipoNivel", label: "Tipo de Nivel", kind: "status", required: true, defaultValue: "M", options: [
+    { value: "M", label: "M (Mantenimiento)" },
+    { value: "A", label: "A (Acuerdo específico)" },
+    { value: "B", label: "B (Bono de horas)" },
+  ] },
+  { moduleKey: "niveles", fieldKey: "subtipo", label: "Subtipo", kind: "text", required: true, placeholder: "1, 2, 3, 4 para Tipo M. Libre para A y B (ej. 'BX-2026-01')" },
+  { moduleKey: "niveles", fieldKey: "modelo", label: "Modelo", kind: "status", required: true, defaultValue: "cuota", placeholder: "Cuota (cuota fija) / Horas (€/h, exceso o consumo directo)", options: [
     { value: "cuota", label: "Cuota" },
     { value: "horas", label: "Horas" },
-    { value: "bono", label: "Bono" },
   ] },
-  { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción", kind: "textarea", placeholder: "Qué cubre este nivel y a qué tipo de cliente aplica" },
+  { moduleKey: "niveles", fieldKey: "bolsa", label: "Bolsa (h)", kind: "number", defaultValue: "1", placeholder: "Horas cubiertas. Asume 1 para Modelo Cuota Tipo M/A. Para Tipo B = h del bono." },
+  { moduleKey: "niveles", fieldKey: "precio", label: "Precio (€/h)", kind: "money", required: true, placeholder: "€/h del Nivel. Para Cuota Tipo M/A = importe de la cuota; para Horas = precio del exceso o del consumo." },
+  { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción", kind: "textarea", placeholder: "Qué cubre este Nivel y cuándo aplica" },
 ];
 
 export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
@@ -731,10 +735,12 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "cuentas-bancarias", fieldKey: "esPrincipal", label: "Princ." },
   { moduleKey: "cuentas-bancarias", fieldKey: "estado", label: "Estado" },
 
-  // Facturación.pptx (Pedro) — Niveles
-  { moduleKey: "niveles", fieldKey: "codigo", label: "Código", isPrimary: true },
-  { moduleKey: "niveles", fieldKey: "nombre", label: "Nombre" },
-  { moduleKey: "niveles", fieldKey: "modeloSugerido", label: "Modelo" },
+  // TEST 19 (Pedro) — Niveles
+  { moduleKey: "niveles", fieldKey: "tipoNivel", label: "Tipo", isPrimary: true },
+  { moduleKey: "niveles", fieldKey: "subtipo", label: "Subtipo" },
+  { moduleKey: "niveles", fieldKey: "modelo", label: "Modelo" },
+  { moduleKey: "niveles", fieldKey: "bolsa", label: "Bolsa" },
+  { moduleKey: "niveles", fieldKey: "precio", label: "Precio" },
   { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción" },
 ];
 
@@ -742,16 +748,28 @@ export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<st
   { moduleKey: "tareas", records: [
     { titulo: "Revisar contratos pendientes", asignado: "Operador", prioridad: "media", fechaLimite: "2026-05-15", estado: "pendiente", descripcion: "Repaso mensual." },
   ]},
-  // Facturación.pptx (Pedro) — Catálogo Niveles precargado con los 6
-  // códigos del estándar de Pedro. Cada pack que habilite el módulo
-  // `niveles` heredará este seed.
+  // TEST 19 (Pedro) — Catálogo Niveles con clave compuesta
+  // (tipoNivel, subtipo, modelo). Para Tipo M (Mantenimiento)
+  // creamos DOS rows por subtipo (Cuota + Horas): la Cuota define el
+  // importe de la cuota periódica, las Horas el €/h del exceso.
   { moduleKey: "niveles", records: [
-    { codigo: "1", nombre: "Mantenimiento nivel 1", modeloSugerido: "cuota", descripcion: "Cuota baja con bolsa anual reducida." },
-    { codigo: "2", nombre: "Mantenimiento nivel 2", modeloSugerido: "cuota", descripcion: "Cuota intermedia con bolsa estándar." },
-    { codigo: "3", nombre: "Mantenimiento nivel 3", modeloSugerido: "cuota", descripcion: "Cuota alta con bolsa amplia." },
-    { codigo: "4", nombre: "Mantenimiento nivel 4", modeloSugerido: "cuota", descripcion: "Premium con cobertura máxima." },
-    { codigo: "A", nombre: "Acuerdo / Tarifa plana", modeloSugerido: "cuota", descripcion: "Cuota mensual fija sin bolsa. Todo el trabajo cubierto por la cuota." },
-    { codigo: "B", nombre: "Bono de horas", modeloSugerido: "bono", descripcion: "Compra puntual (no recurrente) de N horas a precio cerrado." },
+    // Tipo M — Mantenimiento Nivel 1
+    { tipoNivel: "M", subtipo: "1", modelo: "cuota", bolsa: "10", precio: "650", descripcion: "Mantenimiento Nivel 1 — cuota anual 650€, bolsa 10h." },
+    { tipoNivel: "M", subtipo: "1", modelo: "horas", bolsa: "0", precio: "55", descripcion: "Mantenimiento Nivel 1 — exceso 55€/h." },
+    // Tipo M — Mantenimiento Nivel 2
+    { tipoNivel: "M", subtipo: "2", modelo: "cuota", bolsa: "30", precio: "1200", descripcion: "Mantenimiento Nivel 2 — cuota mensual 1200€, bolsa 30h." },
+    { tipoNivel: "M", subtipo: "2", modelo: "horas", bolsa: "0", precio: "60", descripcion: "Mantenimiento Nivel 2 — exceso 60€/h." },
+    // Tipo M — Mantenimiento Nivel 3
+    { tipoNivel: "M", subtipo: "3", modelo: "cuota", bolsa: "30", precio: "8400", descripcion: "Mantenimiento Nivel 3 — cuota anual 8400€, bolsa 30h." },
+    { tipoNivel: "M", subtipo: "3", modelo: "horas", bolsa: "0", precio: "65", descripcion: "Mantenimiento Nivel 3 — exceso 65€/h." },
+    // Tipo M — Mantenimiento Nivel 4 (Premium)
+    { tipoNivel: "M", subtipo: "4", modelo: "cuota", bolsa: "60", precio: "2500", descripcion: "Mantenimiento Nivel 4 — cuota mensual 2500€, bolsa 60h." },
+    { tipoNivel: "M", subtipo: "4", modelo: "horas", bolsa: "0", precio: "70", descripcion: "Mantenimiento Nivel 4 — exceso 70€/h." },
+    // Tipo A — Acuerdos específicos (Tarifa plana)
+    { tipoNivel: "A", subtipo: "A1", modelo: "cuota", bolsa: "1", precio: "1800", descripcion: "Tarifa plana A1 — cuota trimestral 1800€, sin tope de horas." },
+    // Tipo B — Bonos de horas (compra puntual)
+    { tipoNivel: "B", subtipo: "B15", modelo: "horas", bolsa: "15", precio: "60", descripcion: "Bono de 15h a 60€/h (importe total 900€)." },
+    { tipoNivel: "B", subtipo: "B20", modelo: "horas", bolsa: "20", precio: "55", descripcion: "Bono de 20h a 55€/h (importe total 1100€)." },
   ]},
   // TEST-12 #2 — Demo de `tipos-servicio` eliminada (módulo retirado).
   { moduleKey: "tipos-cliente", records: [

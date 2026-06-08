@@ -363,7 +363,7 @@ function parseHorasNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Recalcula `contrato.consumoHoras` desde una tarea (mira el contrato
+// Recalcula `contrato.consumo` desde una tarea (mira el contrato
 // heredado en la tarea; si está vacío, sube por proyecto.contrato).
 async function recalcularConsumoContratoDesdeTarea(tarea: Record<string, string>, tenant: string): Promise<void> {
   let contratoRef = String(tarea.contrato || "").trim();
@@ -382,9 +382,9 @@ async function recalcularConsumoContratoDesdeTarea(tarea: Record<string, string>
   await recalcularConsumoContratoDirecto(contratoRef, tenant);
 }
 
-// Versión que recibe la referencia al contrato directamente (usada por
-// el trigger de edición de Proyecto, donde no hay tarea ni cliente
-// implícitos). Solo cuenta tareas cuyo proyecto sea facturable=si.
+// TEST 19 (Pedro) — Recalcula `contrato.consumo` con horas del AÑO EN
+// CURSO únicamente (reset automático cada 1 de enero). Solo cuenta
+// tareas cuyo proyecto sea facturable=si.
 async function recalcularConsumoContratoDirecto(contratoRef: string, tenant: string): Promise<void> {
   if (!contratoRef) return;
   const [tareas, proyectos, contratos] = await Promise.all([
@@ -392,6 +392,7 @@ async function recalcularConsumoContratoDirecto(contratoRef: string, tenant: str
     listModuleRecordsAsync("proyectos", tenant),
     listModuleRecordsAsync("contratos", tenant),
   ]);
+  const anioActual = new Date().getFullYear();
   const proyectoFacturablePorRef = new Map<string, boolean>();
   const proyectoContratoPorRef = new Map<string, string>();
   for (const p of (Array.isArray(proyectos) ? proyectos : []) as Array<Record<string, string>>) {
@@ -403,43 +404,54 @@ async function recalcularConsumoContratoDirecto(contratoRef: string, tenant: str
   let consumo = 0;
   for (const t of (Array.isArray(tareas) ? tareas : []) as Array<Record<string, string>>) {
     const proyRef = String(t.proyecto || "");
-    // tareas con contrato explícito ganan; si no, miramos el contrato
-    // del proyecto.
     const cRef = String(t.contrato || "") || proyectoContratoPorRef.get(proyRef) || "";
     if (cRef !== contratoRef) continue;
     if (!proyectoFacturablePorRef.get(proyRef)) continue;
+    // Reset anual: descartar tareas de años anteriores.
+    const anio = parseInt(String(t.fecha || "").slice(0, 4), 10);
+    if (Number.isFinite(anio) && anio !== anioActual) continue;
     consumo += parseHorasNumber(t.tiempoHoras || t.horas);
   }
   const con = (Array.isArray(contratos) ? contratos : []).find((c) => {
     const r = c as Record<string, string>;
-    return String(r.numero || "") === contratoRef || String(r.id || "") === contratoRef;
+    return String(r.codigo || "") === contratoRef || String(r.numero || "") === contratoRef || String(r.id || "") === contratoRef;
   }) as Record<string, string> | undefined;
   if (!con) return;
   const next = consumo.toFixed(2).replace(".", ",");
-  if (String(con.consumoHoras || "") === next) return;
-  await updateModuleRecordAsync("contratos", String(con.id || ""), { ...con, consumoHoras: next }, tenant);
+  if (String(con.consumo || "") === next) return;
+  await updateModuleRecordAsync("contratos", String(con.id || ""), { ...con, consumo: next }, tenant);
 }
 
-// Recalcula `contrato.facturadoHoras` (en €) sumando importes de
-// facturas no anuladas asociadas al contrato.
+// TEST 19 (Pedro) — Recalcula `contrato.facturadas` con HORAS facturadas
+// del año en curso. Una factura aporta sus horas (campo `horas` si
+// existe; si no, deriva de importe/precio... pero el caso simple es
+// sumar `horas` directos). Reset anual igual que consumo.
 async function recalcularFacturadoContrato(contratoRef: string, tenant: string): Promise<void> {
   if (!contratoRef) return;
   const [facturas, contratos] = await Promise.all([
     listModuleRecordsAsync("facturacion", tenant),
     listModuleRecordsAsync("contratos", tenant),
   ]);
-  let total = 0;
+  const anioActual = new Date().getFullYear();
+  let totalHoras = 0;
   for (const f of (Array.isArray(facturas) ? facturas : []) as Array<Record<string, string>>) {
     if (String(f.contrato || "") !== contratoRef) continue;
     if (String(f.estado || "").toLowerCase() === "anulada") continue;
-    total += parseHorasNumber(f.importe);
+    const fechaIso = String(f.fechaEmision || f.fecha || "");
+    const anio = parseInt(fechaIso.slice(0, 4), 10);
+    if (Number.isFinite(anio) && anio !== anioActual) continue;
+    // Pedro: Facturadas se mide en HORAS. Si la factura tiene un campo
+    // `horas`, lo sumamos. Si no, fallback a 0 (la factura aporta €
+    // pero no horas — pendiente de definir si la factura debe llevar
+    // horas explícitas siempre).
+    totalHoras += parseHorasNumber(f.horas);
   }
   const con = (Array.isArray(contratos) ? contratos : []).find((c) => {
     const r = c as Record<string, string>;
-    return String(r.numero || "") === contratoRef || String(r.id || "") === contratoRef;
+    return String(r.codigo || "") === contratoRef || String(r.numero || "") === contratoRef || String(r.id || "") === contratoRef;
   }) as Record<string, string> | undefined;
   if (!con) return;
-  const next = total.toFixed(2).replace(".", ",");
-  if (String(con.facturadoHoras || "") === next) return;
-  await updateModuleRecordAsync("contratos", String(con.id || ""), { ...con, facturadoHoras: next }, tenant);
+  const next = totalHoras.toFixed(2).replace(".", ",");
+  if (String(con.facturadas || "") === next) return;
+  await updateModuleRecordAsync("contratos", String(con.id || ""), { ...con, facturadas: next }, tenant);
 }

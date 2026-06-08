@@ -1,32 +1,33 @@
 /**
- * Engine de pre-facturación estilo SISPYME (H7-S2 / H7-S3).
+ * Engine de pre-facturación — TEST 19 (Pedro).
  *
- * Facturación.pptx (Pedro) — Rediseño completo del modelo:
+ * El proceso se ejecuta para una combinación (Modelo, Periodo) elegida
+ * en un diálogo previo (UI). Devuelve una línea por Contrato a
+ * facturar. Hay dos casos:
  *
- *   El método de facturación vive en el CONTRATO (no en el cliente).
- *   Un cliente puede tener varios contratos a la vez.
+ *   Caso A — Cuotas / Tarifa plana / Bonos
+ *     Parámetros: Modelo=Cuota, Periodo=cualquiera.
+ *     Selección: contratos con `periodo` indicado y Tipo Nivel
+ *                cualquiera (M/A/B).
+ *     Cálculo:   busca el Nivel (tipoNivel, subtipo, modelo=Cuota).
+ *                Importe = Bolsa × Precio.
+ *                Para Tipo M/A → Bolsa=1 (cuota fija).
+ *                Para Tipo B   → Bolsa = h del bono, Precio = €/h.
  *
- *   Modelos de contrato:
+ *   Caso B — Excesos sobre cuota de mantenimiento
+ *     Parámetros: Modelo=Horas, Periodo=Mensual.
+ *     Selección: contratos con periodo Mensual + Tipo Nivel = M.
+ *     Cálculo:   recupera Consumo y Facturadas del contrato.
+ *                Busca el Nivel (tipoNivel=M, mismo subtipo,
+ *                modelo=Horas) → Bolsa, Precio.
+ *                Importe = max(0, Consumo − Bolsa − Facturadas) × Precio.
  *
- *     - "cuota" (Mantenimiento o Tarifa Plana, niveles 1..4 o A):
- *         Importe periódico = 1 × precio (cuota fija).
- *         Si bolsa > 0, las horas hasta bolsa están cubiertas; el
- *         exceso se factura como "Excesos" (línea aparte) con la
- *         misma tarifa €/h asociada al nivel.
+ * La key de Nivel es (tipoNivel, subtipo, modelo). Hay típicamente
+ * dos rows por subtipo M (una Cuota, una Horas).
  *
- *     - "horas" (variable por consumo, niveles 1..4):
- *         Importe periódico = horas consumidas × precio (€/h).
- *
- *     - "bono" (Bono puntual, nivel B, periodo "discreto"):
- *         Importe = bolsa × precio (UN único disparo al activar el
- *         bono; no se factura periódicamente).
- *
- *   Las TAREAS suman al consumo del contrato heredado vía
- *   proyecto.contrato (si proyecto.facturable === "si"). Las FACTURAS
- *   suman al facturado del contrato referenciado por factura.contrato.
- *
- * Una línea de prefactura por contrato + (si aplica) una línea de
- * "exceso" por contrato cuota con sobreconsumo.
+ * Compatibilidad: este engine ya NO mantiene la firma antigua basada
+ * en (Actividad, BolsaCliente). Los call sites (route /api/erp/
+ * prefacturacion y /api/erp/detalle-servicios-pdf) se han actualizado.
  */
 
 export type Actividad = {
@@ -39,11 +40,10 @@ export type Actividad = {
   actividad?: string;
   tipoServicio?: string;
   tiempoHoras: number;
-  // Legacy — solo se usa si el proyecto no informa facturable y la tarea
-  // viene de datos antiguos. Nueva fuente canónica: proyecto.facturable.
-  tipoFacturacion?: "contra-bolsa" | "fuera-bolsa" | "no-facturable" | string;
-  proyectoFacturable?: "si" | "no" | string; // resuelto por el caller
-  proyectoContrato?: string; // resuelto por el caller (proyecto.contrato)
+  // Legacy — solo se usa si el proyecto no informa facturable.
+  tipoFacturacion?: string;
+  proyectoFacturable?: "si" | "no" | string;
+  proyectoContrato?: string;
   estado: string;
   descripcion?: string;
   horaDesde?: string;
@@ -53,50 +53,47 @@ export type Actividad = {
 
 export type Contrato = {
   id: string;
-  numero: string;
+  codigo: string;
   cliente: string;
-  nivel: string;
-  modelo: "cuota" | "horas" | "bono" | string;
   periodo: "mensual" | "trimestral" | "semestral" | "anual" | "discreto" | string;
-  bolsaHoras: number;
-  precio: number;
+  tipoNivel: "M" | "A" | "B" | string;
+  subtipo: string;
+  consumo: number;
+  facturadas: number;
+  referenciaPropuesta?: string;
   estado: string;
   fechaInicio?: string;
   fechaFin?: string;
 };
 
-export type LineaPrefactura = {
-  cliente: string;
-  contrato: string;
-  nivel: string;
-  modelo: string;
-  periodo: string;
-  bolsaContratada: number;
-  hPeriodo: number;
-  hFacturable: number;
-  hCubiertasPorCuota: number; // horas dentro de la bolsa (modelo cuota)
-  hExceso: number; // horas sobre la bolsa (modelo cuota → línea aparte)
-  hGastadasAnteriores: number;
-  hImputadasCliente: number;
-  hOtrasFacturadas: number;
-  saldoBolsa: number;
-  hAFacturar: number;
-  tarifaHora: number; // precio del contrato
-  importe: number; // total de la línea
-  importeExceso: number;
-  // Campos de compat con UI vieja (alias) — se mantienen para no
-  // romper bindings.
-  bolsaConcepto: string;
-  hContraCuota: number;
-  hFueraBolsa: number;
-  hNoFacturable: number;
-  tareasIncluidas: number;
-  estado: "pendiente" | "prefacturada" | "facturada";
+export type Nivel = {
+  tipoNivel: "M" | "A" | "B" | string;
+  subtipo: string;
+  modelo: "cuota" | "horas" | string;
+  bolsa: number;
+  precio: number;
+  descripcion?: string;
 };
 
-function parseHoras(v: unknown): number {
+export type LineaPrefactura = {
+  caso: "A" | "B";
+  contrato: string;
+  cliente: string;
+  tipoNivel: string;
+  subtipo: string;
+  periodo: string;
+  modelo: "cuota" | "horas";
+  bolsa: number;
+  precio: number;
+  consumo: number;
+  facturadas: number;
+  horasAFacturar: number; // para Caso A: bolsa. Para Caso B: max(0, consumo-bolsa-facturadas)
+  importe: number;
+  notas: string;
+};
+
+function parseNum(v: unknown): number {
   if (typeof v === "number") return v;
-  // TEST-12 #1 — tolerar hh:mm legacy y decimal con coma o punto.
   const s = String(v ?? "0").trim();
   if (s.includes(":")) {
     const [hh = "0", mm = "0"] = s.split(":");
@@ -109,153 +106,118 @@ function parseHoras(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-// Facturación.pptx — Una tarea es FACTURABLE si el proyecto lo dice.
-// Compatibilidad con datos legacy: si no hay proyectoFacturable
-// resuelto, miramos tipoFacturacion de la tarea (modelo viejo). Si
-// nada está informado, asumimos facturable (default optimista).
-export function tareaEsFacturable(a: Actividad): boolean {
-  const fproy = String(a.proyectoFacturable || "").toLowerCase();
-  if (fproy === "si") return true;
-  if (fproy === "no") return false;
-  const tf = String(a.tipoFacturacion || "").toLowerCase();
-  if (tf === "no-facturable") return false;
-  if (tf === "contra-bolsa" || tf === "fuera-bolsa") return true;
-  return true;
+/**
+ * Resuelve un Nivel por su clave compuesta (tipoNivel, subtipo, modelo).
+ * Devuelve undefined si no existe (el caller debe decidir si saltar la
+ * línea o emitirla con importe 0).
+ */
+export function findNivel(
+  niveles: Nivel[],
+  tipoNivel: string,
+  subtipo: string,
+  modelo: "cuota" | "horas",
+): Nivel | undefined {
+  return niveles.find(
+    (n) =>
+      String(n.tipoNivel).toUpperCase() === String(tipoNivel).toUpperCase() &&
+      String(n.subtipo) === String(subtipo) &&
+      String(n.modelo).toLowerCase() === modelo,
+  );
 }
 
 /**
- * Calcula la línea de pre-facturación de un contrato para un periodo.
- *
- * @param actividades — tareas del periodo que tributan a este contrato
- *                     (filtradas previamente por contrato + fecha)
- * @param contrato — datos del contrato (modelo, periodo, bolsa, precio)
- * @param actividadesAnteriores — tareas del mismo contrato en periodos
- *                                anteriores (para saldo previo de bolsa)
+ * Caso A — Importe = Bolsa × Precio del Nivel (tipo, subtipo, Cuota).
  */
-export function calcularPrefactura(
-  actividades: Actividad[],
-  contrato: Contrato,
-  actividadesAnteriores: Actividad[] = [],
-): LineaPrefactura {
-  let hPeriodo = 0;
-  let hFacturable = 0;
-  let hNoFacturable = 0;
-
-  for (const a of actividades) {
-    const h = parseHoras(a.tiempoHoras);
-    hPeriodo += h;
-    if (tareaEsFacturable(a)) hFacturable += h;
-    else hNoFacturable += h;
+export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefactura | null {
+  const nivel = findNivel(niveles, contrato.tipoNivel, contrato.subtipo, "cuota");
+  if (!nivel) {
+    // Sin Nivel Cuota definido → no se emite cuota.
+    return null;
   }
-
-  // Saldo previo de bolsa (cuántas horas facturables ya consumidas
-  // antes del periodo cuentan contra la bolsa).
-  let hGastadasAnteriores = 0;
-  let hOtrasFacturadas = 0;
-  for (const a of actividadesAnteriores) {
-    const h = parseHoras(a.tiempoHoras);
-    if (tareaEsFacturable(a)) hGastadasAnteriores += h;
-    if (a.estado === "facturada") hOtrasFacturadas += h;
-  }
-
-  const bolsa = contrato.bolsaHoras;
-  const saldoAntes = Math.max(0, bolsa - hGastadasAnteriores);
-  const hCubiertasPorCuota = Math.min(saldoAntes, hFacturable);
-  const hExceso = Math.max(0, hFacturable - hCubiertasPorCuota);
-  const saldoFinal = Math.max(0, saldoAntes - hFacturable);
-
-  const modelo = String(contrato.modelo || "cuota").toLowerCase();
-  const precio = Number(contrato.precio) || 0;
-
-  // Cálculo del importe según modelo Pedro:
-  //   - Cuota: 1 × precio (cuota periódica). El exceso se reporta
-  //            aparte como `importeExceso` (línea adicional).
-  //   - Horas: horas facturables × precio (€/h).
-  //   - Bono:  bolsa × precio (UN disparo al activar el bono; no
-  //            periódico). Aquí devolvemos siempre el importe del
-  //            bono — el caller decide si emitirlo o no según
-  //            estado del contrato.
-  let hAFacturar = 0;
-  let importe = 0;
-  let importeExceso = 0;
-  if (modelo === "cuota") {
-    hAFacturar = 0; // la cuota no factura horas, factura "1 cuota"
-    importe = 1 * precio;
-    // Exceso: si hay sobreconsumo, se factura como horas extra a
-    // tarifa precio €/h (Pedro: "Importe = Horas-Bolsa-Facturadas x Precio").
-    importeExceso = hExceso * precio;
-  } else if (modelo === "horas") {
-    hAFacturar = hFacturable;
-    importe = hFacturable * precio;
-  } else if (modelo === "bono") {
-    hAFacturar = bolsa;
-    importe = bolsa * precio;
-  }
-
+  const bolsa = parseNum(nivel.bolsa);
+  const precio = parseNum(nivel.precio);
+  const importe = bolsa * precio;
   return {
+    caso: "A",
+    contrato: contrato.codigo,
     cliente: contrato.cliente,
-    contrato: contrato.numero || contrato.id,
-    nivel: contrato.nivel,
-    modelo,
-    periodo: String(contrato.periodo || "mensual"),
-    bolsaContratada: bolsa,
-    hPeriodo,
-    hFacturable,
-    hCubiertasPorCuota,
-    hExceso,
-    hGastadasAnteriores,
-    hImputadasCliente: hFacturable + hNoFacturable,
-    hOtrasFacturadas,
-    saldoBolsa: saldoFinal,
-    hAFacturar,
-    tarifaHora: precio,
+    tipoNivel: contrato.tipoNivel,
+    subtipo: contrato.subtipo,
+    periodo: contrato.periodo,
+    modelo: "cuota",
+    bolsa,
+    precio,
+    consumo: parseNum(contrato.consumo),
+    facturadas: parseNum(contrato.facturadas),
+    horasAFacturar: bolsa,
     importe,
-    importeExceso,
-    bolsaConcepto: bolsa > 0 ? "Bolsa " + String(bolsa) + "h" : "Sin bolsa",
-    hContraCuota: hCubiertasPorCuota, // alias compat con UI vieja
-    hFueraBolsa: hExceso, // alias compat
-    hNoFacturable,
-    tareasIncluidas: actividades.length,
-    estado: actividades.every((a) => a.estado === "facturada") ? "facturada" : actividades.some((a) => a.estado === "validada") ? "prefacturada" : "pendiente",
+    notas: bolsa === 1 ? "Cuota " + contrato.periodo : "Bolsa " + bolsa + "h × " + precio + "€",
   };
 }
 
 /**
- * Filtra actividades por CONTRATO + periodo (YYYY-MM). El "contrato"
- * de una tarea es tarea.contrato (heredado) o, si vacío, el
- * proyectoContrato resuelto por el caller.
+ * Caso B — Importe = max(0, Consumo − Bolsa − Facturadas) × Precio
+ * del Nivel (M, mismo subtipo, Horas). Solo contratos Tipo M.
  */
-export function filtrarPorContratoPeriodo(actividades: Actividad[], contrato: string, periodoYYYYMM: string): Actividad[] {
-  return actividades.filter((a) => {
-    const cRef = String(a.contrato || a.proyectoContrato || "");
-    if (cRef !== contrato) return false;
-    return String(a.fecha).slice(0, 7) === periodoYYYYMM;
-  });
-}
-
-export function actividadesAnterioresAlPeriodoContrato(actividades: Actividad[], contrato: string, periodoYYYYMM: string): Actividad[] {
-  return actividades.filter((a) => {
-    const cRef = String(a.contrato || a.proyectoContrato || "");
-    return cRef === contrato && String(a.fecha).slice(0, 7) < periodoYYYYMM;
-  });
-}
-
-// Compat con consumidores antiguos por cliente — los mantenemos por
-// si alguien los importa, pero ya no se usan en el flujo nuevo.
-export function filtrarPorClientePeriodo(actividades: Actividad[], cliente: string, periodoYYYYMM: string): Actividad[] {
-  return actividades.filter((a) => {
-    if (a.cliente !== cliente) return false;
-    return String(a.fecha).slice(0, 7) === periodoYYYYMM;
-  });
-}
-
-export function actividadesAnterioresAlPeriodo(actividades: Actividad[], cliente: string, periodoYYYYMM: string): Actividad[] {
-  return actividades.filter((a) => a.cliente === cliente && String(a.fecha).slice(0, 7) < periodoYYYYMM);
+export function calcularCasoB(contrato: Contrato, niveles: Nivel[]): LineaPrefactura | null {
+  if (String(contrato.tipoNivel).toUpperCase() !== "M") return null;
+  const nivelHoras = findNivel(niveles, "M", contrato.subtipo, "horas");
+  if (!nivelHoras) {
+    // Sin Nivel Horas asociado al Tipo M Subtipo X → no podemos
+    // calcular el precio del exceso.
+    return null;
+  }
+  const consumo = parseNum(contrato.consumo);
+  const facturadas = parseNum(contrato.facturadas);
+  const bolsaHoras = parseNum(nivelHoras.bolsa);
+  const precio = parseNum(nivelHoras.precio);
+  const exceso = consumo - bolsaHoras - facturadas;
+  if (exceso <= 0) return null; // sin exceso → no se emite línea
+  const importe = exceso * precio;
+  return {
+    caso: "B",
+    contrato: contrato.codigo,
+    cliente: contrato.cliente,
+    tipoNivel: contrato.tipoNivel,
+    subtipo: contrato.subtipo,
+    periodo: contrato.periodo,
+    modelo: "horas",
+    bolsa: bolsaHoras,
+    precio,
+    consumo,
+    facturadas,
+    horasAFacturar: exceso,
+    importe,
+    notas: "Exceso " + exceso.toFixed(2) + "h × " + precio + "€",
+  };
 }
 
 /**
- * Agrupa actividades por TipoServicio (para el PDF de detalle estilo SISPYME).
+ * Pre-facturación combinada: aplica el caso A o B según el modelo
+ * elegido, sobre los contratos que cumplen los filtros (periodo, y
+ * para el caso B también Tipo Nivel = M).
  */
+export function prefacturar(
+  contratos: Contrato[],
+  niveles: Nivel[],
+  modelo: "cuota" | "horas",
+  periodo: string,
+): LineaPrefactura[] {
+  const elegibles = contratos.filter((c) => {
+    if (String(c.estado || "").toLowerCase() === "cancelado") return false;
+    if (String(c.estado || "").toLowerCase() === "finalizado") return false;
+    if (String(c.periodo) !== periodo) return false;
+    if (modelo === "horas" && String(c.tipoNivel).toUpperCase() !== "M") return false;
+    return true;
+  });
+  const calc = modelo === "cuota" ? calcularCasoA : calcularCasoB;
+  return elegibles
+    .map((c) => calc(c, niveles))
+    .filter((x): x is LineaPrefactura => x != null);
+}
+
+// === Compat con el PDF Detalle Servicios (sigue agrupando por tipoServicio) ===
+
 export function agruparPorTipoServicio(actividades: Actividad[]): Map<string, Actividad[]> {
   const m = new Map<string, Actividad[]>();
   for (const a of actividades) {
@@ -273,16 +235,25 @@ export function agruparPorTipoServicio(actividades: Actividad[]): Map<string, Ac
   return m;
 }
 
-// Type alias para back-compat con consumidores que aún importan
-// `BolsaCliente` (PDF detalle-servicios route, bolsa-saldo legacy):
-// ahora el contenedor de la bolsa es el Contrato.
-export type BolsaCliente = Contrato & {
-  cliente: string;
-  bolsaContratadaHoras: number; // alias compat
-  bolsaConcepto: string;
-  tarifaHora: number;
-  modoFacturacion?: string;
-  unidadFacturacion?: string;
-  margenPorcentaje?: number;
-  periodoFacturacion?: string;
-};
+export function tareaEsFacturable(a: Actividad): boolean {
+  const fproy = String(a.proyectoFacturable || "").toLowerCase();
+  if (fproy === "si") return true;
+  if (fproy === "no") return false;
+  const tf = String(a.tipoFacturacion || "").toLowerCase();
+  if (tf === "no-facturable") return false;
+  if (tf === "contra-bolsa" || tf === "fuera-bolsa") return true;
+  return true;
+}
+
+/**
+ * Filtra actividades por contrato + año. Útil para el PDF y para el
+ * trigger de reset anual.
+ */
+export function filtrarPorContratoAnio(actividades: Actividad[], contrato: string, anio: number): Actividad[] {
+  return actividades.filter((a) => {
+    const cRef = String(a.contrato || a.proyectoContrato || "");
+    if (cRef !== contrato) return false;
+    const y = parseInt(String(a.fecha).slice(0, 4), 10);
+    return y === anio;
+  });
+}

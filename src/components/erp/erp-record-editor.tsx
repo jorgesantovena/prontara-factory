@@ -592,64 +592,10 @@ export default function ErpRecordEditor({
       }
     }
 
-    // TEST-15 D + Facturación.pptx (Pedro) — Lookup de Tarifa €/h del
-    // Proyecto en función del Cliente, Servicio (codigoTipo) y Nivel
-    // del Contrato asignado al proyecto. Reglas:
-    //   - cliente.tipoTarifa = "normal"   → tarifas-generales por
-    //     (servicio=codigoTipo, nivel=contrato.nivel) → valor.
-    //   - cliente.tipoTarifa = "especial" → tarifas-especiales por
-    //     (servicio=codigoTipo, cliente=cliente) → valor.
-    // Antes el nivel se leía de cliente.nivel; ahora vive en el
-    // Contrato. Se dispara al cambiar cliente, codigoTipo o contrato.
-    if (moduleKey === "proyectos" && (key === "cliente" || key === "codigoTipo" || key === "contrato")) {
-      const hasTarifa = fields.some((f) => f.key === "tarifaHoraOverride");
-      if (hasTarifa) {
-        (async () => {
-          const projectedCliente = key === "cliente" ? value : String(values.cliente || "");
-          const projectedServicio = key === "codigoTipo" ? value : String(values.codigoTipo || "");
-          const projectedContrato = key === "contrato" ? value : String(values.contrato || "");
-          if (!projectedCliente || !projectedServicio) return;
-          // 1) Cargamos el record del cliente (por nombre — value de
-          //    /api/erp/options para clientes).
-          const clienteRec = await loadRelatedRecord("clientes", projectedCliente);
-          if (!clienteRec) return;
-          const tipoTarifa = String(clienteRec.tipoTarifa || "normal").toLowerCase();
-          // 2) El nivel viene del Contrato asignado al proyecto. Si no
-          //    hay contrato asignado, no podemos resolver Tarifa Normal
-          //    (la Especial sí, porque va por cliente directo).
-          let nivelContrato = "";
-          if (projectedContrato) {
-            const conRec = await loadRelatedRecord("contratos", projectedContrato);
-            if (conRec) nivelContrato = String(conRec.nivel || "");
-          }
-          const tablaTarifas = tipoTarifa === "especial" ? "tarifas-especiales" : "tarifas-generales";
-          try {
-            const t = readTenant();
-            const url = "/api/erp/module?module=" + encodeURIComponent(tablaTarifas) + (t ? "&tenant=" + encodeURIComponent(t) : "");
-            const r = await fetch(url, { cache: "no-store" });
-            const d = await r.json();
-            if (!r.ok || !d.ok || !Array.isArray(d.rows)) return;
-            const rows = d.rows as Array<Record<string, string>>;
-            const found = tipoTarifa === "especial"
-              ? rows.find((row) =>
-                  String(row.servicio || "") === projectedServicio &&
-                  String(row.cliente || "") === projectedCliente,
-                )
-              : rows.find((row) =>
-                  String(row.servicio || "") === projectedServicio &&
-                  String(row.nivel || "") === nivelContrato,
-                );
-            if (!found) {
-              setValues((v) => ({ ...v, tarifaHoraOverride: "", unidadTarifa: "", nivelCliente: nivelContrato }));
-              return;
-            }
-            const tarifa = String(found.valor || "").trim();
-            const unidad = String(found.unidad || "").trim();
-            setValues((v) => ({ ...v, tarifaHoraOverride: tarifa, unidadTarifa: unidad, nivelCliente: nivelContrato }));
-          } catch { /* tolerar fallo de red */ }
-        })();
-      }
-    }
+    // TEST 19 (Pedro) — Lookup TEST-15 D eliminado. El precio €/h ya no
+    // se calcula en el Proyecto; se obtiene del Nivel al pre-facturar
+    // (caso A Cuota o caso B Horas/Exceso, según Tipo+Subtipo del
+    // Contrato asignado).
   }
 
   // Helper para leer el tenant de la URL desde dentro del editor (igual
