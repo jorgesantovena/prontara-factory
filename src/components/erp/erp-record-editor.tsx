@@ -132,12 +132,13 @@ function classifyField(key: string): TabKey {
       k.includes("cuenta") || k.includes("vencimiento") || k.includes("descuento") ||
       k.includes("recargo") || k.includes("precio") || k.includes("moneda") ||
       k === "iva" || k === "irpf" ||
-      // TEST-20 F.1 — Rediseño Métodos de facturación: el bloque vive en
-      // Financiero. Pedro: Tipo Tarifa, Nivel, Modo, Bolsa, Unidad,
-      // Margen, Periodo, Consumo, Facturado.
+      // Facturación.pptx (Pedro) — Tipo Tarifa, Nivel, Modelo, Bolsa,
+      // Periodo, Consumo, Facturado son del bloque Financiero. La
+      // mayoría ahora viven en el Contrato (no en el Cliente), pero
+      // el classifier sigue mandándolos a la tab Financiero del
+      // editor del Contrato.
       k === "tipotarifa" || k === "nivel" ||
-      k === "modofacturacion" || k === "bolsacantidad" || k === "unidadfacturacion" ||
-      k === "margenporcentaje" || k === "periodofacturacion" ||
+      k === "modelo" || k === "bolsahoras" || k === "periodo" ||
       k === "consumohoras" || k === "facturadohoras") {
     return "financiero";
   }
@@ -591,30 +592,36 @@ export default function ErpRecordEditor({
       }
     }
 
-    // TEST-15 D — Lookup de Tarifa €/h del Proyecto en función del
-    // Cliente y del Servicio (codigoTipo). Reglas:
-    //   - cliente.tipoTarifa = "normal" → tarifas-generales por
-    //     (servicio=codigoTipo, nivel=cliente.nivel) → valor.
+    // TEST-15 D + Facturación.pptx (Pedro) — Lookup de Tarifa €/h del
+    // Proyecto en función del Cliente, Servicio (codigoTipo) y Nivel
+    // del Contrato asignado al proyecto. Reglas:
+    //   - cliente.tipoTarifa = "normal"   → tarifas-generales por
+    //     (servicio=codigoTipo, nivel=contrato.nivel) → valor.
     //   - cliente.tipoTarifa = "especial" → tarifas-especiales por
     //     (servicio=codigoTipo, cliente=cliente) → valor.
-    // Se ejecuta solo en proyectos y solo si el campo modificado es
-    // `cliente` o `codigoTipo`; el resultado va a `tarifaHoraOverride`,
-    // que en SF está marcado readOnly.
-    if (moduleKey === "proyectos" && (key === "cliente" || key === "codigoTipo")) {
+    // Antes el nivel se leía de cliente.nivel; ahora vive en el
+    // Contrato. Se dispara al cambiar cliente, codigoTipo o contrato.
+    if (moduleKey === "proyectos" && (key === "cliente" || key === "codigoTipo" || key === "contrato")) {
       const hasTarifa = fields.some((f) => f.key === "tarifaHoraOverride");
       if (hasTarifa) {
         (async () => {
-          // Construimos el state proyectado tras el cambio.
           const projectedCliente = key === "cliente" ? value : String(values.cliente || "");
           const projectedServicio = key === "codigoTipo" ? value : String(values.codigoTipo || "");
+          const projectedContrato = key === "contrato" ? value : String(values.contrato || "");
           if (!projectedCliente || !projectedServicio) return;
-          // 1) Cargamos el record del cliente (por nombre — el value de
-          //    /api/erp/options para clientes es `nombre`).
+          // 1) Cargamos el record del cliente (por nombre — value de
+          //    /api/erp/options para clientes).
           const clienteRec = await loadRelatedRecord("clientes", projectedCliente);
           if (!clienteRec) return;
           const tipoTarifa = String(clienteRec.tipoTarifa || "normal").toLowerCase();
-          const nivelCliente = String(clienteRec.nivel || "0");
-          // 2) Decidimos la tabla y buscamos.
+          // 2) El nivel viene del Contrato asignado al proyecto. Si no
+          //    hay contrato asignado, no podemos resolver Tarifa Normal
+          //    (la Especial sí, porque va por cliente directo).
+          let nivelContrato = "";
+          if (projectedContrato) {
+            const conRec = await loadRelatedRecord("contratos", projectedContrato);
+            if (conRec) nivelContrato = String(conRec.nivel || "");
+          }
           const tablaTarifas = tipoTarifa === "especial" ? "tarifas-especiales" : "tarifas-generales";
           try {
             const t = readTenant();
@@ -630,19 +637,15 @@ export default function ErpRecordEditor({
                 )
               : rows.find((row) =>
                   String(row.servicio || "") === projectedServicio &&
-                  String(row.nivel || "") === nivelCliente,
+                  String(row.nivel || "") === nivelContrato,
                 );
             if (!found) {
-              // Sin coincidencia: dejamos los campos derivados vacíos.
-              // No sobrescribimos lo que el usuario hubiera puesto.
-              setValues((v) => ({ ...v, tarifaHoraOverride: "", unidadTarifa: "", nivelCliente }));
+              setValues((v) => ({ ...v, tarifaHoraOverride: "", unidadTarifa: "", nivelCliente: nivelContrato }));
               return;
             }
-            // TEST-16 E — Además de la Tarifa, rellenamos Unidad (de la
-            // tarifa) y Nivel del Cliente para que el listado los pinte.
             const tarifa = String(found.valor || "").trim();
             const unidad = String(found.unidad || "").trim();
-            setValues((v) => ({ ...v, tarifaHoraOverride: tarifa, unidadTarifa: unidad, nivelCliente }));
+            setValues((v) => ({ ...v, tarifaHoraOverride: tarifa, unidadTarifa: unidad, nivelCliente: nivelContrato }));
           } catch { /* tolerar fallo de red */ }
         })();
       }

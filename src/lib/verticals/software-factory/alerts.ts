@@ -97,8 +97,9 @@ export async function buildSoftwareFactoryAlertsAsync(
             bolsa.horasConsumidas +
             "h de " +
             bolsa.horasTotales +
-            "h contratadas. Renueva o emite ampliación antes de imputar más horas.",
-          href: "/proyectos",
+            "h contratadas. Renueva el contrato o emite ampliación antes de imputar más horas.",
+          // Facturación.pptx — la bolsa vive en Contrato.
+          href: "/contratos",
         });
       } else if (bolsa.severidad === "warn") {
         out.push({
@@ -117,8 +118,8 @@ export async function buildSoftwareFactoryAlertsAsync(
             bolsa.horasTotales +
             "h (" +
             bolsa.porcentajeConsumido +
-            "% consumido). Considera ampliar antes de que se agote.",
-          href: "/proyectos",
+            "% consumido). Considera ampliar el contrato antes de que se agote.",
+          href: "/contratos",
         });
       }
     }

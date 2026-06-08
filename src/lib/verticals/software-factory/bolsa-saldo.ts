@@ -1,24 +1,24 @@
 /**
  * Saldo de bolsas de horas para el vertical Software Factory (SF-06).
  *
- * TEST-20 F.8 — Pedro: la bolsa pasa a vivir en el Cliente (campo
- * `bolsaCantidad` del módulo `clientes`), no en un proyecto separado.
- * Devolvemos UNA bolsa por cliente (no por proyecto):
- *   - horasTotales      = cliente.bolsaCantidad
- *   - horasConsumidas   = Σ tiempoHoras de tareas del cliente cuyo
- *                         proyecto tenga facturable === "si"
+ * Facturación.pptx (Pedro) — La bolsa vive en el Contrato (campo
+ * `bolsaHoras`), no en el cliente ni en un proyecto separado.
+ * Devolvemos UNA línea por contrato vigente con bolsa > 0:
+ *   - horasTotales      = contrato.bolsaHoras
+ *   - horasConsumidas   = Σ tiempoHoras de tareas asignadas a este
+ *                         contrato (proyecto.contrato = contrato y
+ *                         proyecto.facturable = "si")
  *   - horasRestantes    = max(0, totales − consumidas)
  *   - porcentaje        = consumidas / totales × 100
  *
- * Fallback legacy: si un cliente NO tiene bolsaCantidad pero existe un
- * proyecto suyo con codigoTipo=BOLSA/MANT y `horasTotales` informado,
- * usamos ese proyecto como bolsa (modelo viejo). Coherente con el
- * adaptador de `/api/erp/prefacturacion` y `/api/erp/detalle-servicios-pdf`.
+ * Fallback legacy: si no hay contratos definidos pero existe un
+ * proyecto BOLSA/MANT con `horasTotales` informado, se sigue
+ * mostrando el modelo viejo (informe estilo SISPYME por proyecto).
  *
- * El consumidor puede pintar cards en el dashboard, alertas operativas
- * (ver alerts.ts) o columnas en /proyectos. La key estable para
- * deduplicar entre invocaciones es `proyectoId` (id del cliente o, en
- * legacy, id del proyecto BOLSA).
+ * El consumidor puede pintar cards en el dashboard, alertas
+ * operativas (ver alerts.ts) o columnas en /contratos. La key
+ * estable para deduplicar es `proyectoId` (id del contrato o del
+ * proyecto BOLSA en el caso legacy).
  */
 import { listModuleRecordsAsync } from "@/lib/persistence/active-client-data-store-async";
 
@@ -39,7 +39,6 @@ function parseHoras(value: string | undefined): number {
   if (!value) return 0;
   const trimmed = String(value).trim();
   if (!trimmed) return 0;
-  // TEST-12 #1 — soporte para hh:mm legacy.
   if (trimmed.includes(":")) {
     const [hh = "0", mm = "0"] = trimmed.split(":");
     const h = parseInt(hh, 10);
@@ -90,77 +89,78 @@ export async function getBolsasSaldoAsync(clientId: string): Promise<BolsaSaldo[
 
   let projects: Array<Record<string, string>> = [];
   let activities: Array<Record<string, string>> = [];
-  let customers: Array<Record<string, string>> = [];
+  let contracts: Array<Record<string, string>> = [];
   try {
-    [projects, activities, customers] = await Promise.all([
+    [projects, activities, contracts] = await Promise.all([
       listModuleRecordsAsync("proyectos", cid),
       listModuleRecordsAsync("actividades", cid),
-      listModuleRecordsAsync("clientes", cid),
+      listModuleRecordsAsync("contratos", cid).catch(() => []),
     ]);
   } catch {
     return [];
   }
 
-  // TEST-20 F.8 — Mapa proyecto → facturable (sí/no) para sumar
-  // consumo únicamente de proyectos cuya bandera lo marque facturable.
-  const facturablePorProyecto = new Map<string, boolean>();
+  // Mapa proyecto → (facturable, contrato).
+  const proyectoFacturablePorRef = new Map<string, boolean>();
+  const proyectoContratoPorRef = new Map<string, string>();
   for (const p of projects) {
     const facturable = String(p.facturable || "").toLowerCase() === "si";
-    if (p.nombre) facturablePorProyecto.set(String(p.nombre), facturable);
-    if (p.id) facturablePorProyecto.set(String(p.id), facturable);
+    const contrato = String(p.contrato || "");
+    if (p.nombre) { proyectoFacturablePorRef.set(String(p.nombre), facturable); proyectoContratoPorRef.set(String(p.nombre), contrato); }
+    if (p.id)     { proyectoFacturablePorRef.set(String(p.id),     facturable); proyectoContratoPorRef.set(String(p.id),     contrato); }
   }
 
   const out: BolsaSaldo[] = [];
-  const clientesConBolsaPropia = new Set<string>();
+  const contratosConSaldo = new Set<string>();
 
-  // 1) Bolsas por Cliente (modelo nuevo TEST-20 F).
-  for (const c of customers) {
-    const nombre = String(c.nombre || "").trim();
-    if (!nombre) continue;
-    const horasTotales = parseHoras(c.bolsaCantidad);
-    if (horasTotales <= 0) continue; // sin bolsa contratada — no genera línea
-    clientesConBolsaPropia.add(nombre);
-    const consumidas = activities
-      .filter((a) => {
-        if (String(a.cliente || "").trim() !== nombre) return false;
-        return facturablePorProyecto.get(String(a.proyecto || "")) === true;
-      })
-      .reduce((acc, a) => acc + parseHoras(a.tiempoHoras || a.horas), 0);
+  // 1) Saldo por Contrato (modelo nuevo Facturación.pptx).
+  for (const c of contracts) {
+    const numero = String(c.numero || c.id || "").trim();
+    if (!numero) continue;
+    const horasTotales = parseHoras(c.bolsaHoras);
+    if (horasTotales <= 0) continue; // contrato sin bolsa (Horas puras / Bono ya consumido)
+    contratosConSaldo.add(numero);
+    const consumidas = activities.reduce((acc, a) => {
+      const proyRef = String(a.proyecto || "");
+      const cRef = String(a.contrato || "") || proyectoContratoPorRef.get(proyRef) || "";
+      if (cRef !== numero) return acc;
+      if (!proyectoFacturablePorRef.get(proyRef)) return acc;
+      return acc + parseHoras(a.tiempoHoras || a.horas);
+    }, 0);
     out.push(build(
-      "cli-" + String(c.id || nombre),
-      "Bolsa contratada", // proyecto = etiqueta; cliente ya va aparte
-      nombre,
-      "", // los clientes no tienen fechaCaducidad en el modelo
+      String(c.id || numero),
+      "Contrato " + numero,
+      String(c.cliente || ""),
+      String(c.fechaFin || ""),
       horasTotales,
       consumidas,
     ));
   }
 
-  // 2) Fallback legacy: proyectos BOLSA/MANT del cliente que aún no
-  //    fue cubierto por el modelo nuevo. Conserva el comportamiento
-  //    histórico (informe estilo SISPYME por proyecto).
-  const bolsasLegacy = projects.filter(
-    (p) => String(p.codigoTipo || "").trim().toUpperCase() === "BOLSA",
-  );
-  for (const b of bolsasLegacy) {
-    const proyecto = String(b.nombre || "").trim();
-    const cliente = String(b.cliente || "").trim();
-    if (clientesConBolsaPropia.has(cliente)) continue; // ya lo sacamos por el modelo nuevo
-    const horasTotales = parseHoras(b.horasTotales);
-    const consumidas = activities
-      .filter((a) => String(a.proyecto || "").trim() === proyecto)
-      .reduce((acc, a) => acc + parseHoras(a.tiempoHoras || a.horas), 0);
-    out.push(build(
-      String(b.id || ""),
-      proyecto,
-      cliente,
-      String(b.fechaCaducidad || ""),
-      horasTotales,
-      consumidas,
-    ));
+  // 2) Fallback legacy: proyectos BOLSA/MANT con `horasTotales` para
+  //    tenants que aún no han migrado a contratos.
+  if (out.length === 0) {
+    const bolsasLegacy = projects.filter(
+      (p) => String(p.codigoTipo || "").trim().toUpperCase() === "BOLSA",
+    );
+    for (const b of bolsasLegacy) {
+      const proyecto = String(b.nombre || "").trim();
+      const cliente = String(b.cliente || "").trim();
+      const horasTotales = parseHoras(b.horasTotales);
+      const consumidas = activities
+        .filter((a) => String(a.proyecto || "").trim() === proyecto)
+        .reduce((acc, a) => acc + parseHoras(a.tiempoHoras || a.horas), 0);
+      out.push(build(
+        String(b.id || ""),
+        proyecto,
+        cliente,
+        String(b.fechaCaducidad || ""),
+        horasTotales,
+        consumidas,
+      ));
+    }
   }
 
-  // Más críticas primero (las agotadas arriba)
   out.sort((a, b) => b.porcentajeConsumido - a.porcentajeConsumido);
   return out;
 }

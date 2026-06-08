@@ -92,12 +92,14 @@ export async function GET(request: NextRequest) {
           };
         }
 
-        // Test 18 bis 2 C+D — `formas-pago` para el campo del cliente
-        // y la factura. value = codigo, label = codigo · nombre.
+        // Test 18 bis 2 C+D + TEST-20 C — `formas-pago` para el cliente
+        // y la factura. Pedro: solo el NOMBRE en el dropdown (no
+        // codigo · nombre, que es texto largo y rompía a varias líneas
+        // en la columna "Forma de pago" del listado).
         if (moduleKey === "formas-pago") {
           return {
-            value: String(item.codigo || ""),
-            label: String(item.codigo || "") + (item.nombre ? " · " + String(item.nombre) : ""),
+            value: String(item.codigo || item.nombre || ""),
+            label: String(item.nombre || item.codigo || ""),
           };
         }
 
@@ -108,6 +110,29 @@ export async function GET(request: NextRequest) {
           return {
             value: String(item.nombre || ""),
             label: String(item.nombre || ""),
+          };
+        }
+
+        // Facturación.pptx (Pedro) — Niveles: value=codigo (1..4, A, B),
+        // label="codigo · nombre" para que el dropdown del Contrato sea
+        // legible. Coherente con actividades-catalogo y catalogo-servicios.
+        if (moduleKey === "niveles") {
+          return {
+            value: String(item.codigo || ""),
+            label: String(item.codigo || "") + (item.nombre ? " · " + String(item.nombre) : ""),
+          };
+        }
+
+        // Facturación.pptx (Pedro) — Contratos: value=numero, label=
+        // "numero · cliente · modelo" para que el dropdown del Proyecto
+        // y de la Factura sea legible.
+        if (moduleKey === "contratos") {
+          const partes: string[] = [];
+          if (item.cliente) partes.push(String(item.cliente));
+          if (item.modelo) partes.push(String(item.modelo));
+          return {
+            value: String(item.numero || item.id || ""),
+            label: String(item.numero || "") + (partes.length > 0 ? " · " + partes.join(" · ") : ""),
           };
         }
 

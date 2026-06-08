@@ -60,25 +60,27 @@ export function generateDetalleServiciosPdf(input: DetalleServiciosInput): Promi
     doc.fontSize(10).font("Helvetica").fillColor("#475569");
     doc.text("Periodo  " + (input.periodo || "/"), 400, 80, { align: "right", width: 159 });
 
-    // === Resumen bolsa ===
+    // === Resumen contrato (Facturación.pptx — Pedro) ===
     let y = 105;
     doc.fontSize(10).fillColor("#0f172a").font("Helvetica-Bold");
-    doc.text("Resumen horas " + input.prefactura.bolsaConcepto, 36, y);
+    const cabecera = "Contrato " + input.prefactura.contrato + " · Nivel " + input.prefactura.nivel + " · " + input.prefactura.modelo + " (" + input.prefactura.periodo + ")";
+    doc.text(cabecera, 36, y);
     y += 16;
     doc.fontSize(8).font("Helvetica-Bold").fillColor("#475569");
-    const colW = 100;
-    const colsX = [36, 140, 245, 350, 455];
-    ["Contratadas", "Gastadas anteriormente", "Imputadas", "A facturar", "Saldo"].forEach((label, i) => {
+    const colW = 90;
+    const colsX = [36, 130, 224, 318, 412, 506];
+    ["Bolsa", "Gastadas ant.", "Imputadas", "Cubiertas", "Exceso (h)", "Saldo"].forEach((label, i) => {
       doc.text(label, colsX[i], y, { width: colW });
     });
     y += 12;
     doc.fontSize(11).font("Helvetica").fillColor("#0f172a");
     [
-      input.prefactura.bolsaContratada.toFixed(2) + " h/Año",
+      input.prefactura.bolsaContratada.toFixed(2) + " h",
       input.prefactura.hGastadasAnteriores.toFixed(2),
       input.prefactura.hImputadasCliente.toFixed(2),
-      input.prefactura.hAFacturar.toFixed(2),
-      input.prefactura.saldo.toFixed(2),
+      input.prefactura.hCubiertasPorCuota.toFixed(2),
+      input.prefactura.hExceso.toFixed(2),
+      input.prefactura.saldoBolsa.toFixed(2),
     ].forEach((v, i) => doc.text(v, colsX[i], y, { width: colW }));
     y += 22;
 

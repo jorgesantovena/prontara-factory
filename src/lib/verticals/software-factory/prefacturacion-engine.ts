@@ -1,33 +1,32 @@
 /**
  * Engine de pre-facturación estilo SISPYME (H7-S2 / H7-S3).
  *
- * TEST-20 F.4 — Pedro: rediseño completo del método de facturación.
- * El método ya NO vive en el Proyecto (campo eliminado); vive en el
- * Cliente como (Modo, Bolsa, Unidad, Margen, Periodo).
+ * Facturación.pptx (Pedro) — Rediseño completo del modelo:
  *
- *   Cliente.modoFacturacion = "fijo"     → cuota fija periódica; las
- *                                          tareas consumen contra esa
- *                                          bolsa; el sobreconsumo se
- *                                          factura fuera.
- *   Cliente.modoFacturacion = "variable" → cada hora/€ consumido se
- *                                          factura directamente. La
- *                                          bolsa, si existe, descuenta
- *                                          un anticipo.
+ *   El método de facturación vive en el CONTRATO (no en el cliente).
+ *   Un cliente puede tener varios contratos a la vez.
  *
- *   Tarea facturable ⇔ Proyecto.facturable === "si"
- *   (Compatibilidad con datos legacy: si la tarea trae el viejo
- *   tipoFacturacion="no-facturable" lo respetamos como "no facturable",
- *   y si trae "contra-bolsa"/"fuera-bolsa" lo respetamos como facturable
- *   aunque el proyecto no esté marcado.)
+ *   Modelos de contrato:
  *
- * Por cada cliente y periodo:
- *     hPeriodo            = Σ horas de tareas del periodo
- *     hFacturable         = Σ horas de tareas facturables del periodo
- *     hContraCuota        = min(bolsaContratada − gastadasAnteriores, hFacturable)
- *     hFueraBolsa         = hFacturable − hContraCuota
- *     hAFacturar (variable) = hFacturable
- *     hAFacturar (fijo)     = hFueraBolsa
- *     importe                = hAFacturar × tarifa × (1 + margen%)
+ *     - "cuota" (Mantenimiento o Tarifa Plana, niveles 1..4 o A):
+ *         Importe periódico = 1 × precio (cuota fija).
+ *         Si bolsa > 0, las horas hasta bolsa están cubiertas; el
+ *         exceso se factura como "Excesos" (línea aparte) con la
+ *         misma tarifa €/h asociada al nivel.
+ *
+ *     - "horas" (variable por consumo, niveles 1..4):
+ *         Importe periódico = horas consumidas × precio (€/h).
+ *
+ *     - "bono" (Bono puntual, nivel B, periodo "discreto"):
+ *         Importe = bolsa × precio (UN único disparo al activar el
+ *         bono; no se factura periódicamente).
+ *
+ *   Las TAREAS suman al consumo del contrato heredado vía
+ *   proyecto.contrato (si proyecto.facturable === "si"). Las FACTURAS
+ *   suman al facturado del contrato referenciado por factura.contrato.
+ *
+ * Una línea de prefactura por contrato + (si aplica) una línea de
+ * "exceso" por contrato cuota con sobreconsumo.
  */
 
 export type Actividad = {
@@ -35,6 +34,7 @@ export type Actividad = {
   fecha: string; // YYYY-MM-DD
   cliente: string;
   proyecto?: string;
+  contrato?: string;
   empleado?: string;
   actividad?: string;
   tipoServicio?: string;
@@ -43,6 +43,7 @@ export type Actividad = {
   // viene de datos antiguos. Nueva fuente canónica: proyecto.facturable.
   tipoFacturacion?: "contra-bolsa" | "fuera-bolsa" | "no-facturable" | string;
   proyectoFacturable?: "si" | "no" | string; // resuelto por el caller
+  proyectoContrato?: string; // resuelto por el caller (proyecto.contrato)
   estado: string;
   descripcion?: string;
   horaDesde?: string;
@@ -50,40 +51,45 @@ export type Actividad = {
   lugar?: string;
 };
 
-export type BolsaCliente = {
+export type Contrato = {
+  id: string;
+  numero: string;
   cliente: string;
-  bolsaContratadaHoras: number;
-  bolsaConcepto: string; // "Mant. Nivel 1", "Soporte 30h/año"...
-  tarifaHora: number;
-  // TEST-20 F.4 — Nuevos campos heredados del schema clientes.
-  modoFacturacion?: "fijo" | "variable" | string;
-  unidadFacturacion?: "h" | "eur" | string;
-  margenPorcentaje?: number;
-  periodoFacturacion?: "mes" | "trimestre" | "anio" | "discreto" | string;
-  vigenciaInicio?: string;
-  vigenciaFin?: string;
+  nivel: string;
+  modelo: "cuota" | "horas" | "bono" | string;
+  periodo: "mensual" | "trimestral" | "semestral" | "anual" | "discreto" | string;
+  bolsaHoras: number;
+  precio: number;
+  estado: string;
+  fechaInicio?: string;
+  fechaFin?: string;
 };
 
 export type LineaPrefactura = {
   cliente: string;
-  bolsaConcepto: string;
+  contrato: string;
+  nivel: string;
+  modelo: string;
+  periodo: string;
   bolsaContratada: number;
-  modoFacturacion: string;
-  unidadFacturacion: string;
-  margenPorcentaje: number;
-  periodoFacturacion: string;
   hPeriodo: number;
   hFacturable: number;
-  hContraCuota: number;
-  hFueraBolsa: number;
-  hNoFacturable: number;
+  hCubiertasPorCuota: number; // horas dentro de la bolsa (modelo cuota)
+  hExceso: number; // horas sobre la bolsa (modelo cuota → línea aparte)
   hGastadasAnteriores: number;
   hImputadasCliente: number;
   hOtrasFacturadas: number;
-  saldo: number;
+  saldoBolsa: number;
   hAFacturar: number;
-  tarifaHora: number;
-  importe: number;
+  tarifaHora: number; // precio del contrato
+  importe: number; // total de la línea
+  importeExceso: number;
+  // Campos de compat con UI vieja (alias) — se mantienen para no
+  // romper bindings.
+  bolsaConcepto: string;
+  hContraCuota: number;
+  hFueraBolsa: number;
+  hNoFacturable: number;
   tareasIncluidas: number;
   estado: "pendiente" | "prefacturada" | "facturada";
 };
@@ -103,33 +109,32 @@ function parseHoras(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-// TEST-20 F.4 — Una tarea es FACTURABLE si el proyecto lo dice. Para
-// datos legacy (sin proyectoFacturable resuelto), caemos en el viejo
-// tipoFacturacion. Exportado para que el PDF Detalle Servicios use
-// exactamente la misma regla y el asterisco siempre cuadre con el
-// engine (TEST-20 F.7).
+// Facturación.pptx — Una tarea es FACTURABLE si el proyecto lo dice.
+// Compatibilidad con datos legacy: si no hay proyectoFacturable
+// resuelto, miramos tipoFacturacion de la tarea (modelo viejo). Si
+// nada está informado, asumimos facturable (default optimista).
 export function tareaEsFacturable(a: Actividad): boolean {
   const fproy = String(a.proyectoFacturable || "").toLowerCase();
   if (fproy === "si") return true;
   if (fproy === "no") return false;
-  // legacy fallback
   const tf = String(a.tipoFacturacion || "").toLowerCase();
   if (tf === "no-facturable") return false;
   if (tf === "contra-bolsa" || tf === "fuera-bolsa") return true;
-  // Sin info: por defecto facturable (la mayoría de tareas SF lo son).
   return true;
 }
 
 /**
- * Calcula la línea de pre-facturación de un cliente para un periodo.
+ * Calcula la línea de pre-facturación de un contrato para un periodo.
  *
- * @param actividades — tareas del periodo (filtradas previamente por fecha y cliente)
- * @param bolsa — datos de la bolsa de horas contratada del cliente
- * @param actividadesAnteriores — tareas del cliente en periodos anteriores (para calcular saldo previo y otras facturadas)
+ * @param actividades — tareas del periodo que tributan a este contrato
+ *                     (filtradas previamente por contrato + fecha)
+ * @param contrato — datos del contrato (modelo, periodo, bolsa, precio)
+ * @param actividadesAnteriores — tareas del mismo contrato en periodos
+ *                                anteriores (para saldo previo de bolsa)
  */
 export function calcularPrefactura(
   actividades: Actividad[],
-  bolsa: BolsaCliente,
+  contrato: Contrato,
   actividadesAnteriores: Actividad[] = [],
 ): LineaPrefactura {
   let hPeriodo = 0;
@@ -143,8 +148,8 @@ export function calcularPrefactura(
     else hNoFacturable += h;
   }
 
-  // Saldo previo de bolsa: horas facturables de periodos anteriores
-  // (gastadas ya contra la bolsa contratada).
+  // Saldo previo de bolsa (cuántas horas facturables ya consumidas
+  // antes del periodo cuentan contra la bolsa).
   let hGastadasAnteriores = 0;
   let hOtrasFacturadas = 0;
   for (const a of actividadesAnteriores) {
@@ -153,54 +158,90 @@ export function calcularPrefactura(
     if (a.estado === "facturada") hOtrasFacturadas += h;
   }
 
-  // Bolsa restante antes de aplicar el periodo.
-  const saldoAntes = Math.max(0, bolsa.bolsaContratadaHoras - hGastadasAnteriores);
-
-  // Horas del periodo que caben en la bolsa restante vs las que se
-  // facturan fuera.
-  const hContraCuota = Math.min(saldoAntes, hFacturable);
-  const hFueraBolsa = Math.max(0, hFacturable - hContraCuota);
+  const bolsa = contrato.bolsaHoras;
+  const saldoAntes = Math.max(0, bolsa - hGastadasAnteriores);
+  const hCubiertasPorCuota = Math.min(saldoAntes, hFacturable);
+  const hExceso = Math.max(0, hFacturable - hCubiertasPorCuota);
   const saldoFinal = Math.max(0, saldoAntes - hFacturable);
 
-  // TEST-20 F.4 — Cálculo del importe según Modo:
-  //   - fijo:     se factura solo lo que excede la bolsa (la cuota
-  //               periódica ya cobra "lo que cabe dentro").
-  //   - variable: se factura todo lo facturable, independientemente
-  //               de la bolsa (la bolsa es un anticipo separado).
-  const modo = String(bolsa.modoFacturacion || "fijo").toLowerCase();
-  const hAFacturar = modo === "variable" ? hFacturable : hFueraBolsa;
-  const margen = Number(bolsa.margenPorcentaje || 0);
-  const factor = 1 + (Number.isFinite(margen) ? margen : 0) / 100;
-  const importe = hAFacturar * bolsa.tarifaHora * factor;
+  const modelo = String(contrato.modelo || "cuota").toLowerCase();
+  const precio = Number(contrato.precio) || 0;
+
+  // Cálculo del importe según modelo Pedro:
+  //   - Cuota: 1 × precio (cuota periódica). El exceso se reporta
+  //            aparte como `importeExceso` (línea adicional).
+  //   - Horas: horas facturables × precio (€/h).
+  //   - Bono:  bolsa × precio (UN disparo al activar el bono; no
+  //            periódico). Aquí devolvemos siempre el importe del
+  //            bono — el caller decide si emitirlo o no según
+  //            estado del contrato.
+  let hAFacturar = 0;
+  let importe = 0;
+  let importeExceso = 0;
+  if (modelo === "cuota") {
+    hAFacturar = 0; // la cuota no factura horas, factura "1 cuota"
+    importe = 1 * precio;
+    // Exceso: si hay sobreconsumo, se factura como horas extra a
+    // tarifa precio €/h (Pedro: "Importe = Horas-Bolsa-Facturadas x Precio").
+    importeExceso = hExceso * precio;
+  } else if (modelo === "horas") {
+    hAFacturar = hFacturable;
+    importe = hFacturable * precio;
+  } else if (modelo === "bono") {
+    hAFacturar = bolsa;
+    importe = bolsa * precio;
+  }
 
   return {
-    cliente: bolsa.cliente,
-    bolsaConcepto: bolsa.bolsaConcepto,
-    bolsaContratada: bolsa.bolsaContratadaHoras,
-    modoFacturacion: modo,
-    unidadFacturacion: String(bolsa.unidadFacturacion || "h"),
-    margenPorcentaje: Number.isFinite(margen) ? margen : 0,
-    periodoFacturacion: String(bolsa.periodoFacturacion || "mes"),
+    cliente: contrato.cliente,
+    contrato: contrato.numero || contrato.id,
+    nivel: contrato.nivel,
+    modelo,
+    periodo: String(contrato.periodo || "mensual"),
+    bolsaContratada: bolsa,
     hPeriodo,
     hFacturable,
-    hContraCuota,
-    hFueraBolsa,
-    hNoFacturable,
+    hCubiertasPorCuota,
+    hExceso,
     hGastadasAnteriores,
     hImputadasCliente: hFacturable + hNoFacturable,
     hOtrasFacturadas,
-    saldo: saldoFinal,
+    saldoBolsa: saldoFinal,
     hAFacturar,
-    tarifaHora: bolsa.tarifaHora,
+    tarifaHora: precio,
     importe,
+    importeExceso,
+    bolsaConcepto: bolsa > 0 ? "Bolsa " + String(bolsa) + "h" : "Sin bolsa",
+    hContraCuota: hCubiertasPorCuota, // alias compat con UI vieja
+    hFueraBolsa: hExceso, // alias compat
+    hNoFacturable,
     tareasIncluidas: actividades.length,
     estado: actividades.every((a) => a.estado === "facturada") ? "facturada" : actividades.some((a) => a.estado === "validada") ? "prefacturada" : "pendiente",
   };
 }
 
 /**
- * Filtra actividades por cliente + periodo (YYYY-MM o rango).
+ * Filtra actividades por CONTRATO + periodo (YYYY-MM). El "contrato"
+ * de una tarea es tarea.contrato (heredado) o, si vacío, el
+ * proyectoContrato resuelto por el caller.
  */
+export function filtrarPorContratoPeriodo(actividades: Actividad[], contrato: string, periodoYYYYMM: string): Actividad[] {
+  return actividades.filter((a) => {
+    const cRef = String(a.contrato || a.proyectoContrato || "");
+    if (cRef !== contrato) return false;
+    return String(a.fecha).slice(0, 7) === periodoYYYYMM;
+  });
+}
+
+export function actividadesAnterioresAlPeriodoContrato(actividades: Actividad[], contrato: string, periodoYYYYMM: string): Actividad[] {
+  return actividades.filter((a) => {
+    const cRef = String(a.contrato || a.proyectoContrato || "");
+    return cRef === contrato && String(a.fecha).slice(0, 7) < periodoYYYYMM;
+  });
+}
+
+// Compat con consumidores antiguos por cliente — los mantenemos por
+// si alguien los importa, pero ya no se usan en el flujo nuevo.
 export function filtrarPorClientePeriodo(actividades: Actividad[], cliente: string, periodoYYYYMM: string): Actividad[] {
   return actividades.filter((a) => {
     if (a.cliente !== cliente) return false;
@@ -222,7 +263,6 @@ export function agruparPorTipoServicio(actividades: Actividad[]): Map<string, Ac
     if (!m.has(key)) m.set(key, []);
     m.get(key)!.push(a);
   }
-  // Ordenar tareas dentro de cada grupo por fecha + horaDesde
   for (const arr of m.values()) {
     arr.sort((a, b) => {
       const f = String(a.fecha).localeCompare(String(b.fecha));
@@ -232,3 +272,17 @@ export function agruparPorTipoServicio(actividades: Actividad[]): Map<string, Ac
   }
   return m;
 }
+
+// Type alias para back-compat con consumidores que aún importan
+// `BolsaCliente` (PDF detalle-servicios route, bolsa-saldo legacy):
+// ahora el contenedor de la bolsa es el Contrato.
+export type BolsaCliente = Contrato & {
+  cliente: string;
+  bolsaContratadaHoras: number; // alias compat
+  bolsaConcepto: string;
+  tarifaHora: number;
+  modoFacturacion?: string;
+  unidadFacturacion?: string;
+  margenPorcentaje?: number;
+  periodoFacturacion?: string;
+};

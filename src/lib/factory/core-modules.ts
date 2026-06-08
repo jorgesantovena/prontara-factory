@@ -65,6 +65,14 @@ export const CORE_MODULES: SectorPackModule[] = [
   // H8.5 — Formas de pago configurables + cuentas bancarias
   { moduleKey: "formas-pago", enabled: true, label: "Formas de pago", navigationLabel: "Formas pago", emptyState: "Define tus formas de pago." },
   { moduleKey: "cuentas-bancarias", enabled: true, label: "Cuentas bancarias", navigationLabel: "Cuentas bancarias", emptyState: "Sin cuentas bancarias registradas." },
+  // Facturación.pptx (Pedro) — Niveles (1,2,3,4,A,B): catálogo
+  // universal para clasificar contratos de facturación. Disabled por
+  // defecto: cada pack lo habilita si lo usa.
+  { moduleKey: "niveles", enabled: false, label: "Niveles", navigationLabel: "Niveles", emptyState: "Sin niveles configurados." },
+  // Facturación.pptx (Pedro) — Contratos: portador del Modo/Periodo/
+  // Bolsa/Precio. Un cliente puede tener varios. Disabled en CORE; el
+  // pack SF lo habilita.
+  { moduleKey: "contratos", enabled: false, label: "Contratos", navigationLabel: "Contratos", emptyState: "Sin contratos." },
 ];
 
 export const CORE_FIELDS: SectorPackField[] = [
@@ -257,6 +265,9 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
   { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto", kind: "relation", required: true, relationModuleKey: "proyectos", placeholder: "Selecciona el proyecto al que se imputa" },
   { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes", readOnly: true, inheritFrom: { from: "proyecto", field: "cliente" }, placeholder: "Heredado del proyecto" },
+  // Facturación.pptx (Pedro) — Contrato heredado del proyecto. Las
+  // horas de la tarea consumen este contrato.
+  { moduleKey: "actividades", fieldKey: "contrato", label: "Contrato", kind: "relation", relationModuleKey: "contratos", readOnly: true, inheritFrom: { from: "proyecto", field: "contrato" }, placeholder: "Heredado del proyecto" },
   { moduleKey: "actividades", fieldKey: "facturable", label: "Facturable", kind: "status", readOnly: true, inheritFrom: { from: "proyecto", field: "facturable" }, placeholder: "Heredado del proyecto", options: [
     { value: "si", label: "Sí" }, { value: "no", label: "No" },
   ] },
@@ -510,6 +521,20 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "activa", label: "Activa" }, { value: "inactiva", label: "Inactiva" }, { value: "rechazada", label: "Rechazada" },
   ] },
   { moduleKey: "cuentas-bancarias", fieldKey: "notas", label: "Notas", kind: "textarea" },
+
+  // Facturación.pptx (Pedro) — Niveles: catálogo de niveles que se
+  // referencian desde Contrato. Pedro define 1,2,3,4 (mantenimiento
+  // con bolsa), A (Acuerdo / tarifa plana) y B (Bono puntual).
+  // `modeloSugerido` es ayuda al alta de Contrato: al elegir un nivel,
+  // el formulario propone su modelo más típico.
+  { moduleKey: "niveles", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "1, 2, 3, 4, A, B" },
+  { moduleKey: "niveles", fieldKey: "nombre", label: "Nombre", kind: "text", required: true, placeholder: "Nivel 1 mantenimiento, Acuerdo tarifa plana, Bono puntual..." },
+  { moduleKey: "niveles", fieldKey: "modeloSugerido", label: "Modelo sugerido", kind: "status", placeholder: "Modelo de facturación típico de este nivel", options: [
+    { value: "cuota", label: "Cuota" },
+    { value: "horas", label: "Horas" },
+    { value: "bono", label: "Bono" },
+  ] },
+  { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción", kind: "textarea", placeholder: "Qué cubre este nivel y a qué tipo de cliente aplica" },
 ];
 
 export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
@@ -705,11 +730,28 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaRef", label: "Mandato" },
   { moduleKey: "cuentas-bancarias", fieldKey: "esPrincipal", label: "Princ." },
   { moduleKey: "cuentas-bancarias", fieldKey: "estado", label: "Estado" },
+
+  // Facturación.pptx (Pedro) — Niveles
+  { moduleKey: "niveles", fieldKey: "codigo", label: "Código", isPrimary: true },
+  { moduleKey: "niveles", fieldKey: "nombre", label: "Nombre" },
+  { moduleKey: "niveles", fieldKey: "modeloSugerido", label: "Modelo" },
+  { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción" },
 ];
 
 export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<string, string>> }> = [
   { moduleKey: "tareas", records: [
     { titulo: "Revisar contratos pendientes", asignado: "Operador", prioridad: "media", fechaLimite: "2026-05-15", estado: "pendiente", descripcion: "Repaso mensual." },
+  ]},
+  // Facturación.pptx (Pedro) — Catálogo Niveles precargado con los 6
+  // códigos del estándar de Pedro. Cada pack que habilite el módulo
+  // `niveles` heredará este seed.
+  { moduleKey: "niveles", records: [
+    { codigo: "1", nombre: "Mantenimiento nivel 1", modeloSugerido: "cuota", descripcion: "Cuota baja con bolsa anual reducida." },
+    { codigo: "2", nombre: "Mantenimiento nivel 2", modeloSugerido: "cuota", descripcion: "Cuota intermedia con bolsa estándar." },
+    { codigo: "3", nombre: "Mantenimiento nivel 3", modeloSugerido: "cuota", descripcion: "Cuota alta con bolsa amplia." },
+    { codigo: "4", nombre: "Mantenimiento nivel 4", modeloSugerido: "cuota", descripcion: "Premium con cobertura máxima." },
+    { codigo: "A", nombre: "Acuerdo / Tarifa plana", modeloSugerido: "cuota", descripcion: "Cuota mensual fija sin bolsa. Todo el trabajo cubierto por la cuota." },
+    { codigo: "B", nombre: "Bono de horas", modeloSugerido: "bono", descripcion: "Compra puntual (no recurrente) de N horas a precio cerrado." },
   ]},
   // TEST-12 #2 — Demo de `tipos-servicio` eliminada (módulo retirado).
   { moduleKey: "tipos-cliente", records: [

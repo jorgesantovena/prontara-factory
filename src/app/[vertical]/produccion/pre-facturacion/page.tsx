@@ -5,27 +5,35 @@ import Link from "next/link";
 import TenantShell from "@/components/erp/tenant-shell";
 
 /**
- * Pre-facturación estilo SISPYME (H7-S2).
+ * Pre-facturación — Facturación.pptx (Pedro).
  *
- * Tabla con 8 columnas: cliente | bolsa | H. Periodo | H. Fact | H. contra Cuota |
- * H. Gast. anteriores | H. Imp. Cliente | H. Otras Fact | A Facturar | Importe.
- * Filtro por periodo (YYYY-MM) y por estado (Pendientes / Prefacturados / Todos).
+ * Una línea por contrato. Columnas:
+ *   Contrato | Cliente | Nivel | Modelo | Periodo | Bolsa | Horas |
+ *   Cubiertas | Exceso | Importe | Exceso € | Acciones
+ *
+ * Filtro por periodo (YYYY-MM) + tipo (Mensual/Trimestral/Anual/
+ * Discreto) + estado (Pendientes / Prefacturados / Todos).
  */
 type Linea = {
   cliente: string;
-  bolsaConcepto: string;
+  contrato: string;
+  nivel: string;
+  modelo: string;
+  periodo: string;
   bolsaContratada: number;
   hPeriodo: number;
   hFacturable: number;
-  hContraCuota: number;
-  hFueraBolsa: number;
+  hCubiertasPorCuota: number;
+  hExceso: number;
   hGastadasAnteriores: number;
   hImputadasCliente: number;
   hOtrasFacturadas: number;
-  saldo: number;
+  saldoBolsa: number;
   hAFacturar: number;
   tarifaHora: number;
   importe: number;
+  importeExceso: number;
+  bolsaConcepto: string;
   tareasIncluidas: number;
   estado: "pendiente" | "prefacturada" | "facturada";
 };
@@ -86,7 +94,7 @@ export default function PreFacturacionPage() {
           (concepto antiguo), debe ser "Tareas facturables". */}
       <h1 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>Tareas facturables</h1>
       <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 16 }}>
-        Pre-facturación del periodo. Compara horas trabajadas, contra cuota y a facturar para cada cliente.
+        Pre-facturación del periodo. Una línea por contrato: Cuotas (importe fijo), Horas (h × precio) y Bonos (compra puntual). El exceso sobre la bolsa se factura aparte.
       </p>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 16, flexWrap: "wrap" }}>
@@ -134,37 +142,39 @@ export default function PreFacturacionPage() {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
           <thead style={{ background: "#f8fafc" }}>
             <tr>
+              <Th>Contrato</Th>
               <Th>Cliente</Th>
-              <Th>Bolsa</Th>
-              <Th align="right">H. Periodo</Th>
-              <Th align="right">H. Fact</Th>
-              <Th align="right">H. contra C.</Th>
-              <Th align="right">H. Gast. ant.</Th>
-              <Th align="right">H. Imp. C.</Th>
-              <Th align="right">H. Otras Fact</Th>
+              <Th>Nivel</Th>
+              <Th>Modelo</Th>
+              <Th>Periodo</Th>
+              <Th align="right">Bolsa</Th>
+              <Th align="right">Horas</Th>
+              <Th align="right">Cubiertas</Th>
+              <Th align="right">Exceso</Th>
               <Th align="right">Saldo</Th>
-              <Th align="right">A Facturar</Th>
               <Th align="right">Importe</Th>
+              <Th align="right">Exceso €</Th>
               <Th>Acciones</Th>
             </tr>
           </thead>
           <tbody>
             {visibles.map((l) => (
-              <tr key={l.cliente} style={{ borderTop: "1px solid #f1f5f9" }}>
-                <Td><strong>{l.cliente}</strong></Td>
-                <Td><span style={{ fontSize: 10, color: "#6b7280" }}>{l.bolsaConcepto}</span><br />{l.bolsaContratada}h/año</Td>
-                <Td align="right">{l.hPeriodo.toFixed(2)}</Td>
+              <tr key={l.contrato + "-" + l.cliente} style={{ borderTop: "1px solid #f1f5f9" }}>
+                <Td><strong>{l.contrato}</strong></Td>
+                <Td>{l.cliente}</Td>
+                <Td>{l.nivel}</Td>
+                <Td style={{ textTransform: "capitalize" }}>{l.modelo}</Td>
+                <Td style={{ textTransform: "capitalize" }}>{l.periodo}</Td>
+                <Td align="right">{l.bolsaContratada.toFixed(2)}</Td>
                 <Td align="right" style={{ color: "#1d4ed8", fontWeight: 700 }}>{l.hFacturable.toFixed(2)}</Td>
-                <Td align="right">{l.hContraCuota.toFixed(2)}</Td>
-                <Td align="right">{l.hGastadasAnteriores.toFixed(2)}</Td>
-                <Td align="right">{l.hImputadasCliente.toFixed(2)}</Td>
-                <Td align="right">{l.hOtrasFacturadas.toFixed(2)}</Td>
-                <Td align="right" style={{ color: l.saldo > 0 ? "#16a34a" : "#dc2626", fontWeight: 700 }}>{l.saldo.toFixed(2)}</Td>
-                <Td align="right" style={{ color: "#16a34a", fontWeight: 700 }}>{l.hAFacturar.toFixed(2)}</Td>
+                <Td align="right">{l.hCubiertasPorCuota.toFixed(2)}</Td>
+                <Td align="right" style={{ color: l.hExceso > 0 ? "#dc2626" : "#94a3b8", fontWeight: l.hExceso > 0 ? 700 : 400 }}>{l.hExceso.toFixed(2)}</Td>
+                <Td align="right" style={{ color: l.saldoBolsa > 0 ? "#16a34a" : "#dc2626", fontWeight: 700 }}>{l.saldoBolsa.toFixed(2)}</Td>
                 <Td align="right" style={{ fontWeight: 700 }}>{l.importe.toFixed(2)} €</Td>
+                <Td align="right" style={{ color: l.importeExceso > 0 ? "#dc2626" : "#94a3b8", fontWeight: l.importeExceso > 0 ? 700 : 400 }}>{l.importeExceso > 0 ? l.importeExceso.toFixed(2) + " €" : "—"}</Td>
                 <Td>
                   <Link
-                    href={"/api/erp/detalle-servicios-pdf?cliente=" + encodeURIComponent(l.cliente) + "&periodo=" + periodo}
+                    href={"/api/erp/detalle-servicios-pdf?cliente=" + encodeURIComponent(l.cliente) + "&periodo=" + periodo + "&contrato=" + encodeURIComponent(l.contrato)}
                     target="_blank"
                     style={{ fontSize: 10, color: "#1d4ed8", fontWeight: 700, textDecoration: "none", border: "1px solid #cbd5e1", padding: "3px 8px", borderRadius: 4 }}
                   >
@@ -174,7 +184,7 @@ export default function PreFacturacionPage() {
               </tr>
             ))}
             {visibles.length === 0 && !loading ? (
-              <tr><td colSpan={12} style={{ padding: 32, textAlign: "center", color: "#94a3b8" }}>Sin actividad este periodo.</td></tr>
+              <tr><td colSpan={13} style={{ padding: 32, textAlign: "center", color: "#94a3b8" }}>Sin contratos con actividad este periodo.</td></tr>
             ) : null}
           </tbody>
         </table>
