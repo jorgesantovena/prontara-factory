@@ -82,9 +82,9 @@ export default function AjustesPage() {
         <div style={{ marginTop: 32, padding: 18, background: "#fef9c3", border: "1px solid #facc15", borderRadius: 12 }}>
           <h2 style={{ margin: "0 0 6px 0", fontSize: 15, fontWeight: 800, color: "#854d0e" }}>Datos demo de Facturación (TEST 19)</h2>
           <p style={{ margin: "0 0 12px 0", color: "#713f12", fontSize: 12, lineHeight: 1.5 }}>
-            Pulsa este botón si en este tenant las tablas <strong>Niveles</strong> y <strong>Contratos</strong> aparecen vacías.
-            Se crean 11 niveles (M1-M4 cuota/horas, A1, B15, B20) y un contrato por cliente existente. Es idempotente —
-            puedes pulsarlo varias veces sin duplicar registros.
+            Estos datos ya se cargan <strong>automáticamente</strong> al entrar al ERP, así que normalmente no necesitas
+            hacer nada. Este botón es solo un respaldo manual: crea 11 niveles (M1-M4 cuota/horas, A1, B15, B20) y un
+            contrato por cliente existente. Es idempotente — puedes pulsarlo varias veces sin duplicar registros.
           </p>
           <button
             type="button"
