@@ -1556,8 +1556,7 @@ type ProyectoRow = {
   responsable: string;
   codigoTipo: string;       // Servicio (código)
   facturable: string;
-  tarifaHoraOverride: string;
-  unidadTarifa: string;
+  contrato: string;         // TEST-19 — Contrato portador de la facturación
 };
 
 function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: string; clienteName: string; accent: string }) {
@@ -1597,12 +1596,14 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
         cliente: String(row.cliente || ""),
         estado: String(row.estado || ""),
         responsable: String(row.responsable || ""),
-        // TEST-16 F — Servicio (código del catalogo-servicios),
-        // Facturable, Tarifa y Unidad: nuevas columnas pedidas.
+        // TEST-16 F — Servicio (código del catalogo-servicios) y
+        // Facturable. TEST-19 — Tarifa y Unidad ya no viven en el
+        // Proyecto (se movieron al modelo Niveles+Contratos); en su
+        // lugar mostramos el Contrato, que es ahora el portador de la
+        // facturación del proyecto.
         codigoTipo: String(row.codigoTipo || ""),
         facturable: String(row.facturable || ""),
-        tarifaHoraOverride: String(row.tarifaHoraOverride || ""),
-        unidadTarifa: String(row.unidadTarifa || ""),
+        contrato: String(row.contrato || ""),
       }));
       setRows(filtered);
     } catch (e) {
@@ -1672,17 +1673,17 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
         <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              {/* TEST-16 F — Columnas: Proyecto, Estado, Responsable,
-                  Servicio, Facturable, Tarifa, Unidad. Excluidas
-                  Inicio/Caducidad. */}
+              {/* TEST-16 F + TEST-19 — Columnas: Proyecto, Estado,
+                  Responsable, Servicio, Contrato, Facturable. Excluidas
+                  Inicio/Caducidad. Tarifa/Unidad se retiraron porque ya
+                  no son campos del Proyecto (modelo Niveles+Contratos). */}
               <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
                 <th style={subTh()}>Proyecto</th>
                 <th style={subTh()}>Estado</th>
                 <th style={subTh()}>Responsable</th>
                 <th style={subTh()}>Servicio</th>
+                <th style={subTh()}>Contrato</th>
                 <th style={subTh(100)}>Facturable</th>
-                <th style={subTh(90)}>Tarifa</th>
-                <th style={subTh(90)}>Unidad</th>
                 <th style={subTh(120)}>Acciones</th>
               </tr>
             </thead>
@@ -1693,9 +1694,8 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
                   <td style={subTd}>{p.estado || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>{p.responsable || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>{p.codigoTipo || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.contrato || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>{p.facturable || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                  <td style={subTd}>{p.tarifaHoraOverride || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                  <td style={subTd}>{p.unidadTarifa || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>
                     <div style={{ display: "flex", gap: 4 }}>
                       {/* TEST-16 bis C — "Abrir" navega al editor de la
