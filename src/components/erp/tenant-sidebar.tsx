@@ -548,8 +548,11 @@ export default function TenantSidebar() {
         </span>
         {!collapsed ? (
           <div style={{ minWidth: 0, flex: 1 }}>
+            {/* TEST-20 A — Pedro: el nombre del tenant no destacaba
+                (negro sobre el azul oscuro de la sidebar tras la hoja
+                de Pedro). Forzamos amarillo cálido para que se lea. */}
             <div style={{
-              color: "#0f172a",
+              color: "#fbbf24",
               fontSize: 14,
               fontWeight: 800,
               letterSpacing: -0.2,
@@ -562,7 +565,7 @@ export default function TenantSidebar() {
             }}>
               {displayName}
             </div>
-            <div style={{ fontSize: 10, color: "#94a3b8", marginTop: 2, fontWeight: 500 }}>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.7)", marginTop: 2, fontWeight: 500 }}>
               Panel del cliente
             </div>
           </div>

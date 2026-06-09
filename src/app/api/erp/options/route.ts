@@ -60,10 +60,20 @@ export async function GET(request: NextRequest) {
         // Antes caía al default (value = UUID) y el campo Código de
         // Servicio del Proyecto guardaba/mostraba UUIDs en vez de los
         // códigos "MANT", "INST", "NUEDES"... causando "basura".
+        // TEST-20 E — Pedro: un Servicio dado de alta no aparecía en el
+        // desplegable "Código de servicio" del Proyecto. Causa: en
+        // TEST-16 D se eliminó el campo Código del alta de Servicios, así
+        // que los nuevos no tienen `codigo`; con value = codigo quedaban
+        // con value vacío y el filtro final los descartaba. Fallback: si
+        // no hay código, usamos la descripción como value (legible, sin
+        // UUIDs, coherente con TEST-15 A) para que el servicio aparezca y
+        // sea seleccionable.
         if (moduleKey === "catalogo-servicios") {
+          const code = String(item.codigo || "").trim();
+          const desc = String(item.descripcion || "").trim();
           return {
-            value: String(item.codigo || ""),
-            label: String(item.codigo || "") + (item.descripcion ? " · " + String(item.descripcion) : ""),
+            value: code || desc,
+            label: code ? code + (desc ? " · " + desc : "") : desc,
           };
         }
 

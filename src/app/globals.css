@@ -184,14 +184,19 @@ body {
 }
 
 .tabla th {
-  padding: 12px;
+  /* TEST-20 B — Pedro: alturas de fila demasiado grandes en listados.
+     Reducimos el padding vertical a la mitad (6px) y mantenemos el
+     horizontal (12px) para que se vean más filas sin perder respiración
+     lateral. Misma regla aplicada en `td` y en el override
+     `.prontara-tenant-main td/th` más abajo. */
+  padding: 6px 12px;
   text-align: left;
   font-weight: 600;
   color: var(--color-texto);
 }
 
 .tabla td {
-  padding: 12px;
+  padding: 6px 12px;
   border-bottom: 1px solid var(--color-borde);
 }
 
@@ -532,6 +537,18 @@ input:disabled {
 }
 .prontara-tenant-main tbody tr:hover {
   background-color: #f3f4f6;
+}
+
+/* TEST-20 B — Reducir altura de filas en TODOS los listados del runtime.
+   Los inline `tdStyle/thStyle` definen `padding: "12px 14px"`; aquí lo
+   sobreescribimos a la mitad vertical para ganar densidad. Usamos
+   `!important` porque los inline tienen prioridad si no.
+   TEST-20 C — Tamaño de fuente más compacto (12px) para que campos
+   largos como "Forma de pago" no rompan a varias líneas. */
+.prontara-tenant-main td,
+.prontara-tenant-main th {
+  padding: 6px 14px !important;
+  font-size: 12px !important;
 }
 
 /* Botones genéricos del runtime — radio + transición consistentes con

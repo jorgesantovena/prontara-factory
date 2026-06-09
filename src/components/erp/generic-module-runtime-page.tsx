@@ -1122,6 +1122,17 @@ export default function GenericModuleRuntimePage({
             setEditorInitialTab(null);
             setEditorAutoContact(false);
             setModalMode(null);
+            // TEST-20 D — Si la URL trae `?returnTo=...` (alta lanzada
+            // desde la sublista de otro módulo), volver allí en vez de
+            // quedarse en el listado.
+            if (typeof window !== "undefined") {
+              const ret = new URLSearchParams(window.location.search).get("returnTo");
+              if (ret) {
+                const cleaned = new URLSearchParams(window.location.search);
+                cleaned.delete("returnTo");
+                router.push(ret);
+              }
+            }
           }}
           onSubmit={async (payload, options) => {
             const wasCreating = modalMode === "create";
@@ -1333,6 +1344,13 @@ export default function GenericModuleRuntimePage({
               setModalMode("create");
             } else {
               setModalMode(null);
+              // TEST-20 D — Tras guardar, si la URL trae `?returnTo=...`
+              // (alta desde la sublista de otro módulo, p.ej. Proyecto
+              // desde Cliente), volver a ese sitio.
+              if (typeof window !== "undefined") {
+                const ret = new URLSearchParams(window.location.search).get("returnTo");
+                if (ret) router.push(ret);
+              }
             }
           }}
         />
