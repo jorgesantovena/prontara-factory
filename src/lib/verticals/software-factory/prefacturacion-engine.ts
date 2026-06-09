@@ -204,8 +204,12 @@ export function prefacturar(
   periodo: string,
 ): LineaPrefactura[] {
   const elegibles = contratos.filter((c) => {
-    if (String(c.estado || "").toLowerCase() === "cancelado") return false;
-    if (String(c.estado || "").toLowerCase() === "finalizado") return false;
+    const estado = String(c.estado || "").toLowerCase();
+    if (estado === "cancelado") return false;
+    if (estado === "finalizado") return false;
+    // Un contrato en borrador (aún no aprobado) no debe pre-facturarse:
+    // generaba una cuota a cobrar de algo no firmado.
+    if (estado === "borrador") return false;
     if (String(c.periodo) !== periodo) return false;
     if (modelo === "horas" && String(c.tipoNivel).toUpperCase() !== "M") return false;
     return true;

@@ -27,7 +27,10 @@ export const maxDuration = 60;
 
 function checkOperator(request: NextRequest): boolean {
   const secret = String(process.env.FACTORY_OPERATOR_SECRET || "").trim();
-  if (!secret) return true; // si no está definido, no enforced (dev)
+  // SEGURIDAD — fail-closed en producción: si el secreto de operador no
+  // está configurado, NO abrir el endpoint (exporta/borra datos de
+  // cualquier tenant). En dev sí se permite para no estorbar.
+  if (!secret) return process.env.NODE_ENV !== "production";
   return request.headers.get("x-factory-secret") === secret;
 }
 

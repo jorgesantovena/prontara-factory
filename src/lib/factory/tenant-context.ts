@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { assertSafePathSegment } from "@/lib/persistence/path-safety";
 
 export type TenantDefinition = {
   clientId: string;
@@ -87,10 +88,9 @@ export function listTenantIds(): string[] {
 }
 
 export function getTenantDefinitionPath(clientId: string): string {
-  const normalized = clientId.trim();
-  if (!normalized) {
-    throw new Error("clientId cannot be empty");
-  }
+  // SEGURIDAD — el clientId se concatena a rutas de fichero; validamos
+  // charset de slug para impedir path traversal. Ver path-safety.ts.
+  const normalized = assertSafePathSegment(clientId, "clientId");
 
   return path.join(getClientsRoot(), `${normalized}.json`);
 }
@@ -107,19 +107,17 @@ export function getTenantDefinition(clientId: string): TenantDefinition {
 }
 
 export function getTenantDataRoot(clientId: string): string {
-  const normalized = clientId.trim();
-  if (!normalized) {
-    throw new Error("clientId cannot be empty");
-  }
+  // SEGURIDAD — el clientId se concatena a rutas de fichero; validamos
+  // charset de slug para impedir path traversal. Ver path-safety.ts.
+  const normalized = assertSafePathSegment(clientId, "clientId");
 
   return path.join(getDataBaseRoot(), normalized);
 }
 
 export function getTenantArtifactsRoot(clientId: string): string {
-  const normalized = clientId.trim();
-  if (!normalized) {
-    throw new Error("clientId cannot be empty");
-  }
+  // SEGURIDAD — el clientId se concatena a rutas de fichero; validamos
+  // charset de slug para impedir path traversal. Ver path-safety.ts.
+  const normalized = assertSafePathSegment(clientId, "clientId");
 
   return path.join(getArtifactsBaseRoot(), normalized);
 }
@@ -129,19 +127,17 @@ export function getTenantExportsRoot(_clientId: string): string {
 }
 
 export function getTenantDeploymentsRoot(clientId: string): string {
-  const normalized = clientId.trim();
-  if (!normalized) {
-    throw new Error("clientId cannot be empty");
-  }
+  // SEGURIDAD — el clientId se concatena a rutas de fichero; validamos
+  // charset de slug para impedir path traversal. Ver path-safety.ts.
+  const normalized = assertSafePathSegment(clientId, "clientId");
 
   return path.join(getDeploymentsBaseRoot(), normalized);
 }
 
 export function resolveTenantContext(clientId: string): TenantContext {
-  const normalized = clientId.trim();
-  if (!normalized) {
-    throw new Error("clientId cannot be empty");
-  }
+  // SEGURIDAD — el clientId se concatena a rutas de fichero; validamos
+  // charset de slug para impedir path traversal. Ver path-safety.ts.
+  const normalized = assertSafePathSegment(clientId, "clientId");
 
   const definitionPath = getTenantDefinitionPath(normalized);
   const definition = getTenantDefinition(normalized);

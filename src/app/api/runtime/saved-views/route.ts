@@ -60,14 +60,27 @@ export async function POST(request: NextRequest) {
       const c = prisma as unknown as {
         tenantSavedView: {
           create: (a: { data: Record<string, unknown> }) => Promise<Record<string, unknown>>;
-          update: (a: { where: { id: string }; data: Record<string, unknown> }) => Promise<Record<string, unknown>>;
+          updateMany: (a: { where: Record<string, unknown>; data: Record<string, unknown> }) => Promise<{ count: number }>;
         };
       };
-      if (id) return await c.tenantSavedView.update({ where: { id }, data });
+      if (id) {
+        // SEGURIDAD (IDOR) — el update debe scopear por tenant + usuario,
+        // no solo por id del body. Sin esto, un usuario del tenant A podía
+        // sobrescribir la vista guardada de otro tenant conociendo su id.
+        const res = await c.tenantSavedView.updateMany({
+          where: { id, clientId: session.clientId, userEmail: session.email },
+          data,
+        });
+        if (!res || res.count === 0) return null; // no existe o no es suya
+        return { id, ...data, clientId: session.clientId, userEmail: session.email };
+      }
       return await c.tenantSavedView.create({
         data: { ...data, tenantId: session.tenantId, clientId: session.clientId, userEmail: session.email },
       });
     });
+    if (!view) {
+      return NextResponse.json({ ok: false, error: "Vista no encontrada." }, { status: 404 });
+    }
     return NextResponse.json({ ok: true, view });
   } catch (e) {
     captureError(e, { scope: "/api/runtime/saved-views POST" });

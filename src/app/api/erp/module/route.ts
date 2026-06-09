@@ -254,7 +254,35 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // Facturación.pptx / TEST 19 — Capturamos el registro ANTES de
+      // borrar para recalcular después el consumo/facturadas del contrato
+      // afectado. Sin esto, al borrar una tarea o una factura el acumulado
+      // del contrato quedaba inflado para siempre y el Caso B sobre-
+      // facturaba el exceso (consumo − bolsa − facturadas).
+      let deletedRow: Record<string, string> | null = null;
+      if (moduleKey === "actividades" || moduleKey === "facturacion" || moduleKey === "proyectos") {
+        try {
+          const rows = await listModuleRecordsAsync(moduleKey, tenant);
+          deletedRow = ((Array.isArray(rows) ? rows : []) as Array<Record<string, string>>)
+            .find((r) => String(r.id || "") === recordId) || null;
+        } catch { /* tolerar */ }
+      }
+
       await deleteModuleRecordAsync(moduleKey, recordId, tenant);
+
+      if (deletedRow) {
+        try {
+          if (moduleKey === "actividades") {
+            await recalcularConsumoContratoDesdeTarea(deletedRow, tenant);
+          } else if (moduleKey === "facturacion") {
+            await recalcularFacturadoContrato(String(deletedRow.contrato || ""), tenant);
+          } else if (moduleKey === "proyectos") {
+            await recalcularConsumoContratoDirecto(String(deletedRow.contrato || ""), tenant);
+          }
+        } catch (e) {
+          captureError(e, { scope: "module delete → recalcular contrato" });
+        }
+      }
       return NextResponse.json({ ok: true });
     }
 

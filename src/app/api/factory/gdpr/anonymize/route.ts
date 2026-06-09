@@ -28,7 +28,10 @@ export const maxDuration = 60;
 
 function checkOperator(request: NextRequest): boolean {
   const secret = String(process.env.FACTORY_OPERATOR_SECRET || "").trim();
-  if (!secret) return true;
+  // SEGURIDAD — fail-closed en producción: este endpoint anonimiza/destruye
+  // PII de un tenant. Si el secreto de operador no está configurado, denegar
+  // en producción (en dev se permite).
+  if (!secret) return process.env.NODE_ENV !== "production";
   return request.headers.get("x-factory-secret") === secret;
 }
 
