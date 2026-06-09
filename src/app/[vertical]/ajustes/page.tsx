@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import TenantShell from "@/components/erp/tenant-shell";
 import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
@@ -27,6 +28,29 @@ const ITEMS: Item[] = [
 
 export default function AjustesPage() {
   const { link } = useCurrentVertical();
+  const [seedBusy, setSeedBusy] = useState(false);
+  const [seedMsg, setSeedMsg] = useState<{ tone: "ok" | "err"; text: string } | null>(null);
+
+  // TEST 19 (Pedro) — Botón para sembrar Niveles + Contratos demo en
+  // tenants que ya existían antes del TEST 19. Idempotente.
+  async function sembrarTest19() {
+    setSeedBusy(true);
+    setSeedMsg(null);
+    try {
+      const r = await fetch("/api/erp/seed-test19", { method: "POST" });
+      const d = await r.json();
+      if (r.ok && d.ok) {
+        setSeedMsg({ tone: "ok", text: d.mensaje || "Sembrado correctamente." });
+      } else {
+        setSeedMsg({ tone: "err", text: d.error || "Error sembrando." });
+      }
+    } catch (e) {
+      setSeedMsg({ tone: "err", text: e instanceof Error ? e.message : "Error." });
+    } finally {
+      setSeedBusy(false);
+    }
+  }
+
   return (
     <TenantShell>
       <div style={{ maxWidth: 960, margin: "0 auto", color: "#0f172a", fontFamily: "system-ui, -apple-system, sans-serif" }}>
@@ -52,6 +76,37 @@ export default function AjustesPage() {
               </span>
             </Link>
           ))}
+        </div>
+
+        {/* TEST 19 (Pedro) — Migración Niveles + Contratos para tenants existentes */}
+        <div style={{ marginTop: 32, padding: 18, background: "#fef9c3", border: "1px solid #facc15", borderRadius: 12 }}>
+          <h2 style={{ margin: "0 0 6px 0", fontSize: 15, fontWeight: 800, color: "#854d0e" }}>Datos demo de Facturación (TEST 19)</h2>
+          <p style={{ margin: "0 0 12px 0", color: "#713f12", fontSize: 12, lineHeight: 1.5 }}>
+            Pulsa este botón si en este tenant las tablas <strong>Niveles</strong> y <strong>Contratos</strong> aparecen vacías.
+            Se crean 11 niveles (M1-M4 cuota/horas, A1, B15, B20) y un contrato por cliente existente. Es idempotente —
+            puedes pulsarlo varias veces sin duplicar registros.
+          </p>
+          <button
+            type="button"
+            onClick={sembrarTest19}
+            disabled={seedBusy}
+            style={{
+              padding: "8px 16px", background: "#ca8a04", color: "#fff", border: "none",
+              borderRadius: 6, fontSize: 13, fontWeight: 700, cursor: seedBusy ? "wait" : "pointer",
+            }}
+          >
+            {seedBusy ? "Sembrando…" : "Sembrar Niveles y Contratos demo"}
+          </button>
+          {seedMsg ? (
+            <div style={{
+              marginTop: 12, padding: 10, borderRadius: 6, fontSize: 12,
+              background: seedMsg.tone === "ok" ? "#dcfce7" : "#fee2e2",
+              color: seedMsg.tone === "ok" ? "#166534" : "#991b1b",
+              border: "1px solid " + (seedMsg.tone === "ok" ? "#86efac" : "#fca5a5"),
+            }}>
+              {seedMsg.text}
+            </div>
+          ) : null}
         </div>
       </div>
     </TenantShell>
