@@ -39,6 +39,8 @@ const MODULE_ORDER = [
   // (crm) y Proyectos. Antes salía detrás de pre-facturación porque
   // pertenecía a Administración; ahora va aquí en el pipeline comercial.
   "presupuestos",
+  // Test 19 bis — Contratos entre Propuestas y Proyectos.
+  "contratos",
   "proyectos",
   "produccion",
   "pre-facturacion",
@@ -47,6 +49,8 @@ const MODULE_ORDER = [
   // TEST-5.S — Reportes en el sidebar (grupo Analítica).
   "reportes",
   "catalogo-servicios",
+  // Test 19 bis — Niveles en Maestros, justo debajo de Servicios.
+  "niveles",
   // SCHOOL-03 — módulos extendidos del ERP escolar (orden académico)
   "docentes",
   "horarios",
@@ -206,6 +210,8 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   "actividades-catalogo": "maestros",
   "zonas-comerciales": "maestros",
   "grupos-empresa": "maestros",
+  // Test 19 bis — Niveles es un maestro (tarifas/condiciones de facturación).
+  niveles: "maestros",
 };
 function categoriaDe(moduleKey: string): SidebarCategory {
   return MODULE_CATEGORY[moduleKey] || "operacion";

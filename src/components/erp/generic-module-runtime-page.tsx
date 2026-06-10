@@ -818,6 +818,29 @@ export default function GenericModuleRuntimePage({
     if (moduleKey === "formas-pago") {
       return [...filtered].sort((a, b) => ABC(lower(a.nombre), lower(b.nombre)));
     }
+    // Test 19 bis — Niveles: por Tipo y Subtipo (asc).
+    if (moduleKey === "niveles") {
+      return [...filtered].sort((a, b) =>
+        ABC(lower(a.tipoNivel), lower(b.tipoNivel)) ||
+        ABC(lower(a.subtipo), lower(b.subtipo))
+      );
+    }
+    // Test 19 bis — Contratos: por Cliente (alfa), Tipo, Subtipo (asc).
+    if (moduleKey === "contratos") {
+      return [...filtered].sort((a, b) =>
+        ABC(lower(a.cliente), lower(b.cliente)) ||
+        ABC(lower(a.tipoNivel), lower(b.tipoNivel)) ||
+        ABC(lower(a.subtipo), lower(b.subtipo))
+      );
+    }
+    // Test 19 bis — Proyectos: por Cliente (alfa), Contrato y Servicio (asc).
+    if (moduleKey === "proyectos") {
+      return [...filtered].sort((a, b) =>
+        ABC(lower(a.cliente), lower(b.cliente)) ||
+        ABC(lower(a.contrato), lower(b.contrato)) ||
+        ABC(lower(a.codigoTipo), lower(b.codigoTipo))
+      );
+    }
     if (moduleKey === "vencimientos-factura") {
       // Test 18 bis 3 — Lista de Vencimientos ordenada por fecha asc.
       return [...filtered].sort((a, b) => {
