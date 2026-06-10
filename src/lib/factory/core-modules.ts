@@ -536,7 +536,10 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "cuota", label: "Cuota" },
     { value: "horas", label: "Horas" },
   ] },
-  { moduleKey: "niveles", fieldKey: "bolsa", label: "Bolsa (h)", kind: "number", defaultValue: "1", placeholder: "Horas cubiertas. Asume 1 para Modelo Cuota Tipo M/A. Para Tipo B = h del bono." },
+  // Test 19 bis 2 — Bolsa ELIMINADA de Niveles: la bolsa de horas la aporta
+  // ahora un Nivel Tipo B referenciado por el contrato (campo subtipoBono).
+  // Los datos demo antiguos conservan `bolsa` y el engine la usa como
+  // fallback legacy si el contrato no tiene bono.
   // Test 19 bis 2 — Precio renombrado a "Valor". La etiqueta visible es
   // contextual según Tipo+Modelo (Importe € / Precio €/h / Horas h); se
   // resuelve en el editor (ver nivelesValorLabel). El key se mantiene
@@ -746,8 +749,7 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "niveles", fieldKey: "tipoNivel", label: "Tipo", isPrimary: true },
   { moduleKey: "niveles", fieldKey: "subtipo", label: "Subtipo" },
   { moduleKey: "niveles", fieldKey: "modelo", label: "Modelo" },
-  { moduleKey: "niveles", fieldKey: "bolsa", label: "Bolsa" },
-  { moduleKey: "niveles", fieldKey: "precio", label: "Precio" },
+  { moduleKey: "niveles", fieldKey: "precio", label: "Valor" },
   { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción" },
 ];
 

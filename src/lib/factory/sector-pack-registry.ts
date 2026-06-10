@@ -609,6 +609,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "B", label: "B (Bono)" },
     ] },
     { moduleKey: "contratos", fieldKey: "subtipo", label: "Subtipo", kind: "text", required: true, placeholder: "Subtipo del Nivel asociado (1..4 para Tipo M, libre para A y B)" },
+    // Test 19 bis 2 — Bono asociado: subtipo de un Nivel Tipo B que aporta la
+    // BOLSA de horas (Pedro movió la Bolsa de Niveles al Tipo B). Opcional.
+    { moduleKey: "contratos", fieldKey: "subtipoBono", label: "Bono (Nivel Tipo B)", kind: "text", placeholder: "Subtipo de un Nivel Tipo B que aporta la bolsa de horas (opcional). Ej. B15" },
     { moduleKey: "contratos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Código de la Propuesta de origen (opcional)" },
     { moduleKey: "contratos", fieldKey: "fechaInicio", label: "Inicio", kind: "date", placeholder: "Fecha de inicio de vigencia" },
     { moduleKey: "contratos", fieldKey: "fechaFin", label: "Fin", kind: "date", defaultValue: "9999-12-31", placeholder: "Fecha de fin (9999-12-31 = sin vencimiento)" },

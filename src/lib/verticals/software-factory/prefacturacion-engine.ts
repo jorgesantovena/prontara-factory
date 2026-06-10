@@ -57,6 +57,9 @@ export type Contrato = {
   periodo: "mensual" | "trimestral" | "semestral" | "anual" | "discreto" | string;
   tipoNivel: "M" | "A" | "B" | string;
   subtipo: string;
+  // Test 19 bis 2 — Bono asociado: subtipo de un Nivel Tipo B que aporta la
+  // BOLSA de horas (Pedro movió la Bolsa de Niveles al Tipo B). Opcional.
+  subtipoBono?: string;
   consumo: number;
   facturadas: number;
   referenciaPropuesta?: string;
@@ -148,6 +151,25 @@ export function findNivel(
 }
 
 /**
+ * Test 19 bis 2 — Horas del Bono del contrato. Pedro movió la Bolsa de
+ * Niveles a un Nivel Tipo B: el contrato apunta a él con `subtipoBono`, y
+ * el Valor (campo `precio`) de ese Nivel B Horas son las horas del bono.
+ * Devuelve null si el contrato no tiene bono o el Nivel B no existe — el
+ * caller decide el fallback (legacy: Bolsa del Nivel M Horas).
+ */
+function bonoHoras(contrato: Contrato, niveles: Nivel[]): number | null {
+  const sb = String(contrato.subtipoBono || "").trim();
+  if (!sb) return null;
+  const b = niveles.find(
+    (n) =>
+      String(n.tipoNivel).toUpperCase() === "B" &&
+      String(n.subtipo) === sb &&
+      String(n.modelo).toLowerCase() === "horas",
+  );
+  return b ? parseNum(b.precio) : null;
+}
+
+/**
  * Caso A — Importe = Bolsa × Precio del Nivel (tipo, subtipo, Cuota).
  */
 export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefactura | null {
@@ -156,12 +178,11 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
     // Sin Nivel Cuota definido → no se emite cuota.
     return null;
   }
-  const bolsa = parseNum(nivel.bolsa);
-  const precio = parseNum(nivel.precio);
-  // Test 19 bis G — Caso A: Importe = Precio. El Precio del Nivel Cuota ES
-  // el importe de la cuota del periodo (antes era Bolsa × Precio, que
-  // inflaba la cuota cuando bolsa>1).
-  const importe = precio;
+  const precio = parseNum(nivel.precio); // Valor del Nivel Cuota = importe base
+  // Test 19 bis 2 — Importe = Horas × Precio. Horas = horas del Bono (Nivel
+  // Tipo B referenciado por el contrato) si existe; si no, 1 (cuota simple).
+  const horas = bonoHoras(contrato, niveles) ?? 1;
+  const importe = horas * precio;
   return {
     caso: "A",
     contrato: contrato.codigo,
@@ -170,13 +191,15 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
     subtipo: contrato.subtipo,
     periodo: contrato.periodo,
     modelo: "cuota",
-    bolsa,
+    bolsa: horas,
     precio,
     consumo: parseNum(contrato.consumo),
     facturadas: parseNum(contrato.facturadas),
-    horasAFacturar: bolsa,
+    horasAFacturar: horas,
     importe,
-    notas: "Cuota " + contrato.periodo + " = " + precio + "€",
+    notas: horas === 1
+      ? "Cuota " + contrato.periodo + " = " + precio + "€"
+      : "Bono " + horas + "h × " + precio + "€",
   };
 }
 
@@ -196,7 +219,10 @@ export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: Prefa
 
   const consumo = parseNum(contrato.consumo);
   const facturadas = parseNum(contrato.facturadas);
-  const bolsaHoras = parseNum(nivelBase.bolsa);
+  // Test 19 bis 2 — Bolsa = horas del Bono (Nivel Tipo B referenciado por el
+  // contrato). Fallback legacy: la Bolsa del Nivel M Horas (datos anteriores
+  // a bis-2, donde la Bolsa vivía en el propio Nivel).
+  const bolsaHoras = bonoHoras(contrato, niveles) ?? parseNum(nivelBase.bolsa);
   const HF = consumo - bolsaHoras - facturadas; // Horas a Facturar (exceso)
   if (HF <= 0) return null; // sin exceso → no se emite línea
 
