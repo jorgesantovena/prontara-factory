@@ -45,6 +45,9 @@ const PERIODO_LABEL: Record<Periodo, string> = {
 export default function PreFacturacionPage() {
   const [modelo, setModelo] = useState<Modelo>("cuota");
   const [periodo, setPeriodo] = useState<Periodo>("mensual");
+  // Test 19 bis G — Fecha (mes a facturar), formato "YYYY-MM". Se inicializa
+  // al mes actual en cliente (en un effect, para no romper la hidratación).
+  const [fecha, setFecha] = useState("");
   const [lineas, setLineas] = useState<Linea[]>([]);
   const [totales, setTotales] = useState<{ contratos: number; clientes: number; horasAFacturar: number; importe: number } | null>(null);
   const [loading, setLoading] = useState(false);
@@ -59,6 +62,7 @@ export default function PreFacturacionPage() {
       const params = new URLSearchParams();
       params.set("modelo", modelo);
       params.set("periodo", periodo);
+      if (fecha) params.set("fecha", fecha);
       const r = await fetch("/api/erp/prefacturacion?" + params.toString(), { cache: "no-store" });
       const data = await r.json();
       if (r.ok && data.ok) {
@@ -77,6 +81,9 @@ export default function PreFacturacionPage() {
       setLoading(false);
     }
   }
+  // Test 19 bis G — Inicializa la Fecha al mes actual en cliente (en effect,
+  // para no romper la hidratación con SSR).
+  useEffect(() => { if (!fecha) setFecha(new Date().toISOString().slice(0, 7)); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
   // Auto-ejecutar al montar para que se vean líneas por defecto.
   useEffect(() => { ejecutar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
@@ -125,6 +132,14 @@ export default function PreFacturacionPage() {
             <option value="anual">Anual</option>
             <option value="discreto">Discreto</option>
           </select>
+          <label style={{ fontSize: 12, color: "#475569", fontWeight: 700, marginLeft: 12 }}>Fecha (mes):</label>
+          <input
+            type="month"
+            value={fecha}
+            onChange={(e) => setFecha(e.target.value)}
+            style={ipt}
+            title="Mes a facturar. Afecta al Caso B (Horas): desglosa el exceso por los servicios consumidos ese mes."
+          />
           <button type="button" onClick={ejecutar} style={btnPrimary} disabled={loading}>
             {loading ? "Calculando…" : "Ejecutar pre-facturación"}
           </button>

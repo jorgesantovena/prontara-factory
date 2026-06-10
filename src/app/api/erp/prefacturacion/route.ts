@@ -6,6 +6,8 @@ import {
   type Contrato,
   type Nivel,
   type LineaPrefactura,
+  type Actividad,
+  type ProyectoLite,
 } from "@/lib/verticals/software-factory/prefacturacion-engine";
 import { captureError } from "@/lib/observability/error-capture";
 import { ensureTest19Seed } from "@/lib/verticals/software-factory/ensure-test19-seed";
@@ -44,6 +46,11 @@ export async function GET(request: NextRequest) {
     const periodo: typeof PERIODOS[number] = (PERIODOS as readonly string[]).includes(periodoRaw)
       ? (periodoRaw as typeof PERIODOS[number])
       : "mensual";
+
+    // Test 19 bis G — Fecha (mes a facturar) en formato "YYYY-MM". Solo
+    // afecta al Caso B (filtra las tareas del mes para el desglose por
+    // servicio). Vacío = sin filtro de mes.
+    const fecha = String(request.nextUrl.searchParams.get("fecha") || "").trim();
 
     let [contratosRaw, nivelesRaw] = await Promise.all([
       listModuleRecordsAsync("contratos", session.clientId),
@@ -90,10 +97,42 @@ export async function GET(request: NextRequest) {
       modelo: String(n.modelo || "cuota"),
       bolsa: parseNum(n.bolsa),
       precio: parseNum(n.precio),
+      servicio: String(n.servicio || ""),
       descripcion: String(n.descripcion || ""),
     }));
 
-    const lineas: LineaPrefactura[] = prefacturar(contratos, niveles, modelo, periodo);
+    // Test 19 bis G — Para el Caso B (Horas) cargamos tareas y proyectos
+    // para desglosar el exceso por servicio. En Caso A no hace falta.
+    let actividades: Actividad[] = [];
+    let proyectos: ProyectoLite[] = [];
+    if (modelo === "horas") {
+      const [actsRaw, proysRaw] = await Promise.all([
+        listModuleRecordsAsync("actividades", session.clientId),
+        listModuleRecordsAsync("proyectos", session.clientId),
+      ]);
+      actividades = (actsRaw as Array<Record<string, string>>).map((a) => ({
+        id: String(a.id || ""),
+        fecha: String(a.fecha || ""),
+        cliente: String(a.cliente || ""),
+        proyecto: String(a.proyecto || ""),
+        contrato: String(a.contrato || ""),
+        tiempoHoras: parseNum(a.tiempoHoras || a.horas),
+        estado: String(a.estado || ""),
+      }));
+      proyectos = (proysRaw as Array<Record<string, string>>).map((p) => ({
+        nombre: String(p.nombre || ""),
+        id: String(p.id || ""),
+        contrato: String(p.contrato || ""),
+        codigoTipo: String(p.codigoTipo || ""),
+        facturable: String(p.facturable || ""),
+      }));
+    }
+
+    const lineas: LineaPrefactura[] = prefacturar(contratos, niveles, modelo, periodo, {
+      fecha: fecha || undefined,
+      actividades,
+      proyectos,
+    });
     const totalImporte = lineas.reduce((s, l) => s + l.importe, 0);
     const totalHoras = lineas.reduce((s, l) => s + l.horasAFacturar, 0);
 
@@ -101,6 +140,7 @@ export async function GET(request: NextRequest) {
       ok: true,
       modelo,
       periodo,
+      fecha,
       lineas,
       totales: {
         contratos: lineas.length,

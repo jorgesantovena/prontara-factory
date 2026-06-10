@@ -71,7 +71,27 @@ export type Nivel = {
   modelo: "cuota" | "horas" | string;
   bolsa: number;
   precio: number;
+  // Test 19 bis A/G — Servicio: solo en Niveles Modelo=Horas. Permite un
+  // precio del exceso por servicio (Caso B desglosado).
+  servicio?: string;
   descripcion?: string;
+};
+
+// Test 19 bis G — Línea de desglose por servicio del Caso B.
+export type DesgloseServicio = {
+  servicio: string;
+  horas: number;
+  precio: number;
+  importe: number;
+};
+
+// Test 19 bis G — Opciones del proceso: mes a facturar + tareas/proyectos
+// para el desglose por servicio del Caso B.
+export type ProyectoLite = { nombre?: string; id?: string; contrato?: string; codigoTipo?: string; facturable?: string };
+export type PrefacturaOpts = {
+  fecha?: string; // "YYYY-MM"
+  actividades?: Actividad[];
+  proyectos?: ProyectoLite[];
 };
 
 export type LineaPrefactura = {
@@ -88,6 +108,9 @@ export type LineaPrefactura = {
   facturadas: number;
   horasAFacturar: number; // para Caso A: bolsa. Para Caso B: max(0, consumo-bolsa-facturadas)
   importe: number;
+  // Test 19 bis G — Desglose del exceso por servicio (Caso B), si hay
+  // Niveles Horas por servicio y tareas del mes. Vacío en el caso plano.
+  desglose?: DesgloseServicio[];
   notas: string;
 };
 
@@ -161,36 +184,85 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
  * Caso B — Importe = max(0, Consumo − Bolsa − Facturadas) × Precio
  * del Nivel (M, mismo subtipo, Horas). Solo contratos Tipo M.
  */
-export function calcularCasoB(contrato: Contrato, niveles: Nivel[]): LineaPrefactura | null {
+export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: PrefacturaOpts): LineaPrefactura | null {
   if (String(contrato.tipoNivel).toUpperCase() !== "M") return null;
-  const nivelHoras = findNivel(niveles, "M", contrato.subtipo, "horas");
-  if (!nivelHoras) {
-    // Sin Nivel Horas asociado al Tipo M Subtipo X → no podemos
-    // calcular el precio del exceso.
-    return null;
-  }
+  // Nivel Horas "base" (sin servicio): define la Bolsa y el precio de
+  // fallback. Si todos los Horas llevan servicio, cae al primer match.
+  const sub = String(contrato.subtipo);
+  const nivelBase =
+    niveles.find((n) => String(n.tipoNivel).toUpperCase() === "M" && String(n.subtipo) === sub && String(n.modelo).toLowerCase() === "horas" && !String(n.servicio || "").trim()) ||
+    findNivel(niveles, "M", sub, "horas");
+  if (!nivelBase) return null;
+
   const consumo = parseNum(contrato.consumo);
   const facturadas = parseNum(contrato.facturadas);
-  const bolsaHoras = parseNum(nivelHoras.bolsa);
-  const precio = parseNum(nivelHoras.precio);
-  const exceso = consumo - bolsaHoras - facturadas;
-  if (exceso <= 0) return null; // sin exceso → no se emite línea
-  const importe = exceso * precio;
+  const bolsaHoras = parseNum(nivelBase.bolsa);
+  const HF = consumo - bolsaHoras - facturadas; // Horas a Facturar (exceso)
+  if (HF <= 0) return null; // sin exceso → no se emite línea
+
+  // Test 19 bis G — Desglose por servicio. Requiere Niveles Horas con
+  // `servicio` para este subtipo Y las tareas/proyectos del contrato.
+  // INTERPRETACIÓN (pendiente de validar por Pedro con números reales):
+  // se reparte el exceso HF entre los servicios consumidos en el mes, en
+  // orden de código de servicio, facturando cada servicio a SU precio
+  // hasta agotar HF. El último servicio puede quedar parcialmente cubierto.
+  const nivelesServicio = niveles.filter((n) =>
+    String(n.tipoNivel).toUpperCase() === "M" && String(n.subtipo) === sub &&
+    String(n.modelo).toLowerCase() === "horas" && String(n.servicio || "").trim());
+
+  let horasPorServicio: Array<{ servicio: string; horas: number }> = [];
+  if (opts?.actividades && opts?.proyectos) {
+    const servPorProyecto = new Map<string, string>();
+    for (const p of opts.proyectos) {
+      if (String(p.contrato || "") !== contrato.codigo) continue;
+      const serv = String(p.codigoTipo || "");
+      if (p.nombre) servPorProyecto.set(String(p.nombre), serv);
+      if (p.id) servPorProyecto.set(String(p.id), serv);
+    }
+    const acc = new Map<string, number>();
+    for (const t of opts.actividades) {
+      const serv = servPorProyecto.get(String(t.proyecto || ""));
+      if (serv === undefined) continue; // la tarea no es de este contrato
+      if (opts.fecha && String(t.fecha || "").slice(0, 7) !== opts.fecha) continue;
+      const key = serv || "(sin servicio)";
+      acc.set(key, (acc.get(key) || 0) + parseNum(t.tiempoHoras));
+    }
+    horasPorServicio = Array.from(acc.entries())
+      .map(([servicio, horas]) => ({ servicio, horas }))
+      .sort((a, b) => a.servicio.localeCompare(b.servicio));
+  }
+
+  if (nivelesServicio.length > 0 && horasPorServicio.length > 0) {
+    let resto = HF;
+    let importeTotal = 0;
+    const desglose: DesgloseServicio[] = [];
+    for (const { servicio, horas } of horasPorServicio) {
+      if (resto <= 0) break;
+      const nivelServ = nivelesServicio.find((n) => String(n.servicio) === servicio);
+      const precioServ = nivelServ ? parseNum(nivelServ.precio) : parseNum(nivelBase.precio);
+      const facturables = Math.min(horas, resto);
+      const imp = facturables * precioServ;
+      desglose.push({ servicio, horas: facturables, precio: precioServ, importe: imp });
+      importeTotal += imp;
+      resto -= facturables;
+    }
+    return {
+      caso: "B", contrato: contrato.codigo, cliente: contrato.cliente,
+      tipoNivel: contrato.tipoNivel, subtipo: contrato.subtipo, periodo: contrato.periodo,
+      modelo: "horas", bolsa: bolsaHoras, precio: parseNum(nivelBase.precio), consumo, facturadas,
+      horasAFacturar: HF - Math.max(0, resto), importe: importeTotal, desglose,
+      notas: "Exceso por servicio: " + desglose.map((d) => d.servicio + " " + d.horas.toFixed(2) + "h×" + d.precio + "€").join(" + "),
+    };
+  }
+
+  // Fallback plano: exceso × precio base (sin desglose por servicio).
+  const precio = parseNum(nivelBase.precio);
   return {
-    caso: "B",
-    contrato: contrato.codigo,
-    cliente: contrato.cliente,
-    tipoNivel: contrato.tipoNivel,
-    subtipo: contrato.subtipo,
-    periodo: contrato.periodo,
-    modelo: "horas",
-    bolsa: bolsaHoras,
-    precio,
-    consumo,
-    facturadas,
-    horasAFacturar: exceso,
-    importe,
-    notas: "Exceso " + exceso.toFixed(2) + "h × " + precio + "€",
+    caso: "B", contrato: contrato.codigo, cliente: contrato.cliente,
+    tipoNivel: contrato.tipoNivel, subtipo: contrato.subtipo, periodo: contrato.periodo,
+    modelo: "horas", bolsa: bolsaHoras, precio, consumo, facturadas,
+    horasAFacturar: HF, importe: HF * precio,
+    notas: "Exceso " + HF.toFixed(2) + "h × " + precio + "€",
   };
 }
 
@@ -204,6 +276,7 @@ export function prefacturar(
   niveles: Nivel[],
   modelo: "cuota" | "horas",
   periodo: string,
+  opts?: PrefacturaOpts,
 ): LineaPrefactura[] {
   const elegibles = contratos.filter((c) => {
     const estado = String(c.estado || "").toLowerCase();
@@ -216,9 +289,8 @@ export function prefacturar(
     if (modelo === "horas" && String(c.tipoNivel).toUpperCase() !== "M") return false;
     return true;
   });
-  const calc = modelo === "cuota" ? calcularCasoA : calcularCasoB;
   return elegibles
-    .map((c) => calc(c, niveles))
+    .map((c) => (modelo === "cuota" ? calcularCasoA(c, niveles) : calcularCasoB(c, niveles, opts)))
     .filter((x): x is LineaPrefactura => x != null);
 }
 
