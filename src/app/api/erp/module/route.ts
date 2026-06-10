@@ -14,6 +14,7 @@ import {
 import { checkTenantSubscriptionAsync } from "@/lib/saas/subscription-guard";
 import { canPerform, type PermissionAction } from "@/lib/saas/permission-checker";
 import { captureError } from "@/lib/observability/error-capture";
+import { ensureTest19Seed } from "@/lib/verticals/software-factory/ensure-test19-seed";
 
 async function ensurePermission(
   clientId: string,
@@ -62,7 +63,24 @@ export async function GET(request: NextRequest) {
     const permError = await ensurePermission(session.clientId, session.role, moduleKey, "view");
     if (permError) return permError;
 
-    const rows = await listModuleRecordsAsync(moduleKey, session.clientId);
+    let rows = await listModuleRecordsAsync(moduleKey, session.clientId);
+
+    // TEST 19 — Auto-seed self-healing. Si un tenant abre Niveles o
+    // Contratos y están vacíos (tenant anterior a TEST 19, cuyos seeds del
+    // pack solo se aplicaron al provisionar tenants nuevos), los sembramos
+    // AQUÍ, en la misma petición que carga la página, y devolvemos ya con
+    // datos. Es el punto más fiable: corre en el request exacto que dispara
+    // el usuario (a diferencia de un seed en el render del layout, que en
+    // producción no siempre se ejecuta/persiste). Idempotente. Gateado por
+    // moduleKey porque `niveles`/`contratos` solo existen en software-factory.
+    if (rows.length === 0 && (moduleKey === "niveles" || moduleKey === "contratos")) {
+      try {
+        await ensureTest19Seed(session.clientId);
+        rows = await listModuleRecordsAsync(moduleKey, session.clientId);
+      } catch (e) {
+        captureError(e, { scope: "/api/erp/module GET → ensureTest19Seed" });
+      }
+    }
 
     return NextResponse.json({
       ok: true,

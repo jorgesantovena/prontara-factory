@@ -8,6 +8,7 @@ import {
   type LineaPrefactura,
 } from "@/lib/verticals/software-factory/prefacturacion-engine";
 import { captureError } from "@/lib/observability/error-capture";
+import { ensureTest19Seed } from "@/lib/verticals/software-factory/ensure-test19-seed";
 
 /**
  * GET /api/erp/prefacturacion?modelo=cuota|horas&periodo=mensual|trimestral|semestral|anual|discreto
@@ -44,10 +45,29 @@ export async function GET(request: NextRequest) {
       ? (periodoRaw as typeof PERIODOS[number])
       : "mensual";
 
-    const [contratosRaw, nivelesRaw] = await Promise.all([
+    let [contratosRaw, nivelesRaw] = await Promise.all([
       listModuleRecordsAsync("contratos", session.clientId),
       listModuleRecordsAsync("niveles", session.clientId),
     ]);
+
+    // TEST 19 — Auto-seed self-healing: si el tenant aún no tiene Niveles
+    // ni Contratos (tenant anterior a TEST 19), los sembramos aquí mismo
+    // para que la Pre-facturación funcione aunque Pedro entre directo sin
+    // pasar antes por las tablas. Idempotente.
+    if (
+      (contratosRaw as unknown[]).length === 0 &&
+      (nivelesRaw as unknown[]).length === 0
+    ) {
+      try {
+        await ensureTest19Seed(session.clientId);
+        [contratosRaw, nivelesRaw] = await Promise.all([
+          listModuleRecordsAsync("contratos", session.clientId),
+          listModuleRecordsAsync("niveles", session.clientId),
+        ]);
+      } catch (e) {
+        captureError(e, { scope: "/api/erp/prefacturacion → ensureTest19Seed" });
+      }
+    }
 
     const contratos: Contrato[] = (contratosRaw as Array<Record<string, string>>).map((c) => ({
       id: String(c.id || ""),
