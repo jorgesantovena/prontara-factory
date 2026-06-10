@@ -20,6 +20,25 @@ export function getPersistenceBackend(): PersistenceBackend {
   return PERSISTENCE === "postgres" ? "postgres" : "filesystem";
 }
 
+// AVISO (auditoría 2026-06) — En producción el backend de ficheros NO es
+// seguro: el disco es efímero en serverless (datos perdidos en cada
+// redeploy) y las escrituras no son atómicas entre invocaciones
+// concurrentes (números de factura duplicados, lost-updates). Producción
+// debe ir en Postgres (`PRONTARA_PERSISTENCE=postgres` + `DATABASE_URL`).
+// Emitimos un aviso una sola vez al cargar el módulo si se detecta esa
+// combinación peligrosa. No lanzamos para no romper un arranque legítimo
+// (p.ej. una preview), pero el aviso queda en los logs.
+if (
+  process.env.NODE_ENV === "production" &&
+  getPersistenceBackend() === "filesystem"
+) {
+  console.warn(
+    "[prontara] ATENCIÓN: PRONTARA_PERSISTENCE no es 'postgres' en producción. " +
+      "Los datos operativos irán a disco efímero y la concurrencia no es segura. " +
+      "Configura PRONTARA_PERSISTENCE=postgres y DATABASE_URL."
+  );
+}
+
 declare global {
   // eslint-disable-next-line no-var
   var __prontaraPrisma: PrismaClient | undefined;

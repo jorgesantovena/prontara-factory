@@ -41,12 +41,12 @@ Requiere **Node 20+** y **pnpm 9+**. Copia `.env.example` a `.env.local`. Solo `
 - `src/proxy.ts` es el middleware global (renombrado `proxy` en Next 16). Hace dos cosas: autentica `/api/factory/*` (sesión HMAC, rol admin/owner) y **redirige rutas de módulo sin prefijo** (`/clientes` → `/<vertical>/clientes`) leyendo el `businessType` del cookie de sesión — backward-compat con `<Link>` antiguos.
 - La sesión viaja en el cookie `prontara_session` (HMAC + scrypt). El tenant se resuelve con `src/lib/saas/tenant-resolver-async.ts`; el contexto común runtime/factory está en `src/lib/factory/tenant-context.ts`.
 
-### Persistencia — dos backends tras una interfaz
-Toda lectura/escritura operativa de un tenant pasa por la interfaz `TenantDataStore` (`src/lib/persistence/tenant-data-store.ts`), obtenida con `getTenantDataStore()`. Dos implementaciones seleccionables por env, sin tocar call sites:
-- `json` (default): escribe en `.prontara/data/<clientId>/<module>.json` con helpers atómicos.
-- `prisma`: Postgres según `prisma/schema.prisma` (todos los modelos llevan `tenantId`).
+### Persistencia — dos backends seleccionados por env
+Toda lectura/escritura operativa de un tenant pasa por `src/lib/persistence/active-client-data-store-async.ts` (y su versión sync `src/lib/erp/active-client-data-store.ts`). El backend se elige con la env var **`PRONTARA_PERSISTENCE`** (leída en `src/lib/persistence/db.ts`):
+- `filesystem` (default): escribe en `.prontara/data/<clientId>/<module>.json` con helpers atómicos. **Solo para desarrollo** — en serverless el disco es efímero y la concurrencia no es segura (números de factura duplicados, lost-updates).
+- `postgres`: Postgres según `prisma/schema.prisma` (todos los modelos llevan `tenantId`). **Obligatorio en producción.**
 
-**Gotcha:** conviven dos flags de persistencia con nombres distintos — `PRONTARA_PERSISTENCE` (`filesystem`/`postgres`, documentada en README/.env.example) y `PERSISTENCE_BACKEND` (`json`/`prisma`, leída por `tenant-data-store.ts`). Verifica cuál lee el código que toques antes de asumir.
+**Gotcha (deuda):** existe una interfaz alternativa `TenantDataStore`/`getTenantDataStore()` con su propio flag `PERSISTENCE_BACKEND` (`json`/`prisma`) que **está MUERTA** — no la llama nadie en producción. No la uses ni te fíes de `PERSISTENCE_BACKEND`: el flag vivo es `PRONTARA_PERSISTENCE`. (Pendiente de borrado o de cableado; ver auditoría 2026-06.)
 
 ### Modelo de tenant — dos capas que NO se mezclan
 Regla canónica (`docs/tenant-model.md`):

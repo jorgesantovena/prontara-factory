@@ -336,7 +336,7 @@ model TenantCustomField {
   moduleKey   String
   fieldKey    String
   label       String
-  kind        String   /// text | email | tel | textarea | date | number | money | status
+  kind        String   /// text | email | tel | textarea | date | time | number | money | status | relation
   required    Boolean  @default(false)
   placeholder String?
   /// Para kind=status, opciones JSON: [{ value, label }, ...]

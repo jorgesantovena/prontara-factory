@@ -8,6 +8,7 @@ import {
   setTenantAccountPasswordAsync,
   getTenantAccountByIdAsync,
 } from "@/lib/persistence/account-store-async";
+import { verifyPassword } from "@/lib/saas/account-store";
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,6 +36,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const newPassword = String(body?.newPassword || "").trim();
+    const currentPassword = String(body?.currentPassword || "");
 
     if (newPassword.length < 8) {
       return NextResponse.json(
@@ -44,6 +46,31 @@ export async function POST(request: NextRequest) {
         },
         { status: 400 }
       );
+    }
+
+    // SEGURIDAD (auditoría 2026-06) — Exigir la contraseña ACTUAL para un
+    // cambio normal, de modo que una sesión secuestrada (CSRF/session-riding)
+    // no pueda cambiar la contraseña sin conocer la vigente. EXCEPCIÓN: el
+    // primer acceso forzado (`mustChangePassword`) no tiene contraseña
+    // "anterior" real que pedir, así que ahí no se exige.
+    const account = await getTenantAccountByIdAsync({
+      clientId: session.clientId,
+      accountId: session.accountId,
+    });
+    if (!account) {
+      return NextResponse.json(
+        { ok: false, error: "Cuenta no encontrada." },
+        { status: 404 }
+      );
+    }
+    if (!account.mustChangePassword) {
+      const verification = verifyPassword(currentPassword, account.passwordHash);
+      if (!currentPassword || !verification.ok) {
+        return NextResponse.json(
+          { ok: false, error: "La contraseña actual no es correcta." },
+          { status: 400 }
+        );
+      }
     }
 
     const updated = await setTenantAccountPasswordAsync({

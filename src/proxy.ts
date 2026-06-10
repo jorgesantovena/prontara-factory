@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import {
-  isFactoryAdminFromCookieEdge,
+  isFactoryOperatorFromCookieEdge,
   SAAS_SESSION_COOKIE,
   verifySessionTokenEdge,
 } from "@/lib/saas/auth-session-edge";
@@ -71,12 +71,15 @@ export async function proxy(request: NextRequest) {
     if (isWhitelisted(pathname)) return NextResponse.next();
 
     const token = request.cookies.get(SAAS_SESSION_COOKIE)?.value;
-    const ok = await isFactoryAdminFromCookieEdge(token);
+    // SEGURIDAD — operador de plataforma (rol + email en FACTORY_OPERATOR_EMAILS
+    // si está definida). Evita que un tenant-owner cualquiera acceda a la
+    // Factory de otros tenants. Ver isFactoryOperatorFromCookieEdge.
+    const ok = await isFactoryOperatorFromCookieEdge(token);
     if (!ok) {
       return NextResponse.json(
         {
           ok: false,
-          error: "Se requiere sesión con rol admin u owner en la Factory.",
+          error: "Se requiere una cuenta de operador de plataforma para la Factory.",
           code: "FACTORY_AUTH_REQUIRED",
         },
         { status: 401 },

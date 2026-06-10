@@ -157,3 +157,37 @@ export async function isFactoryAdminFromCookieEdge(
   if (!session) return false;
   return session.role === "admin" || session.role === "owner";
 }
+
+/**
+ * SEGURIDAD (auditoría 2026-06) — Operador de plataforma.
+ *
+ * El rol admin/owner NO basta para la Factory: cada tenant crea su cuenta
+ * principal como `owner`, así que cualquier cliente final pasaría el gate
+ * de rol y podría operar sobre OTROS tenants (`/api/factory/*`).
+ *
+ * Operador de plataforma = sesión válida con rol admin/owner Y cuyo email
+ * está en la lista blanca `FACTORY_OPERATOR_EMAILS` (CSV).
+ *
+ * Despliegue seguro: si `FACTORY_OPERATOR_EMAILS` NO está definida, se cae
+ * al comportamiento anterior (solo rol) para no bloquear la Factory por
+ * accidente. En cuanto se define con el/los email(s) operador, el agujero
+ * cross-tenant queda cerrado. Conviene definirla en producción.
+ */
+export async function isFactoryOperatorFromCookieEdge(
+  token: string | undefined | null,
+): Promise<boolean> {
+  const session = await verifySessionTokenEdge(token);
+  if (!session) return false;
+  const hasRole = session.role === "admin" || session.role === "owner";
+  if (!hasRole) return false;
+
+  const allowlist = String(process.env.FACTORY_OPERATOR_EMAILS || "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+
+  // Lista no configurada → fallback a solo-rol (no romper la Factory).
+  if (allowlist.length === 0) return true;
+
+  return allowlist.includes(String(session.email || "").trim().toLowerCase());
+}
