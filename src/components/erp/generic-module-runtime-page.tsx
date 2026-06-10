@@ -277,6 +277,12 @@ export default function GenericModuleRuntimePage({
   // click. Más fiable que onDoubleClick + setTimeout (que dejaba pasar el
   // primer doble-click). Threshold 320ms.
   const clickTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Test 19 bis H — timestamp del último click para detección robusta de
+  // doble-click. La versión anterior (setTimeout + onDoubleClick nativo)
+  // fallaba la PRIMERA vez: el primer doble-click abría el detalle rápido
+  // en vez de editar. Ahora detectamos el doble-click por diferencia de
+  // tiempo entre dos clicks (sin depender del evento nativo).
+  const lastClickRef = useRef<number>(0);
   // TEST-10.10 — registro pendiente de borrado individual (diálogo propio).
   const [rowDeleteRec, setRowDeleteRec] = useState<Record<string, string> | null>(null);
   // TEST-5.W — Workflow comercial encadenado. Cuando una oportunidad pasa a
@@ -1910,23 +1916,26 @@ export default function GenericModuleRuntimePage({
                       <tr
                         key={id}
                         onClick={() => {
-                          // TEST-10.3 — Click simple: programa abrir el detalle
-                          // rápido. Si llega un doble-click, `onDoubleClick`
-                          // cancela este temporizador y abre el editor. El
-                          // evento nativo onDoubleClick es fiable (respeta la
-                          // velocidad de doble-click del sistema operativo).
+                          // Test 19 bis H — Detección por timestamp. Si este
+                          // click llega < 350ms después del anterior y hay un
+                          // detalle pendiente, es un DOBLE-CLICK → cancelamos
+                          // el detalle y abrimos el editor. Si no, es un click
+                          // simple → programamos abrir el detalle rápido.
+                          const now = Date.now();
+                          if (clickTimerRef.current && now - lastClickRef.current < 350) {
+                            clearTimeout(clickTimerRef.current);
+                            clickTimerRef.current = null;
+                            lastClickRef.current = 0;
+                            setSelected(item);
+                            setModalMode("edit");
+                            return;
+                          }
+                          lastClickRef.current = now;
                           if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
                           clickTimerRef.current = setTimeout(() => {
                             openDetail(item);
                             clickTimerRef.current = null;
-                          }, 250);
-                        }}
-                        onDoubleClick={() => {
-                          // TEST-10.3 — Doble-click abre el editor. Cancela el
-                          // detalle rápido que el click simple había programado.
-                          if (clickTimerRef.current) { clearTimeout(clickTimerRef.current); clickTimerRef.current = null; }
-                          setSelected(item);
-                          setModalMode("edit");
+                          }, 350);
                         }}
                         title="Click: detalle rápido — Doble click: editar — Supr: eliminar"
                         style={{

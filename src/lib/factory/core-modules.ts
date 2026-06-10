@@ -538,6 +538,9 @@ export const CORE_FIELDS: SectorPackField[] = [
   ] },
   { moduleKey: "niveles", fieldKey: "bolsa", label: "Bolsa (h)", kind: "number", defaultValue: "1", placeholder: "Horas cubiertas. Asume 1 para Modelo Cuota Tipo M/A. Para Tipo B = h del bono." },
   { moduleKey: "niveles", fieldKey: "precio", label: "Precio (€/h)", kind: "money", required: true, placeholder: "€/h del Nivel. Para Cuota Tipo M/A = importe de la cuota; para Horas = precio del exceso o del consumo." },
+  // Test 19 bis A — Servicio: solo aplica al Modelo Horas (el precio del
+  // exceso se define por servicio). Elegible de la tabla Servicios.
+  { moduleKey: "niveles", fieldKey: "servicio", label: "Servicio", kind: "relation", relationModuleKey: "catalogo-servicios", visibleWhen: { field: "modelo", equals: "horas" }, placeholder: "Servicio al que aplica este precio/hora (solo Modelo Horas)" },
   { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción", kind: "textarea", placeholder: "Qué cubre este Nivel y cuándo aplica" },
 ];
 

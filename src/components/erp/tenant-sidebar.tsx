@@ -403,16 +403,30 @@ export default function TenantSidebar() {
     if (paramsBase.sectorPack) qs.push("sectorPack=" + encodeURIComponent(paramsBase.sectorPack));
     const url = "/api/runtime/tenant-config" + (qs.length ? "?" + qs.join("&") : "");
 
+    // Test 19 bis H — Pintamos primero desde caché (sessionStorage) para que
+    // el menú completo y el nombre del tenant salgan AL INSTANTE al cerrar
+    // pestañas o navegar, en vez de quedarse ~12s mostrando "PRONTARA" y sin
+    // los ítems de 2º nivel mientras el config carga de Postgres. Luego
+    // revalidamos con la red y refrescamos la caché.
+    const cacheKey = "prontara-tenant-config:" + (paramsBase.tenant || "") + ":" + (paramsBase.sectorPack || "");
+    if (typeof window !== "undefined") {
+      try {
+        const cached = window.sessionStorage.getItem(cacheKey);
+        if (cached) setConfig(JSON.parse(cached) as RuntimeConfig);
+      } catch { /* caché corrupta: ignorar */ }
+    }
+
     fetch(url, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
         if (data?.ok && data.config) {
           setConfig(data.config as RuntimeConfig);
+          try { window.sessionStorage.setItem(cacheKey, JSON.stringify(data.config)); } catch { /* cuota llena: ignorar */ }
         }
       })
       .catch(() => {
-        // Silencioso: dejamos los fallbacks.
+        // Silencioso: dejamos los fallbacks (o la caché ya pintada).
       });
 
     return () => {

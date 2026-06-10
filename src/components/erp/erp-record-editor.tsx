@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 // TEST-16 — singular() centralizado en src/lib/text/singular.ts. Antes
@@ -74,7 +74,7 @@ type OptionItem = { value: string; label: string };
 // pestañas dentro de la ficha de Tarea (heredan fecha/empleado/cliente/
 // proyecto al añadir, y la opción del MP sigue activa para los casos sin
 // tarea). Las tabs se renderizan solo cuando moduleKey === "actividades".
-type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "propuestas" | "gastos" | "desplazamientos" | "vencimientos" | "zonas" | "documentos";
+type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "contratos" | "propuestas" | "gastos" | "desplazamientos" | "vencimientos" | "zonas" | "documentos";
 
 const TAB_LABELS: Record<TabKey, string> = {
   general: "Datos generales",
@@ -83,6 +83,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   financiero: "Financiero",
   notas: "Notas",
   proyectos: "Proyectos",
+  contratos: "Contratos",
   propuestas: "Propuestas",
   gastos: "Gastos",
   desplazamientos: "Desplazamientos",
@@ -203,7 +204,7 @@ export default function ErpRecordEditor({
       // añadidos al record. Si moduleKey !== "actividades" no se ven
       // (el filtro `tabsConFields` solo incluye tabs con fields, y los
       // bloques de render por tab incluyen también la condición moduleKey).
-      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], propuestas: [], gastos: [], desplazamientos: [], vencimientos: [], zonas: [], documentos: [],
+      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], contratos: [], propuestas: [], gastos: [], desplazamientos: [], vencimientos: [], zonas: [], documentos: [],
     };
     // TEST-11 — En el Parte de horas (actividades) el orden EXACTO de
     // campos que define el sector pack importa (Empleado → Fecha → Hora
@@ -211,7 +212,10 @@ export default function ErpRecordEditor({
     // Si dejamos que `classifyField` reparta por tabs, "tarifa" y similares
     // se irían a Financiero y se rompería el orden. Forzamos todo a
     // "general" para respetar el orden del pack.
-    const forceSingleTab = moduleKey === "actividades";
+    // Test 19 bis A — Niveles: todos los campos en "Datos generales"
+    // (Pedro pidió mover Modelo/Precio a general y eliminar el segmento
+    // Financiero). Como `actividades`, forzamos un único tab.
+    const forceSingleTab = moduleKey === "actividades" || moduleKey === "niveles";
     for (const f of fields) {
       const tab = forceSingleTab ? "general" : classifyField(f.key);
       acc[tab].push(f);
@@ -235,7 +239,16 @@ export default function ErpRecordEditor({
   // TEST-3.8 — "Proyectos" se añade entre las otras tabs y Documentos
   // cuando moduleKey === "clientes" y el cliente ya tiene id.
   const tabsConFields = (Object.keys(TAB_LABELS) as TabKey[]).filter((t) => grouped[t].length > 0);
-  const showProyectosTab = moduleKey === "clientes" && mode === "edit" && Boolean(initialValue?.id);
+  // Test 19 bis D — Cliente: pestaña "Contratos" (sustituye a "Proyectos").
+  const showContratosTab = moduleKey === "clientes" && mode === "edit" && Boolean(initialValue?.id);
+  // Test 19 bis E — Contrato: pestaña "Proyectos" (proyectos del contrato).
+  const showProyectosTab = moduleKey === "contratos" && mode === "edit" && Boolean(initialValue?.id);
+  // Test 19 bis F (4b) — Alta de Proyecto desde un Contrato: Cliente y
+  // Contrato vienen heredados (prefill) y deben quedar PROTEGIDOS (solo
+  // lectura). Lo detectamos porque el alta (create) trae `contrato` prefijado.
+  const lockedKeys = (mode === "create" && moduleKey === "proyectos" && Boolean(initialValue?.contrato))
+    ? new Set<string>(["cliente", "contrato"])
+    : null;
   // TEST-15 E.2 — Tab "Propuestas" en la ficha de Oportunidad (crm).
   const showPropuestasTab = moduleKey === "crm" && mode === "edit" && Boolean(initialValue?.id);
   // Preguntas 1.con / mail 2 puntos 7+8 — Tabs Gastos y Desplazamientos
@@ -255,6 +268,7 @@ export default function ErpRecordEditor({
   const visibleTabs: TabKey[] = tabsConFields.length > 0
     ? [
         ...tabsConFields,
+        ...(showContratosTab ? ["contratos" as TabKey] : []),
         ...(showProyectosTab ? ["proyectos" as TabKey] : []),
         ...(showPropuestasTab ? ["propuestas" as TabKey] : []),
         ...(showGastosTab ? ["gastos" as TabKey] : []),
@@ -398,7 +412,13 @@ export default function ErpRecordEditor({
   useEffect(() => {
     let cancelled = false;
     async function loadRelations() {
-      const relationFields = fields.filter((f) => f.kind === "relation" && f.relationModuleKey);
+      // Test 19 bis F (4a) — El campo Contrato del Proyecto NO se carga con
+      // el loader genérico (traería TODOS los contratos). Lo gestiona un
+      // effect dedicado que filtra por el Cliente seleccionado (más abajo).
+      const relationFields = fields.filter((f) =>
+        f.kind === "relation" && f.relationModuleKey &&
+        !(moduleKey === "proyectos" && f.key === "contrato")
+      );
       for (const f of relationFields) {
         try {
           const r = await fetch(
@@ -426,6 +446,39 @@ export default function ErpRecordEditor({
       window.removeEventListener("focus", onFocus);
     };
   }, [fields, tenant]);
+
+  // Test 19 bis F (4a) — Opciones del campo Contrato del Proyecto filtradas
+  // por el Cliente seleccionado (Pedro: "salen solo los del Cliente"). Si no
+  // hay cliente aún, lista vacía. Se recarga al cambiar el cliente.
+  useEffect(() => {
+    if (moduleKey !== "proyectos") return;
+    if (!fields.some((f) => f.key === "contrato" && f.kind === "relation")) return;
+    let cancelled = false;
+    const cli = String(values.cliente || "").trim();
+    (async () => {
+      if (!cli) {
+        if (!cancelled) setOptionsMap((cur) => ({ ...cur, contrato: [] }));
+        return;
+      }
+      try {
+        const r = await fetch("/api/erp/module?module=contratos", { cache: "no-store" });
+        const d = await r.json();
+        const all = (r.ok && d.ok && Array.isArray(d.rows)) ? d.rows as Array<Record<string, string>> : [];
+        const opts = all
+          .filter((c) => String(c.cliente || "") === cli)
+          .map((c) => {
+            const codigo = String(c.codigo || c.numero || c.id || "");
+            const tipo = String(c.tipoNivel || "");
+            const sub = String(c.subtipo || "");
+            return { value: codigo, label: codigo + (tipo ? " · " + tipo + (sub ? " " + sub : "") : "") };
+          })
+          .filter((o) => o.value);
+        if (!cancelled) setOptionsMap((cur) => ({ ...cur, contrato: opts }));
+      } catch { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [moduleKey, values.cliente, fields]);
 
   // TEST-12 #3 — Autosave del draft a sessionStorage cada vez que
   // cambian los `values`. Permite que al saltar a otra tab y volver, el
@@ -849,10 +902,17 @@ export default function ErpRecordEditor({
             <NoFieldsConfigured moduleLabel={moduleLabel} />
           ) : tab === "documentos" ? (
             <DocumentosTab moduleKey={moduleKey} recordId={String(initialValue?.id || "")} mode={mode} />
-          ) : tab === "proyectos" ? (
-            <ProyectosSublist
+          ) : tab === "contratos" ? (
+            <ContratosSublist
               clienteId={String(initialValue?.id || "")}
               clienteName={String(initialValue?.nombre || "")}
+              accent={accent}
+            />
+          ) : tab === "proyectos" ? (
+            <ProyectosSublist
+              contratoCodigo={String(initialValue?.codigo || "")}
+              contratoCliente={String(initialValue?.cliente || "")}
+              contratoId={String(initialValue?.id || "")}
               accent={accent}
             />
           ) : tab === "propuestas" ? (
@@ -911,7 +971,7 @@ export default function ErpRecordEditor({
               autoStartIfEmpty={autoStartContact === true}
             />
           ) : (
-            <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} />
+            <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} lockedKeys={lockedKeys} />
           )}
         </form>
 
@@ -934,12 +994,13 @@ export default function ErpRecordEditor({
 }
 
 // === Field grid ===
-function FieldGrid({ fields, values, setField, optionsMap, accent }: {
+function FieldGrid({ fields, values, setField, optionsMap, accent, lockedKeys }: {
   fields: UiFieldDefinition[];
   values: Record<string, string>;
   setField: (k: string, v: string) => void;
   optionsMap: Record<string, OptionItem[]>;
   accent: string;
+  lockedKeys?: Set<string> | null;
 }) {
   if (fields.length === 0) {
     return <div style={{ padding: 30, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No hay campos en esta sección.</div>;
@@ -962,7 +1023,7 @@ function FieldGrid({ fields, values, setField, optionsMap, accent }: {
           // label arriba (`label { display:block; ... }` del global)
           // y su input estilizado por defecto (input[type=text], etc.).
           <div key={f.key} className="grupo-formulario" style={{ gridColumn: isWide ? "1 / -1" : undefined, marginBottom: 0 }}>
-            <FieldInput field={f} value={values[f.key] || ""} onChange={(v) => setField(f.key, v)} options={optionsMap[f.key]} accent={accent} />
+            <FieldInput field={f} value={values[f.key] || ""} onChange={(v) => setField(f.key, v)} options={optionsMap[f.key]} accent={accent} forceReadOnly={Boolean(lockedKeys?.has(f.key))} />
           </div>
         );
       })}
@@ -975,16 +1036,19 @@ function FieldGrid({ fields, values, setField, optionsMap, accent }: {
   );
 }
 
-function FieldInput({ field, value, onChange, options, accent }: {
+function FieldInput({ field, value, onChange, options, accent, forceReadOnly }: {
   field: UiFieldDefinition;
   value: string;
   onChange: (v: string) => void;
   options?: OptionItem[];
   accent: string;
+  forceReadOnly?: boolean;
 }) {
   // TEST-11 — Pista visual de campos solo-lectura (heredados / calculados /
   // actualizados por un proceso): fondo gris claro y candado en la etiqueta.
-  const isReadOnly = !!field.readOnly;
+  // Test 19 bis F (4b) — `forceReadOnly` protege Cliente/Contrato heredados
+  // en el alta de Proyecto desde un Contrato.
+  const isReadOnly = !!field.readOnly || !!forceReadOnly;
   const labelEl = (
     <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
       {field.label}
@@ -1559,7 +1623,13 @@ type ProyectoRow = {
   contrato: string;         // TEST-19 — Contrato portador de la facturación
 };
 
-function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: string; clienteName: string; accent: string }) {
+// Test 19 bis D/E — `ProyectosSublist` sirve en dos contextos:
+//   - Ficha de Cliente: lista proyectos del cliente (filtra por cliente).
+//   - Editar Contrato / desplegar desde un Contrato: lista proyectos del
+//     contrato (filtra por `contrato`), y el alta hereda Cliente+Contrato
+//     protegidos y vuelve al contrato.
+function ProyectosSublist({ clienteId = "", clienteName = "", accent, contratoCodigo, contratoCliente, contratoId }: { clienteId?: string; clienteName?: string; accent: string; contratoCodigo?: string; contratoCliente?: string; contratoId?: string }) {
+  const enContrato = Boolean(contratoCodigo);
   const { link } = useCurrentVertical();
   const [rows, setRows] = useState<ProyectoRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1568,7 +1638,7 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   async function load() {
-    if (!clienteId && !clienteName) { setLoading(false); return; }
+    if (!clienteId && !clienteName && !contratoCodigo) { setLoading(false); return; }
     setLoading(true);
     setError("");
     try {
@@ -1584,9 +1654,10 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
       const all: Array<Record<string, unknown>> = Array.isArray(data.rows) ? data.rows : [];
       // TEST-4.2 — La API /api/erp/options para 'clientes' usa `nombre` como
       // `value` del dropdown relation, así que `row.cliente` se guarda con el
-      // NOMBRE del cliente, no su id. Filtramos por nombre, con fallback al id
-      // por si en el futuro se migra a id.
+      // NOMBRE del cliente, no su id. Filtramos por nombre, con fallback al id.
+      // Test 19 bis E — En contexto de contrato, filtramos por `contrato`.
       const filtered = all.filter((row) => {
+        if (enContrato) return String(row.contrato || "") === contratoCodigo;
         const c = String(row.cliente || "");
         if (!c) return false;
         return c === clienteName || c === clienteId;
@@ -1613,7 +1684,7 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
     }
   }
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [clienteId, clienteName]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [clienteId, clienteName, contratoCodigo]);
 
   async function remove(id: string) {
     setBusy(true);
@@ -1642,16 +1713,26 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
   // TEST-20 D — Pedro: tras guardar/cancelar debe volver a la ficha del
   // CLIENTE (no al listado general de Proyectos). Adjuntamos `returnTo`
   // que el editor lee en su onCancel/onSubmit (ver erp-record-editor onCancel).
-  const returnTo = clienteId ? "/clientes?edit=" + encodeURIComponent(clienteId) : "/clientes";
-  const nuevoHref = link("proyectos") + "?prefill_cliente=" + encodeURIComponent(clienteName || clienteId) + "&returnTo=" + encodeURIComponent(returnTo);
+  // Test 19 bis E/F — Alta desde Contrato: hereda Cliente+Contrato
+  // (protegidos en el editor del Proyecto vía prefill) y vuelve al contrato.
+  // Desde Cliente: hereda solo Cliente y vuelve al cliente.
+  const returnTo = enContrato
+    ? "/contratos?edit=" + encodeURIComponent(contratoId || "")
+    : (clienteId ? "/clientes?edit=" + encodeURIComponent(clienteId) : "/clientes");
+  const altaQs = enContrato
+    ? "prefill_cliente=" + encodeURIComponent(contratoCliente || "") + "&prefill_contrato=" + encodeURIComponent(contratoCodigo || "")
+    : "prefill_cliente=" + encodeURIComponent(clienteName || clienteId);
+  const nuevoHref = link("proyectos") + "?" + altaQs + "&returnTo=" + encodeURIComponent(returnTo);
 
   return (
     <section>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Proyectos del cliente</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{enContrato ? "Proyectos del contrato" : "Proyectos del cliente"}</h3>
           <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
-            Trabajos y contratos asignados a este cliente. Para crear o editar a fondo se abre el módulo Proyectos con el cliente ya seleccionado.
+            {enContrato
+              ? "Proyectos que se ejecutan bajo este contrato. Al dar de alta, Cliente y Contrato se heredan automáticamente."
+              : "Trabajos asignados a este cliente. Para crear o editar a fondo se abre el módulo Proyectos con el cliente ya seleccionado."}
           </p>
         </div>
         <Link href={nuevoHref} style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
@@ -1723,6 +1804,120 @@ function ProyectosSublist({ clienteId, clienteName, accent }: { clienteId: strin
               <button type="button" onClick={() => remove(confirmDeleteId)} style={{ ...subBtnDanger, padding: "8px 14px" }} disabled={busy}>Eliminar</button>
             </div>
           </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Test 19 bis D — Sublista de Contratos del cliente (sustituye a la de
+// Proyectos en la ficha de Cliente). Lista los contratos cuyo `cliente`
+// coincide con el cliente actual; cada fila puede desplegar los Proyectos
+// de ese contrato (reusa ProyectosSublist en contexto de contrato).
+function ContratosSublist({ clienteId, clienteName, accent }: { clienteId: string; clienteName: string; accent: string }) {
+  const { link } = useCurrentVertical();
+  const [rows, setRows] = useState<Array<Record<string, string>>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  async function load() {
+    if (!clienteId && !clienteName) { setLoading(false); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const r = await fetch("/api/erp/module?module=contratos", { cache: "no-store" });
+      const data = await r.json();
+      const all = (r.ok && data.ok && Array.isArray(data.rows)) ? data.rows as Array<Record<string, string>> : [];
+      setRows(all.filter((row) => {
+        const c = String(row.cliente || "");
+        return c === clienteName || c === clienteId;
+      }));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error cargando contratos.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [clienteId, clienteName]);
+
+  const returnTo = clienteId ? "/clientes?edit=" + encodeURIComponent(clienteId) : "/clientes";
+  const nuevoHref = link("contratos") + "?prefill_cliente=" + encodeURIComponent(clienteName || clienteId) + "&returnTo=" + encodeURIComponent(returnTo);
+
+  return (
+    <section>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Contratos del cliente</h3>
+          <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+            Contratos de este cliente. Despliega un contrato para ver sus proyectos, o ábrelo para editarlo y gestionar sus proyectos.
+          </p>
+        </div>
+        <Link href={nuevoHref} style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, textDecoration: "none" }}>
+          + Alta de contrato
+        </Link>
+      </div>
+
+      {error ? (
+        <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 13 }}>{error}</div>
+      ) : null}
+
+      {loading ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando contratos…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+          Este cliente todavía no tiene contratos. Pulsa &quot;+ Alta de contrato&quot; para crear el primero.
+        </div>
+      ) : (
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
+                <th style={subTh()}>Código</th>
+                <th style={subTh(70)}>Tipo</th>
+                <th style={subTh(90)}>Subtipo</th>
+                <th style={subTh(110)}>Periodo</th>
+                <th style={subTh(100)}>Estado</th>
+                <th style={subTh(200)}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((c) => {
+                const open = expandedId === c.id;
+                return (
+                  <Fragment key={c.id}>
+                    <tr style={{ borderTop: "1px solid #e5e7eb" }}>
+                      <td style={subTd}><strong>{c.codigo || <span style={{ color: "#cbd5e1" }}>—</span>}</strong></td>
+                      <td style={subTd}>{c.tipoNivel || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                      <td style={subTd}>{c.subtipo || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                      <td style={subTd}>{c.periodo || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                      <td style={subTd}>{c.estado || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                      <td style={subTd}>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          <button type="button" onClick={() => setExpandedId(open ? null : c.id)} style={subBtn} title="Ver proyectos de este contrato">
+                            {open ? "▾ Proyectos" : "▸ Proyectos"}
+                          </button>
+                          <Link href={link("contratos") + "?edit=" + encodeURIComponent(c.id)} style={{ ...subBtn, textDecoration: "none" }} title="Abrir el contrato">Abrir</Link>
+                        </div>
+                      </td>
+                    </tr>
+                    {open ? (
+                      <tr style={{ background: "#f8fafc" }}>
+                        <td colSpan={6} style={{ padding: 12 }}>
+                          <ProyectosSublist
+                            contratoCodigo={String(c.codigo || "")}
+                            contratoCliente={clienteName}
+                            contratoId={String(c.id || "")}
+                            accent={accent}
+                          />
+                        </td>
+                      </tr>
+                    ) : null}
+                  </Fragment>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
     </section>

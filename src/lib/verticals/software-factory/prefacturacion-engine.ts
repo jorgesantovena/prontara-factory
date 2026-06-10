@@ -10,9 +10,8 @@
  *     Selección: contratos con `periodo` indicado y Tipo Nivel
  *                cualquiera (M/A/B).
  *     Cálculo:   busca el Nivel (tipoNivel, subtipo, modelo=Cuota).
- *                Importe = Bolsa × Precio.
- *                Para Tipo M/A → Bolsa=1 (cuota fija).
- *                Para Tipo B   → Bolsa = h del bono, Precio = €/h.
+ *                Importe = Precio (el Precio del Nivel Cuota es el importe
+ *                de la cuota del periodo — Test 19 bis G).
  *
  *   Caso B — Excesos sobre cuota de mantenimiento
  *     Parámetros: Modelo=Horas, Periodo=Mensual.
@@ -136,7 +135,10 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
   }
   const bolsa = parseNum(nivel.bolsa);
   const precio = parseNum(nivel.precio);
-  const importe = bolsa * precio;
+  // Test 19 bis G — Caso A: Importe = Precio. El Precio del Nivel Cuota ES
+  // el importe de la cuota del periodo (antes era Bolsa × Precio, que
+  // inflaba la cuota cuando bolsa>1).
+  const importe = precio;
   return {
     caso: "A",
     contrato: contrato.codigo,
@@ -151,7 +153,7 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
     facturadas: parseNum(contrato.facturadas),
     horasAFacturar: bolsa,
     importe,
-    notas: bolsa === 1 ? "Cuota " + contrato.periodo : "Bolsa " + bolsa + "h × " + precio + "€",
+    notas: "Cuota " + contrato.periodo + " = " + precio + "€",
   };
 }
 
