@@ -537,7 +537,11 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "horas", label: "Horas" },
   ] },
   { moduleKey: "niveles", fieldKey: "bolsa", label: "Bolsa (h)", kind: "number", defaultValue: "1", placeholder: "Horas cubiertas. Asume 1 para Modelo Cuota Tipo M/A. Para Tipo B = h del bono." },
-  { moduleKey: "niveles", fieldKey: "precio", label: "Precio (€/h)", kind: "money", required: true, placeholder: "€/h del Nivel. Para Cuota Tipo M/A = importe de la cuota; para Horas = precio del exceso o del consumo." },
+  // Test 19 bis 2 — Precio renombrado a "Valor". La etiqueta visible es
+  // contextual según Tipo+Modelo (Importe € / Precio €/h / Horas h); se
+  // resuelve en el editor (ver nivelesValorLabel). El key se mantiene
+  // `precio` para no migrar los datos existentes.
+  { moduleKey: "niveles", fieldKey: "precio", label: "Valor", kind: "money", required: true, placeholder: "Importe de la cuota, precio/hora o nº de horas, según Tipo y Modelo." },
   // Test 19 bis A — Servicio: solo aplica al Modelo Horas (el precio del
   // exceso se define por servicio). Elegible de la tabla Servicios.
   { moduleKey: "niveles", fieldKey: "servicio", label: "Servicio", kind: "relation", relationModuleKey: "catalogo-servicios", visibleWhen: { field: "modelo", equals: "horas" }, placeholder: "Servicio al que aplica este precio/hora (solo Modelo Horas)" },

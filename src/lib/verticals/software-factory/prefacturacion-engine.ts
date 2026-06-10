@@ -210,7 +210,7 @@ export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: Prefa
     String(n.tipoNivel).toUpperCase() === "M" && String(n.subtipo) === sub &&
     String(n.modelo).toLowerCase() === "horas" && String(n.servicio || "").trim());
 
-  let horasPorServicio: Array<{ servicio: string; horas: number }> = [];
+  let horasPorServicio: Array<{ servicio: string; horas: number; precio: number }> = [];
   if (opts?.actividades && opts?.proyectos) {
     const servPorProyecto = new Map<string, string>();
     for (const p of opts.proyectos) {
@@ -228,18 +228,22 @@ export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: Prefa
       acc.set(key, (acc.get(key) || 0) + parseNum(t.tiempoHoras));
     }
     horasPorServicio = Array.from(acc.entries())
-      .map(([servicio, horas]) => ({ servicio, horas }))
-      .sort((a, b) => a.servicio.localeCompare(b.servicio));
+      .map(([servicio, horas]) => {
+        const nivelServ = nivelesServicio.find((n) => String(n.servicio) === servicio);
+        const precio = nivelServ ? parseNum(nivelServ.precio) : parseNum(nivelBase.precio);
+        return { servicio, horas, precio };
+      })
+      // Test 19 bis 2 — Orden por PRECIO DESCENDENTE: se factura primero lo
+      // más caro (antes era alfabético por código de servicio).
+      .sort((a, b) => b.precio - a.precio);
   }
 
   if (nivelesServicio.length > 0 && horasPorServicio.length > 0) {
     let resto = HF;
     let importeTotal = 0;
     const desglose: DesgloseServicio[] = [];
-    for (const { servicio, horas } of horasPorServicio) {
+    for (const { servicio, horas, precio: precioServ } of horasPorServicio) {
       if (resto <= 0) break;
-      const nivelServ = nivelesServicio.find((n) => String(n.servicio) === servicio);
-      const precioServ = nivelServ ? parseNum(nivelServ.precio) : parseNum(nivelBase.precio);
       const facturables = Math.min(horas, resto);
       const imp = facturables * precioServ;
       desglose.push({ servicio, horas: facturables, precio: precioServ, importe: imp });

@@ -971,7 +971,7 @@ export default function ErpRecordEditor({
               autoStartIfEmpty={autoStartContact === true}
             />
           ) : (
-            <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} lockedKeys={lockedKeys} />
+            <FieldGrid fields={grouped[tab]} values={values} setField={setField} optionsMap={optionsMap} accent={accent} lockedKeys={lockedKeys} moduleKey={moduleKey} />
           )}
         </form>
 
@@ -994,13 +994,25 @@ export default function ErpRecordEditor({
 }
 
 // === Field grid ===
-function FieldGrid({ fields, values, setField, optionsMap, accent, lockedKeys }: {
+// Test 19 bis 2 — Etiqueta contextual del campo "Valor" de Niveles según
+// Tipo de Nivel + Modelo.
+function nivelesValorLabel(tipoNivel?: string, modelo?: string): string {
+  const t = String(tipoNivel || "").toUpperCase();
+  const m = String(modelo || "").toLowerCase();
+  if (m === "cuota" && (t === "M" || t === "A")) return "Importe (€)";
+  if (m === "horas" && t === "M") return "Precio (€/h)";
+  if (m === "horas" && (t === "A" || t === "B")) return "Horas (h)";
+  return "Valor";
+}
+
+function FieldGrid({ fields, values, setField, optionsMap, accent, lockedKeys, moduleKey }: {
   fields: UiFieldDefinition[];
   values: Record<string, string>;
   setField: (k: string, v: string) => void;
   optionsMap: Record<string, OptionItem[]>;
   accent: string;
   lockedKeys?: Set<string> | null;
+  moduleKey?: string;
 }) {
   if (fields.length === 0) {
     return <div style={{ padding: 30, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No hay campos en esta sección.</div>;
@@ -1023,7 +1035,7 @@ function FieldGrid({ fields, values, setField, optionsMap, accent, lockedKeys }:
           // label arriba (`label { display:block; ... }` del global)
           // y su input estilizado por defecto (input[type=text], etc.).
           <div key={f.key} className="grupo-formulario" style={{ gridColumn: isWide ? "1 / -1" : undefined, marginBottom: 0 }}>
-            <FieldInput field={f} value={values[f.key] || ""} onChange={(v) => setField(f.key, v)} options={optionsMap[f.key]} accent={accent} forceReadOnly={Boolean(lockedKeys?.has(f.key))} />
+            <FieldInput field={f} value={values[f.key] || ""} onChange={(v) => setField(f.key, v)} options={optionsMap[f.key]} accent={accent} forceReadOnly={Boolean(lockedKeys?.has(f.key))} labelOverride={moduleKey === "niveles" && f.key === "precio" ? nivelesValorLabel(values.tipoNivel, values.modelo) : undefined} />
           </div>
         );
       })}
@@ -1036,14 +1048,16 @@ function FieldGrid({ fields, values, setField, optionsMap, accent, lockedKeys }:
   );
 }
 
-function FieldInput({ field, value, onChange, options, accent, forceReadOnly }: {
+function FieldInput({ field, value, onChange, options, accent, forceReadOnly, labelOverride }: {
   field: UiFieldDefinition;
   value: string;
   onChange: (v: string) => void;
   options?: OptionItem[];
   accent: string;
   forceReadOnly?: boolean;
+  labelOverride?: string;
 }) {
+  const fieldLabel = labelOverride || field.label;
   // TEST-11 — Pista visual de campos solo-lectura (heredados / calculados /
   // actualizados por un proceso): fondo gris claro y candado en la etiqueta.
   // Test 19 bis F (4b) — `forceReadOnly` protege Cliente/Contrato heredados
@@ -1051,7 +1065,7 @@ function FieldInput({ field, value, onChange, options, accent, forceReadOnly }: 
   const isReadOnly = !!field.readOnly || !!forceReadOnly;
   const labelEl = (
     <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
-      {field.label}
+      {fieldLabel}
       {field.required ? <span style={{ color: "#dc2626", marginLeft: 4 }}>*</span> : null}
       {isReadOnly ? <span style={{ color: "#94a3b8", marginLeft: 6, fontWeight: 400 }} title="Campo de solo lectura (heredado, calculado o de proceso)">🔒</span> : null}
     </label>
