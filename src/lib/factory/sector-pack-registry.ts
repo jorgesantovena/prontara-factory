@@ -596,6 +596,14 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // Cuota y otra Horas, ambas con mismo Subtipo).
     { moduleKey: "contratos", fieldKey: "codigo", label: "Código", kind: "text", required: true, placeholder: "Libre, otorgado al alta. Ej. CON-2026-001 / Acme-Mant-2026" },
     { moduleKey: "contratos", fieldKey: "cliente", label: "Cliente", kind: "relation", required: true, relationModuleKey: "clientes", placeholder: "Asumido de la Propuesta si nace de una" },
+    { moduleKey: "contratos", fieldKey: "tipoNivel", label: "Tipo Nivel", kind: "status", required: true, defaultValue: "M", placeholder: "M (Mantenimiento) / A (Acuerdo) / B (Bono)", options: [
+      { value: "M", label: "M (Mantenimiento)" },
+      { value: "A", label: "A (Acuerdo)" },
+      { value: "B", label: "B (Bono)" },
+    ] },
+    { moduleKey: "contratos", fieldKey: "subtipo", label: "Subtipo", kind: "text", required: true, placeholder: "Subtipo del Nivel asociado (1..4 para Tipo M, libre para A y B)" },
+    // Test 21 — Periodo movido aquí (donde estaba el campo Bono, ahora
+    // eliminado: la bolsa la aporta el Nivel Tipo B por el subtipo del contrato).
     { moduleKey: "contratos", fieldKey: "periodo", label: "Periodo", kind: "status", required: true, defaultValue: "mensual", placeholder: "Frecuencia con la que se emite la Cuota (y se cierra el cómputo de excesos)", options: [
       { value: "mensual", label: "Mensual" },
       { value: "trimestral", label: "Trimestral" },
@@ -603,15 +611,6 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "anual", label: "Anual" },
       { value: "discreto", label: "Discreto (un disparo)" },
     ] },
-    { moduleKey: "contratos", fieldKey: "tipoNivel", label: "Tipo Nivel", kind: "status", required: true, defaultValue: "M", placeholder: "M (Mantenimiento) / A (Acuerdo) / B (Bono)", options: [
-      { value: "M", label: "M (Mantenimiento)" },
-      { value: "A", label: "A (Acuerdo)" },
-      { value: "B", label: "B (Bono)" },
-    ] },
-    { moduleKey: "contratos", fieldKey: "subtipo", label: "Subtipo", kind: "text", required: true, placeholder: "Subtipo del Nivel asociado (1..4 para Tipo M, libre para A y B)" },
-    // Test 19 bis 2 — Bono asociado: subtipo de un Nivel Tipo B que aporta la
-    // BOLSA de horas (Pedro movió la Bolsa de Niveles al Tipo B). Opcional.
-    { moduleKey: "contratos", fieldKey: "subtipoBono", label: "Bono (Nivel Tipo B)", kind: "text", placeholder: "Subtipo de un Nivel Tipo B que aporta la bolsa de horas (opcional). Ej. B15" },
     { moduleKey: "contratos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Código de la Propuesta de origen (opcional)" },
     { moduleKey: "contratos", fieldKey: "fechaInicio", label: "Inicio", kind: "date", placeholder: "Fecha de inicio de vigencia" },
     { moduleKey: "contratos", fieldKey: "fechaFin", label: "Fin", kind: "date", defaultValue: "9999-12-31", placeholder: "Fecha de fin (9999-12-31 = sin vencimiento)" },

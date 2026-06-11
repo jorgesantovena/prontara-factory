@@ -83,7 +83,6 @@ export async function GET(request: NextRequest) {
       periodo: String(c.periodo || "mensual"),
       tipoNivel: String(c.tipoNivel || "M"),
       subtipo: String(c.subtipo || ""),
-      subtipoBono: String(c.subtipoBono || ""),
       consumo: parseNum(c.consumo),
       facturadas: parseNum(c.facturadas),
       referenciaPropuesta: String(c.referenciaPropuesta || ""),

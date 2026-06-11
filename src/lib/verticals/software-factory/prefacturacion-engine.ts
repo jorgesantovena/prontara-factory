@@ -57,9 +57,6 @@ export type Contrato = {
   periodo: "mensual" | "trimestral" | "semestral" | "anual" | "discreto" | string;
   tipoNivel: "M" | "A" | "B" | string;
   subtipo: string;
-  // Test 19 bis 2 — Bono asociado: subtipo de un Nivel Tipo B que aporta la
-  // BOLSA de horas (Pedro movió la Bolsa de Niveles al Tipo B). Opcional.
-  subtipoBono?: string;
   consumo: number;
   facturadas: number;
   referenciaPropuesta?: string;
@@ -80,9 +77,11 @@ export type Nivel = {
   descripcion?: string;
 };
 
-// Test 19 bis G — Línea de desglose por servicio del Caso B.
+// Test 19 bis G / Test 21 — Línea de desglose del Caso B. Test 21: el
+// reparto es POR PROYECTO; cada proyecto se factura al precio de su Servicio.
 export type DesgloseServicio = {
   servicio: string;
+  proyecto?: string;
   horas: number;
   precio: number;
   importe: number;
@@ -158,7 +157,10 @@ export function findNivel(
  * caller decide el fallback (legacy: Bolsa del Nivel M Horas).
  */
 function bonoHoras(contrato: Contrato, niveles: Nivel[]): number | null {
-  const sb = String(contrato.subtipoBono || "").trim();
+  // Test 21 — El campo Bono del contrato se eliminó: el Nivel Tipo B se
+  // identifica por el MISMO subtipo del contrato. Si existe un Nivel
+  // (B, subtipo, Horas), su Valor son las horas de la bolsa.
+  const sb = String(contrato.subtipo || "").trim();
   if (!sb) return null;
   const b = niveles.find(
     (n) =>
@@ -236,7 +238,10 @@ export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: Prefa
     String(n.tipoNivel).toUpperCase() === "M" && String(n.subtipo) === sub &&
     String(n.modelo).toLowerCase() === "horas" && String(n.servicio || "").trim());
 
-  let horasPorServicio: Array<{ servicio: string; horas: number; precio: number }> = [];
+  // Test 21 — Reparto del exceso POR PROYECTO (antes por servicio): se
+  // totalizan las horas de cada Proyecto del contrato en el mes, y cada
+  // Proyecto se factura al precio de su Servicio (Nivel M-Horas-Servicio).
+  let horasPorProyecto: Array<{ proyecto: string; servicio: string; horas: number; precio: number }> = [];
   if (opts?.actividades && opts?.proyectos) {
     const servPorProyecto = new Map<string, string>();
     for (const p of opts.proyectos) {
@@ -247,32 +252,31 @@ export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: Prefa
     }
     const acc = new Map<string, number>();
     for (const t of opts.actividades) {
-      const serv = servPorProyecto.get(String(t.proyecto || ""));
-      if (serv === undefined) continue; // la tarea no es de este contrato
+      const proy = String(t.proyecto || "");
+      if (!servPorProyecto.has(proy)) continue; // la tarea no es de este contrato
       if (opts.fecha && String(t.fecha || "").slice(0, 7) !== opts.fecha) continue;
-      const key = serv || "(sin servicio)";
-      acc.set(key, (acc.get(key) || 0) + parseNum(t.tiempoHoras));
+      acc.set(proy, (acc.get(proy) || 0) + parseNum(t.tiempoHoras));
     }
-    horasPorServicio = Array.from(acc.entries())
-      .map(([servicio, horas]) => {
+    horasPorProyecto = Array.from(acc.entries())
+      .map(([proyecto, horas]) => {
+        const servicio = servPorProyecto.get(proyecto) || "";
         const nivelServ = nivelesServicio.find((n) => String(n.servicio) === servicio);
         const precio = nivelServ ? parseNum(nivelServ.precio) : parseNum(nivelBase.precio);
-        return { servicio, horas, precio };
+        return { proyecto, servicio, horas, precio };
       })
-      // Test 19 bis 2 — Orden por PRECIO DESCENDENTE: se factura primero lo
-      // más caro (antes era alfabético por código de servicio).
+      // Test 19 bis 2 — Orden por PRECIO DESCENDENTE: se factura primero lo más caro.
       .sort((a, b) => b.precio - a.precio);
   }
 
-  if (nivelesServicio.length > 0 && horasPorServicio.length > 0) {
+  if (nivelesServicio.length > 0 && horasPorProyecto.length > 0) {
     let resto = HF;
     let importeTotal = 0;
     const desglose: DesgloseServicio[] = [];
-    for (const { servicio, horas, precio: precioServ } of horasPorServicio) {
+    for (const { proyecto, servicio, horas, precio: precioServ } of horasPorProyecto) {
       if (resto <= 0) break;
       const facturables = Math.min(horas, resto);
       const imp = facturables * precioServ;
-      desglose.push({ servicio, horas: facturables, precio: precioServ, importe: imp });
+      desglose.push({ servicio, proyecto, horas: facturables, precio: precioServ, importe: imp });
       importeTotal += imp;
       resto -= facturables;
     }
@@ -281,7 +285,7 @@ export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: Prefa
       tipoNivel: contrato.tipoNivel, subtipo: contrato.subtipo, periodo: contrato.periodo,
       modelo: "horas", bolsa: bolsaHoras, precio: parseNum(nivelBase.precio), consumo, facturadas,
       horasAFacturar: HF - Math.max(0, resto), importe: importeTotal, desglose,
-      notas: "Exceso por servicio: " + desglose.map((d) => d.servicio + " " + d.horas.toFixed(2) + "h×" + d.precio + "€").join(" + "),
+      notas: "Exceso por proyecto: " + desglose.map((d) => (d.proyecto || d.servicio) + " " + d.horas.toFixed(2) + "h×" + d.precio + "€").join(" + "),
     };
   }
 

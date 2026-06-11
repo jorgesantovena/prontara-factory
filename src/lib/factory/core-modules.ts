@@ -749,6 +749,7 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "niveles", fieldKey: "tipoNivel", label: "Tipo", isPrimary: true },
   { moduleKey: "niveles", fieldKey: "subtipo", label: "Subtipo" },
   { moduleKey: "niveles", fieldKey: "modelo", label: "Modelo" },
+  { moduleKey: "niveles", fieldKey: "servicio", label: "Servicio" },
   { moduleKey: "niveles", fieldKey: "precio", label: "Valor" },
   { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción" },
 ];

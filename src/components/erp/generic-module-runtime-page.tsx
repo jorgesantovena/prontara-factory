@@ -2014,6 +2014,17 @@ export default function GenericModuleRuntimePage({
                             }
                           }
                           const valStr = val == null || val === "" ? "—" : String(val);
+                          // Test 21 — Niveles: la columna Valor se muestra con su
+                          // unidad contextual (€ / €/h / h) según Tipo+Modelo, no
+                          // siempre € como haría el formato money por defecto.
+                          if (moduleKey === "niveles" && col.fieldKey === "precio") {
+                            const unidad = valStr === "—" ? "" : nivelValorUnidad(String(item.tipoNivel || ""), String(item.modelo || ""));
+                            return (
+                              <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 600 }}>
+                                {valStr === "—" ? <span style={{ color: "#94a3b8" }}>—</span> : valStr + (unidad ? " " + unidad : "")}
+                              </td>
+                            );
+                          }
                           // TEST-10.5 — Para campos con opciones (prioridad,
                           // estado…) se muestra la etiqueta, no el valor crudo
                           // (p.ej. prioridad "1" → "Urgente").
@@ -2299,6 +2310,17 @@ export default function GenericModuleRuntimePage({
 }
 
 // === Render por tipo de campo ===
+// Test 21 — Unidad del campo "Valor" de Niveles según Tipo + Modelo
+// (coherente con la etiqueta contextual del formulario).
+function nivelValorUnidad(tipoNivel: string, modelo: string): string {
+  const t = String(tipoNivel || "").toUpperCase();
+  const m = String(modelo || "").toLowerCase();
+  if (m === "cuota" && (t === "M" || t === "A")) return "€";
+  if (m === "horas" && t === "M") return "€/h";
+  if (m === "horas" && (t === "A" || t === "B")) return "h";
+  return "";
+}
+
 function renderCell(
   fieldKey: string,
   val: string,
