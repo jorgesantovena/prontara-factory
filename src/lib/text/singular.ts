@@ -21,6 +21,9 @@ export const SINGULAR_OVERRIDES: Record<string, string> = {
   proyectos: "proyecto",
   propuestas: "propuesta",
   presupuestos: "presupuesto",
+  // Test 22 bis — "niveles" → "nivel" (el fallback daba "nivele").
+  niveles: "nivel",
+  contratos: "contrato",
   facturas: "factura",
   documentos: "documento",
   entregables: "entregable",

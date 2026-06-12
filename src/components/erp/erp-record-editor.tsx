@@ -1018,6 +1018,9 @@ function FieldGrid({ fields, values, setField, optionsMap, accent, lockedKeys, m
   // TEST-11 — Filtrar campos cuya condición visibleWhen no se cumpla
   // (p. ej. Km solo aparece si Lugar = "casa_cliente").
   const visibleFields = fields.filter((f) => {
+    // Test 22 bis — Niveles: ocultar el campo Servicio si el Tipo de Nivel
+    // es B (Bono de horas): el Servicio solo aplica a M-Horas.
+    if (moduleKey === "niveles" && f.key === "servicio" && String(values.tipoNivel || "").toUpperCase() === "B") return false;
     if (!f.visibleWhen) return true;
     const actual = String(values[f.visibleWhen.field] || "");
     const esperado = f.visibleWhen.equals;
@@ -1080,10 +1083,6 @@ function FieldInput({ field, value, onChange, options, accent, forceReadOnly, la
     boxSizing: "border-box",
     outline: "none",
     cursor: isReadOnly ? "not-allowed" : undefined,
-    // Test 22 — Los importes (money), como el Valor de Niveles, se alinean
-    // a la derecha. El formato de miles en vivo (xxx.xxx,xx) se deja fuera:
-    // enmascarar el input corrompería el número que usa el engine.
-    textAlign: field.kind === "money" ? "right" : undefined,
   };
 
   let inputEl: React.ReactNode;

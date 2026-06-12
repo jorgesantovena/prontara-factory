@@ -2018,10 +2018,18 @@ export default function GenericModuleRuntimePage({
                           // unidad contextual (€ / €/h / h) según Tipo+Modelo, no
                           // siempre € como haría el formato money por defecto.
                           if (moduleKey === "niveles" && col.fieldKey === "precio") {
+                            // Test 22 bis — En la LISTA, el Valor se formatea
+                            // xxx.xxx,xx (miles + 2 decimales), con su unidad
+                            // contextual, y alineado a la derecha. (En el
+                            // formulario se deja a la izquierda, como pidió Pedro.)
                             const unidad = valStr === "—" ? "" : nivelValorUnidad(String(item.tipoNivel || ""), String(item.modelo || ""));
+                            const num = parseFloat(valStr.replace(/\./g, "").replace(",", "."));
+                            const fmt = Number.isFinite(num)
+                              ? num.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                              : valStr;
                             return (
-                              <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 600 }}>
-                                {valStr === "—" ? <span style={{ color: "#94a3b8" }}>—</span> : valStr + (unidad ? " " + unidad : "")}
+                              <td key={col.fieldKey} style={{ ...tdStyle, textAlign: "right", color: idx === 0 ? "#0f172a" : "#475569", fontWeight: 600 }}>
+                                {valStr === "—" ? <span style={{ color: "#94a3b8" }}>—</span> : fmt + (unidad ? " " + unidad : "")}
                               </td>
                             );
                           }

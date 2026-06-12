@@ -172,7 +172,7 @@ function bonoHoras(contrato: Contrato, niveles: Nivel[]): number | null {
 }
 
 /**
- * Caso A — Importe = Bolsa × Precio del Nivel (tipo, subtipo, Cuota).
+ * Caso A — Importe = Valor del Nivel (tipo, subtipo, Cuota). Test 22 bis.
  */
 export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefactura | null {
   const nivel = findNivel(niveles, contrato.tipoNivel, contrato.subtipo, "cuota");
@@ -180,11 +180,12 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
     // Sin Nivel Cuota definido → no se emite cuota.
     return null;
   }
-  const precio = parseNum(nivel.precio); // Valor del Nivel Cuota = importe base
-  // Test 19 bis 2 — Importe = Horas × Precio. Horas = horas del Bono (Nivel
-  // Tipo B referenciado por el contrato) si existe; si no, 1 (cuota simple).
-  const horas = bonoHoras(contrato, niveles) ?? 1;
-  const importe = horas * precio;
+  const precio = parseNum(nivel.precio); // Valor del Nivel Cuota = importe de la cuota
+  // Test 22 bis (Ejercicio 1) — Caso A: Importe = Valor del Nivel Cuota.
+  // La cuota del periodo ES el Valor; el Bono NO la multiplica (eso fue una
+  // hipótesis de bis-2, corregida por el ejemplo numérico de Pedro:
+  // M1 Cuota Valor 807,77 → Importe 807,77).
+  const importe = precio;
   return {
     caso: "A",
     contrato: contrato.codigo,
@@ -193,15 +194,13 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
     subtipo: contrato.subtipo,
     periodo: contrato.periodo,
     modelo: "cuota",
-    bolsa: horas,
+    bolsa: 1,
     precio,
     consumo: parseNum(contrato.consumo),
     facturadas: parseNum(contrato.facturadas),
-    horasAFacturar: horas,
+    horasAFacturar: 1,
     importe,
-    notas: horas === 1
-      ? "Cuota " + contrato.periodo + " = " + precio + "€"
-      : "Bono " + horas + "h × " + precio + "€",
+    notas: "Cuota " + contrato.periodo + " = " + precio + "€",
   };
 }
 
