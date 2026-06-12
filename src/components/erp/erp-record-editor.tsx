@@ -810,20 +810,18 @@ export default function ErpRecordEditor({
               → Ver propuesta {String(values.referenciaPropuesta || initialValue?.referenciaPropuesta || "")}
             </a>
           ) : null}
-          {/* TEST-6.1.d — Convertir en Proyecto: aparece en el editor de
-              presupuestos cuando ya está guardado. Precarga cliente, nombre
-              (concepto/descripción) e importe en el editor de proyectos. */}
+          {/* Test 22 — Convertir en CONTRATO (antes "en Proyecto"): desde la
+              Propuesta guardada abre el alta de Contrato con el Cliente y la
+              Referencia de Propuesta (número de la propuesta) heredados. */}
           {moduleKey === "presupuestos" && mode === "edit" ? (
             <a
               href={(() => {
                 const qs: string[] = [];
                 const cliente = String(values.cliente || initialValue?.cliente || "").trim();
-                const concepto = String(values.concepto || values.descripcion || values.nombre || initialValue?.concepto || initialValue?.descripcion || "").trim();
-                const importe = String(values.importe || initialValue?.importe || "").trim();
+                const numero = String(values.numero || initialValue?.numero || "").trim();
                 if (cliente) qs.push("prefill_cliente=" + encodeURIComponent(cliente));
-                if (concepto) qs.push("prefill_nombre=" + encodeURIComponent(concepto));
-                if (importe) qs.push("prefill_importe=" + encodeURIComponent(importe));
-                return vlink("proyectos") + (qs.length ? "?" + qs.join("&") : "");
+                if (numero) qs.push("prefill_referenciaPropuesta=" + encodeURIComponent(numero));
+                return vlink("contratos") + (qs.length ? "?" + qs.join("&") : "");
               })()}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6,
@@ -831,9 +829,9 @@ export default function ErpRecordEditor({
                 borderRadius: 8, padding: "8px 14px", fontWeight: 700,
                 fontSize: 13, textDecoration: "none",
               }}
-              title="Crear un proyecto a partir de esta propuesta (cliente e importe precargados)"
+              title="Crear un contrato a partir de esta propuesta (cliente y referencia precargados)"
             >
-              ✨ Convertir en proyecto
+              ✨ Convertir en contrato
             </a>
           ) : null}
           <button type="button" onClick={() => { clearDraft(); onCancel(); }} disabled={busy} className="boton boton-secundario" style={btnSecondary}>Cancelar</button>
@@ -1082,6 +1080,10 @@ function FieldInput({ field, value, onChange, options, accent, forceReadOnly, la
     boxSizing: "border-box",
     outline: "none",
     cursor: isReadOnly ? "not-allowed" : undefined,
+    // Test 22 — Los importes (money), como el Valor de Niveles, se alinean
+    // a la derecha. El formato de miles en vivo (xxx.xxx,xx) se deja fuera:
+    // enmascarar el input corrompería el número que usa el engine.
+    textAlign: field.kind === "money" ? "right" : undefined,
   };
 
   let inputEl: React.ReactNode;
@@ -1742,7 +1744,7 @@ function ProyectosSublist({ clienteId = "", clienteName = "", accent, contratoCo
     <section>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <div>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{enContrato ? "Proyectos del contrato" : "Proyectos del cliente"}</h3>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>{enContrato ? ("Proyectos del Contrato de " + (contratoCliente || "")) : "Proyectos del cliente"}</h3>
           <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
             {enContrato
               ? "Proyectos que se ejecutan bajo este contrato. Al dar de alta, Cliente y Contrato se heredan automáticamente."
@@ -1768,17 +1770,15 @@ function ProyectosSublist({ clienteId = "", clienteName = "", accent, contratoCo
         <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
-              {/* TEST-16 F + TEST-19 — Columnas: Proyecto, Estado,
-                  Responsable, Servicio, Contrato, Facturable. Excluidas
-                  Inicio/Caducidad. Tarifa/Unidad se retiraron porque ya
-                  no son campos del Proyecto (modelo Niveles+Contratos). */}
+              {/* Test 22 — Orden: Proyecto, Servicio, Facturable, Contrato,
+                  Responsable, Estado (+ Acciones). */}
               <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
                 <th style={subTh()}>Proyecto</th>
-                <th style={subTh()}>Estado</th>
-                <th style={subTh()}>Responsable</th>
                 <th style={subTh()}>Servicio</th>
-                <th style={subTh()}>Contrato</th>
                 <th style={subTh(100)}>Facturable</th>
+                <th style={subTh()}>Contrato</th>
+                <th style={subTh()}>Responsable</th>
+                <th style={subTh(100)}>Estado</th>
                 <th style={subTh(120)}>Acciones</th>
               </tr>
             </thead>
@@ -1786,11 +1786,11 @@ function ProyectosSublist({ clienteId = "", clienteName = "", accent, contratoCo
               {rows.map((p) => (
                 <tr key={p.id} style={{ borderTop: "1px solid #e5e7eb" }}>
                   <td style={subTd}>{p.nombre || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                  <td style={subTd}>{p.estado || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                  <td style={subTd}>{p.responsable || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>{p.codigoTipo || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
-                  <td style={subTd}>{p.contrato || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>{p.facturable || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.contrato || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.responsable || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{p.estado || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
                   <td style={subTd}>
                     <div style={{ display: "flex", gap: 4 }}>
                       {/* TEST-16 bis C — "Abrir" navega al editor de la

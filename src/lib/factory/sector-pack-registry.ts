@@ -611,15 +611,17 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
       { value: "anual", label: "Anual" },
       { value: "discreto", label: "Discreto (un disparo)" },
     ] },
-    { moduleKey: "contratos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Código de la Propuesta de origen (opcional)" },
-    { moduleKey: "contratos", fieldKey: "fechaInicio", label: "Inicio", kind: "date", placeholder: "Fecha de inicio de vigencia" },
-    { moduleKey: "contratos", fieldKey: "fechaFin", label: "Fin", kind: "date", defaultValue: "9999-12-31", placeholder: "Fecha de fin (9999-12-31 = sin vencimiento)" },
+    // Test 22 — Orden pedido: Código, Cliente, Tipo Nivel, Subtipo, Periodo,
+    // Estado, Inicio, Fin, Referencia de Propuesta, Consumo, Facturadas, Notas.
     { moduleKey: "contratos", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "activo", options: [
       { value: "borrador", label: "Borrador" },
       { value: "activo", label: "Activo" },
       { value: "finalizado", label: "Finalizado" },
       { value: "cancelado", label: "Cancelado" },
     ] },
+    { moduleKey: "contratos", fieldKey: "fechaInicio", label: "Inicio", kind: "date", placeholder: "Fecha de inicio de vigencia" },
+    { moduleKey: "contratos", fieldKey: "fechaFin", label: "Fin", kind: "date", defaultValue: "9999-12-31", placeholder: "Fecha de fin (9999-12-31 = sin vencimiento)" },
+    { moduleKey: "contratos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Código de la Propuesta de origen (opcional)" },
     { moduleKey: "contratos", fieldKey: "consumo", label: "Consumo (h)", kind: "text", readOnly: true, placeholder: "Σ horas del año en curso de tareas facturables. Reset el 1 de enero." },
     { moduleKey: "contratos", fieldKey: "facturadas", label: "Facturadas (h)", kind: "text", readOnly: true, placeholder: "Σ horas ya facturadas del año en curso. Reset el 1 de enero." },
     { moduleKey: "contratos", fieldKey: "notas", label: "Notas", kind: "textarea", placeholder: "Condiciones específicas del contrato" },
@@ -671,15 +673,16 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // y Unidad (de la tarifa aplicada). Ambos son readOnly: se rellenan
     // automáticamente al elegir Cliente y Servicio en el alta del proyecto
     // (ver lookup TEST-15 D en erp-record-editor.tsx).
-    { moduleKey: "proyectos", fieldKey: "codigoTipo", label: "Código", isPrimary: true },
+    // Test 22 — Orden: Cliente, Proyecto, Código (servicio), Facturable,
+    // Contrato, Lead, Caducidad, Estado (+ Acciones). Km retirado del listado.
+    { moduleKey: "proyectos", fieldKey: "cliente", label: "Cliente", isPrimary: true },
     { moduleKey: "proyectos", fieldKey: "nombre", label: "Proyecto" },
-    { moduleKey: "proyectos", fieldKey: "cliente", label: "Cliente" },
-    { moduleKey: "proyectos", fieldKey: "contrato", label: "Contrato" },
+    { moduleKey: "proyectos", fieldKey: "codigoTipo", label: "Código" },
     { moduleKey: "proyectos", fieldKey: "facturable", label: "Facturable" },
+    { moduleKey: "proyectos", fieldKey: "contrato", label: "Contrato" },
+    { moduleKey: "proyectos", fieldKey: "responsable", label: "Lead" },
     { moduleKey: "proyectos", fieldKey: "fechaCaducidad", label: "Caducidad" },
     { moduleKey: "proyectos", fieldKey: "estado", label: "Estado" },
-    { moduleKey: "proyectos", fieldKey: "responsable", label: "Lead" },
-    { moduleKey: "proyectos", fieldKey: "kilometros", label: "Km" },
     { moduleKey: "documentos", fieldKey: "nombre", label: "Entregable", isPrimary: true },
     { moduleKey: "documentos", fieldKey: "tipo", label: "Tipo" },
 

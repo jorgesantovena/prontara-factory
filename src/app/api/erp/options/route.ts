@@ -68,12 +68,16 @@ export async function GET(request: NextRequest) {
         // no hay código, usamos la descripción como value (legible, sin
         // UUIDs, coherente con TEST-15 A) para que el servicio aparezca y
         // sea seleccionable.
+        // TEST 22 — Pedro: el desplegable de Código de Servicio salía
+        // repetido ("Soporte · Soporte"). Debe mostrar solo el nombre limpio
+        // del servicio (la descripción). El `value` sigue siendo el código
+        // (clave de la tarifa) con fallback a la descripción.
         if (moduleKey === "catalogo-servicios") {
           const code = String(item.codigo || "").trim();
           const desc = String(item.descripcion || "").trim();
           return {
             value: code || desc,
-            label: code ? code + (desc ? " · " + desc : "") : desc,
+            label: desc || code,
           };
         }
 
