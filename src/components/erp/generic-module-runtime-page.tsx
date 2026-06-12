@@ -2027,9 +2027,21 @@ export default function GenericModuleRuntimePage({
                             const fmt = Number.isFinite(num)
                               ? num.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                               : valStr;
+                            // Test 22 bis (corrección Pedro) — El NÚMERO se alinea
+                            // a la derecha y la UNIDAD va en una columna fija a su
+                            // lado. Así los números cuadran aunque la unidad mida
+                            // distinto ("€" vs "€/h"): antes se alineaba el bloque
+                            // "número+unidad" entero y la unidad desplazaba el número.
                             return (
-                              <td key={col.fieldKey} style={{ ...tdStyle, textAlign: "right", color: idx === 0 ? "#0f172a" : "#475569", fontWeight: 600 }}>
-                                {valStr === "—" ? <span style={{ color: "#94a3b8" }}>—</span> : fmt + (unidad ? " " + unidad : "")}
+                              <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: 600 }}>
+                                {valStr === "—" ? (
+                                  <span style={{ color: "#94a3b8", display: "block", textAlign: "right" }}>—</span>
+                                ) : (
+                                  <span style={{ display: "flex", justifyContent: "flex-end", alignItems: "baseline", gap: 6, fontVariantNumeric: "tabular-nums" }}>
+                                    <span style={{ textAlign: "right" }}>{fmt}</span>
+                                    <span style={{ display: "inline-block", minWidth: 34, textAlign: "left", color: "#94a3b8", fontWeight: 500 }}>{unidad}</span>
+                                  </span>
+                                )}
                               </td>
                             );
                           }

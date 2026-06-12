@@ -215,7 +215,11 @@ export default function ErpRecordEditor({
     // Test 19 bis A — Niveles: todos los campos en "Datos generales"
     // (Pedro pidió mover Modelo/Precio a general y eliminar el segmento
     // Financiero). Como `actividades`, forzamos un único tab.
-    const forceSingleTab = moduleKey === "actividades" || moduleKey === "niveles";
+    // Test 22 bis — Contratos también: `classifyField` mandaba `periodo` a
+    // la pestaña Financiero, así que en "Datos generales" faltaba Periodo y
+    // el orden de campos pedido por Pedro no se respetaba. Forzamos un único
+    // tab para que el orden del array sea el orden del formulario.
+    const forceSingleTab = moduleKey === "actividades" || moduleKey === "niveles" || moduleKey === "contratos";
     for (const f of fields) {
       const tab = forceSingleTab ? "general" : classifyField(f.key);
       acc[tab].push(f);
