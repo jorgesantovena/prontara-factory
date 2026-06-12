@@ -544,10 +544,12 @@ export const CORE_FIELDS: SectorPackField[] = [
   // contextual según Tipo+Modelo (Importe € / Precio €/h / Horas h); se
   // resuelve en el editor (ver nivelesValorLabel). El key se mantiene
   // `precio` para no migrar los datos existentes.
-  { moduleKey: "niveles", fieldKey: "precio", label: "Valor", kind: "money", required: true, placeholder: "Importe de la cuota, precio/hora o nº de horas, según Tipo y Modelo." },
   // Test 19 bis A — Servicio: solo aplica al Modelo Horas (el precio del
   // exceso se define por servicio). Elegible de la tabla Servicios.
+  // Test 22 bis — Colocado entre Modelo y Valor (orden coherente con la
+  // columna de la lista: Modelo · Servicio · Valor).
   { moduleKey: "niveles", fieldKey: "servicio", label: "Servicio", kind: "relation", relationModuleKey: "catalogo-servicios", visibleWhen: { field: "modelo", equals: "horas" }, placeholder: "Servicio al que aplica este precio/hora (solo Modelo Horas)" },
+  { moduleKey: "niveles", fieldKey: "precio", label: "Valor", kind: "money", required: true, placeholder: "Importe de la cuota, precio/hora o nº de horas, según Tipo y Modelo." },
   { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción", kind: "textarea", placeholder: "Qué cubre este Nivel y cuándo aplica" },
 ];
 
