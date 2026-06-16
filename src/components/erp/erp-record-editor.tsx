@@ -74,7 +74,7 @@ type OptionItem = { value: string; label: string };
 // pestañas dentro de la ficha de Tarea (heredan fecha/empleado/cliente/
 // proyecto al añadir, y la opción del MP sigue activa para los casos sin
 // tarea). Las tabs se renderizan solo cuando moduleKey === "actividades".
-type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "contratos" | "propuestas" | "gastos" | "desplazamientos" | "vencimientos" | "zonas" | "documentos";
+type TabKey = "general" | "contacto" | "comercial" | "financiero" | "notas" | "proyectos" | "contratos" | "aplicaciones" | "propuestas" | "gastos" | "desplazamientos" | "vencimientos" | "zonas" | "documentos";
 
 const TAB_LABELS: Record<TabKey, string> = {
   general: "Datos generales",
@@ -84,6 +84,7 @@ const TAB_LABELS: Record<TabKey, string> = {
   notas: "Notas",
   proyectos: "Proyectos",
   contratos: "Contratos",
+  aplicaciones: "Aplicaciones",
   propuestas: "Propuestas",
   gastos: "Gastos",
   desplazamientos: "Desplazamientos",
@@ -204,7 +205,7 @@ export default function ErpRecordEditor({
       // añadidos al record. Si moduleKey !== "actividades" no se ven
       // (el filtro `tabsConFields` solo incluye tabs con fields, y los
       // bloques de render por tab incluyen también la condición moduleKey).
-      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], contratos: [], propuestas: [], gastos: [], desplazamientos: [], vencimientos: [], zonas: [], documentos: [],
+      general: [], contacto: [], comercial: [], financiero: [], notas: [], proyectos: [], contratos: [], aplicaciones: [], propuestas: [], gastos: [], desplazamientos: [], vencimientos: [], zonas: [], documentos: [],
     };
     // TEST-11 — En el Parte de horas (actividades) el orden EXACTO de
     // campos que define el sector pack importa (Empleado → Fecha → Hora
@@ -247,6 +248,8 @@ export default function ErpRecordEditor({
   const showContratosTab = moduleKey === "clientes" && mode === "edit" && Boolean(initialValue?.id);
   // Test 19 bis E — Contrato: pestaña "Proyectos" (proyectos del contrato).
   const showProyectosTab = moduleKey === "contratos" && mode === "edit" && Boolean(initialValue?.id);
+  // Test 23 — Contrato: pestaña "Aplicaciones" (mantenimiento contra errores).
+  const showAplicacionesTab = moduleKey === "contratos" && mode === "edit" && Boolean(initialValue?.id);
   // Test 19 bis F (4b) — Alta de Proyecto desde un Contrato: Cliente y
   // Contrato vienen heredados (prefill) y deben quedar PROTEGIDOS (solo
   // lectura). Lo detectamos porque el alta (create) trae `contrato` prefijado.
@@ -274,6 +277,7 @@ export default function ErpRecordEditor({
         ...tabsConFields,
         ...(showContratosTab ? ["contratos" as TabKey] : []),
         ...(showProyectosTab ? ["proyectos" as TabKey] : []),
+        ...(showAplicacionesTab ? ["aplicaciones" as TabKey] : []),
         ...(showPropuestasTab ? ["propuestas" as TabKey] : []),
         ...(showGastosTab ? ["gastos" as TabKey] : []),
         ...(showDesplazTab ? ["desplazamientos" as TabKey] : []),
@@ -915,6 +919,11 @@ export default function ErpRecordEditor({
               contratoCodigo={String(initialValue?.codigo || "")}
               contratoCliente={String(initialValue?.cliente || "")}
               contratoId={String(initialValue?.id || "")}
+              accent={accent}
+            />
+          ) : tab === "aplicaciones" ? (
+            <AplicacionesContratoSublist
+              contratoCodigo={String(initialValue?.codigo || "")}
               accent={accent}
             />
           ) : tab === "propuestas" ? (
@@ -1822,6 +1831,167 @@ function ProyectosSublist({ clienteId = "", clienteName = "", accent, contratoCo
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <button type="button" onClick={() => setConfirmDeleteId(null)} style={subBtn}>Cancelar</button>
               <button type="button" onClick={() => remove(confirmDeleteId)} style={{ ...subBtnDanger, padding: "8px 14px" }} disabled={busy}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+// Test 23 — Sublista de Aplicaciones del Contrato (tabla A/C =
+// Aplicaciones/Contrato). En el editor de Contrato lista las aplicaciones
+// contratadas (mantenimiento contra errores) y permite el alta EN LÍNEA
+// (sin salir del contrato): elegir Aplicación + Código interno. La tabla
+// A/C guarda { codigo, contrato, aplicacion }.
+function AplicacionesContratoSublist({ contratoCodigo, accent }: { contratoCodigo: string; accent: string }) {
+  const [rows, setRows] = useState<Array<Record<string, string>>>([]);
+  const [apps, setApps] = useState<Array<{ value: string; label: string }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [formApp, setFormApp] = useState("");
+  const [formCodigo, setFormCodigo] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError("");
+    try {
+      const [r, ra] = await Promise.all([
+        fetch("/api/erp/module?module=aplicaciones-contrato", { cache: "no-store" }),
+        fetch("/api/erp/options?module=aplicaciones", { cache: "no-store" }),
+      ]);
+      const d = await r.json();
+      const da = await ra.json();
+      const all = (r.ok && d.ok && Array.isArray(d.rows)) ? d.rows as Array<Record<string, string>> : [];
+      setRows(all.filter((row) => String(row.contrato || "") === contratoCodigo));
+      setApps((ra.ok && da.ok && Array.isArray(da.options)) ? da.options as Array<{ value: string; label: string }> : []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error cargando aplicaciones.");
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [contratoCodigo]);
+
+  const appLabel = (v: string) => apps.find((a) => a.value === v)?.label || v;
+
+  async function add() {
+    if (!formApp) { setError("Elige una aplicación."); return; }
+    setBusy(true);
+    setError("");
+    try {
+      const r = await fetch("/api/erp/module", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ module: "aplicaciones-contrato", mode: "create", payload: { codigo: formCodigo.trim(), contrato: contratoCodigo, aplicacion: formApp } }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.ok) { setError(d.error || "Error al añadir."); }
+      else { setShowForm(false); setFormApp(""); setFormCodigo(""); await load(); }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove(id: string) {
+    setBusy(true);
+    try {
+      const r = await fetch("/api/erp/module", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ module: "aplicaciones-contrato", mode: "delete", recordId: id }),
+      });
+      const d = await r.json();
+      if (!r.ok || !d.ok) setError(d.error || "Error eliminando.");
+      else setRows((prev) => prev.filter((row) => String(row.id) !== id));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Error.");
+    } finally {
+      setBusy(false);
+      setConfirmDeleteId(null);
+    }
+  }
+
+  return (
+    <section>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Aplicaciones contratadas</h3>
+          <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "#64748b" }}>
+            Aplicaciones cubiertas por el mantenimiento contra errores de este contrato. Cada una se factura por su Nivel Tipo E.
+          </p>
+        </div>
+        <button type="button" onClick={() => { setShowForm((s) => !s); setError(""); }} style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "6px 12px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          {showForm ? "Cancelar" : "+ Añadir aplicación"}
+        </button>
+      </div>
+
+      {error ? (
+        <div style={{ border: "1px solid #fecaca", background: "#fef2f2", color: "#991b1b", borderRadius: 8, padding: 10, marginBottom: 10, fontSize: 13 }}>{error}</div>
+      ) : null}
+
+      {showForm ? (
+        <div style={{ display: "flex", gap: 8, alignItems: "flex-end", marginBottom: 12, padding: 12, background: "#f8fafc", border: "1px solid #e5e7eb", borderRadius: 8, flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 200 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 4 }}>Aplicación *</label>
+            <select value={formApp} onChange={(e) => setFormApp(e.target.value)} style={{ width: "100%", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13 }}>
+              <option value="">— Selecciona —</option>
+              {apps.map((a) => <option key={a.value} value={a.value}>{a.label}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 1, minWidth: 160 }}>
+            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 4 }}>Código interno A/C</label>
+            <input type="text" value={formCodigo} onChange={(e) => setFormCodigo(e.target.value)} placeholder="Opcional" style={{ width: "100%", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }} />
+          </div>
+          <button type="button" onClick={add} disabled={busy} style={{ background: accent, color: "#fff", border: "none", borderRadius: 6, padding: "9px 16px", fontSize: 13, fontWeight: 700, cursor: busy ? "wait" : "pointer" }}>
+            {busy ? "…" : "Añadir"}
+          </button>
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13 }}>Cargando aplicaciones…</div>
+      ) : rows.length === 0 ? (
+        <div style={{ padding: 24, textAlign: "center", color: "#94a3b8", fontSize: 13, border: "1px dashed #e5e7eb", borderRadius: 10 }}>
+          Este contrato no tiene aplicaciones de mantenimiento. Pulsa &quot;+ Añadir aplicación&quot;.
+        </div>
+      ) : (
+        <div style={{ border: "1px solid #e5e7eb", borderRadius: 10, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "#f8fafc", color: "#475569", fontWeight: 600, fontSize: 12, textTransform: "uppercase", letterSpacing: 0.3 }}>
+                <th style={subTh()}>Aplicación</th>
+                <th style={subTh(160)}>Código interno A/C</th>
+                <th style={subTh(80)}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((ac) => (
+                <tr key={String(ac.id)} style={{ borderTop: "1px solid #e5e7eb" }}>
+                  <td style={subTd}>{appLabel(String(ac.aplicacion || "")) || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>{ac.codigo || <span style={{ color: "#cbd5e1" }}>—</span>}</td>
+                  <td style={subTd}>
+                    <button type="button" onClick={() => setConfirmDeleteId(String(ac.id))} style={subBtnDanger} title="Quitar aplicación" disabled={busy}>🗑</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {confirmDeleteId && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15, 23, 42, 0.45)", zIndex: 80, display: "grid", placeItems: "center" }} onClick={() => setConfirmDeleteId(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: "#fff", borderRadius: 12, padding: 20, maxWidth: 360, boxShadow: "0 12px 32px rgba(0,0,0,0.25)" }}>
+            <p style={{ margin: "0 0 16px 0", fontSize: 13, color: "#475569" }}>¿Quitar esta aplicación del contrato?</p>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" onClick={() => setConfirmDeleteId(null)} style={subBtn}>Cancelar</button>
+              <button type="button" onClick={() => remove(confirmDeleteId)} style={{ ...subBtnDanger, padding: "8px 14px" }} disabled={busy}>Quitar</button>
             </div>
           </div>
         </div>

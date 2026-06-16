@@ -90,7 +90,9 @@ export async function POST(request: NextRequest) {
     // Para cada cuenta bancaria, indexamos por cliente y esPrincipal
     const cuentaPorCliente = new Map<string, Record<string, unknown>>();
     for (const c of cuentas) {
-      const cliente = String(c.cliente || c.titular || "");
+      // Test 23 — cuentas-bancarias reestructuradas (titular→nombre, +idTercero).
+      // Mantenemos compat: legacy usa cliente/titular; el modelo nuevo, idTercero/nombre.
+      const cliente = String(c.cliente || c.idTercero || c.nombre || c.titular || "");
       if (!cliente) continue;
       if (String(c.esPrincipal) === "si" || !cuentaPorCliente.has(cliente)) {
         cuentaPorCliente.set(cliente, c);

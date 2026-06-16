@@ -8,6 +8,7 @@ import {
   type LineaPrefactura,
   type Actividad,
   type ProyectoLite,
+  type AplicacionContrato,
 } from "@/lib/verticals/software-factory/prefacturacion-engine";
 import { captureError } from "@/lib/observability/error-capture";
 import { ensureTest19Seed } from "@/lib/verticals/software-factory/ensure-test19-seed";
@@ -98,8 +99,21 @@ export async function GET(request: NextRequest) {
       bolsa: parseNum(n.bolsa),
       precio: parseNum(n.precio),
       servicio: String(n.servicio || ""),
+      aplicacion: String(n.aplicacion || ""),
       descripcion: String(n.descripcion || ""),
     }));
+
+    // Test 23 — Para la cuota trimestral de Mantº Errores cargamos la tabla
+    // A/C (Aplicaciones/Contrato).
+    let aplicacionesContrato: AplicacionContrato[] = [];
+    if (modelo === "cuota") {
+      const acRaw = await listModuleRecordsAsync("aplicaciones-contrato", session.clientId);
+      aplicacionesContrato = (acRaw as Array<Record<string, string>>).map((a) => ({
+        contrato: String(a.contrato || ""),
+        aplicacion: String(a.aplicacion || ""),
+        codigo: String(a.codigo || ""),
+      }));
+    }
 
     // Test 19 bis G — Para el Caso B (Horas) cargamos tareas y proyectos
     // para desglosar el exceso por servicio. En Caso A no hace falta.
@@ -132,6 +146,7 @@ export async function GET(request: NextRequest) {
       fecha: fecha || undefined,
       actividades,
       proyectos,
+      aplicacionesContrato,
     });
     const totalImporte = lineas.reduce((s, l) => s + l.importe, 0);
     const totalHoras = lineas.reduce((s, l) => s + l.horasAFacturar, 0);

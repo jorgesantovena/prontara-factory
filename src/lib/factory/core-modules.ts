@@ -502,23 +502,28 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "activa", label: "Activa" }, { value: "obsoleta", label: "Obsoleta" },
   ] },
 
-  // H8.5 — Cuentas bancarias de clientes / proveedores
-  { moduleKey: "cuentas-bancarias", fieldKey: "titular", label: "Titular", kind: "text", required: true, placeholder: "Razón social del titular" },
-  { moduleKey: "cuentas-bancarias", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes" },
-  { moduleKey: "cuentas-bancarias", fieldKey: "proveedor", label: "Proveedor (alternativa)", kind: "text", placeholder: "Razón social proveedor" },
-  { moduleKey: "cuentas-bancarias", fieldKey: "iban", label: "IBAN", kind: "text", required: true, placeholder: "ES12 3456 7890 1234 5678 9012" },
-  { moduleKey: "cuentas-bancarias", fieldKey: "bic", label: "BIC / SWIFT", kind: "text", placeholder: "BBVAESMM" },
-  { moduleKey: "cuentas-bancarias", fieldKey: "banco", label: "Banco", kind: "text", placeholder: "BBVA, Santander, CaixaBank..." },
-  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaRef", label: "Ref. mandato SEPA", kind: "text", placeholder: "MAN-2026-001 (auto si vacío)" },
-  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaFecha", label: "Fecha firma mandato", kind: "date" },
-  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaTipo", label: "Tipo mandato", kind: "status", options: [
-    { value: "recurrente", label: "Recurrente (RCUR/RCUR)" }, { value: "unico", label: "Único (OOFF)" }, { value: "primera", label: "Primera (FRST)" },
+  // H8.5 / Test 23 — Cuentas bancarias (terceros: cliente/proveedor/empleado).
+  // Pedro reestructura: Tipo Tercero + Id Tercero + Nombre, IBAN desglosado
+  // (Entidad/Sucursal) y datos de mandato SEPA.
+  { moduleKey: "cuentas-bancarias", fieldKey: "tipoTercero", label: "Tipo Tercero", kind: "status", required: true, defaultValue: "C", options: [
+    { value: "C", label: "C (Cliente)" }, { value: "P", label: "P (Proveedor)" }, { value: "E", label: "E (Empleado)" },
   ] },
-  { moduleKey: "cuentas-bancarias", fieldKey: "esPrincipal", label: "Cuenta principal", kind: "status", required: true, options: [
-    { value: "si", label: "Sí" }, { value: "no", label: "No" },
-  ] },
-  { moduleKey: "cuentas-bancarias", fieldKey: "estado", label: "Estado", kind: "status", required: true, options: [
+  { moduleKey: "cuentas-bancarias", fieldKey: "idTercero", label: "Id. Tercero", kind: "text", placeholder: "Código del cliente/proveedor/empleado" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "nombre", label: "Nombre", kind: "text", required: true, placeholder: "Razón social del titular" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "entidad", label: "Entidad (EEEE)", kind: "text", placeholder: "4 dígitos de la entidad" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "sucursal", label: "Sucursal (SSSS)", kind: "text", placeholder: "4 dígitos de la sucursal" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "iban", label: "IBAN", kind: "text", required: true, placeholder: "ES12 EEEE SSSS DC NNNNNNNNNN" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "estado", label: "Estado", kind: "status", required: true, defaultValue: "activa", options: [
     { value: "activa", label: "Activa" }, { value: "inactiva", label: "Inactiva" }, { value: "rechazada", label: "Rechazada" },
+  ] },
+  { moduleKey: "cuentas-bancarias", fieldKey: "bic", label: "BIC / SWIFT", kind: "text", placeholder: "BBVAESMM" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaRef", label: "Ref. mandato SEPA", kind: "text", placeholder: "MAN-2026-001 (auto si vacío)" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaTipo", label: "Tipo mandato", kind: "status", options: [
+    { value: "recurrente", label: "Recurrente (RCUR)" }, { value: "unico", label: "Único (OOFF)" }, { value: "primera", label: "Primera (FRST)" },
+  ] },
+  { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaFecha", label: "Fecha firma mandato", kind: "date" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "esPrincipal", label: "Cuenta principal", kind: "status", required: true, defaultValue: "no", options: [
+    { value: "si", label: "Sí" }, { value: "no", label: "No" },
   ] },
   { moduleKey: "cuentas-bancarias", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
@@ -747,10 +752,9 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   { moduleKey: "formas-pago", fieldKey: "generaGiroSepa", label: "SEPA" },
   { moduleKey: "formas-pago", fieldKey: "estado", label: "Estado" },
 
-  { moduleKey: "cuentas-bancarias", fieldKey: "titular", label: "Titular", isPrimary: true },
-  { moduleKey: "cuentas-bancarias", fieldKey: "cliente", label: "Cliente" },
+  { moduleKey: "cuentas-bancarias", fieldKey: "nombre", label: "Nombre", isPrimary: true },
+  { moduleKey: "cuentas-bancarias", fieldKey: "tipoTercero", label: "Tipo" },
   { moduleKey: "cuentas-bancarias", fieldKey: "iban", label: "IBAN" },
-  { moduleKey: "cuentas-bancarias", fieldKey: "banco", label: "Banco" },
   { moduleKey: "cuentas-bancarias", fieldKey: "mandatoSepaRef", label: "Mandato" },
   { moduleKey: "cuentas-bancarias", fieldKey: "esPrincipal", label: "Princ." },
   { moduleKey: "cuentas-bancarias", fieldKey: "estado", label: "Estado" },

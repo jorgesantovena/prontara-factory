@@ -81,6 +81,18 @@ export async function GET(request: NextRequest) {
           };
         }
 
+        // TEST 23 — Aplicaciones: value = código (Pedro pide "Código de
+        // Aplicación"), label = nombre limpio. Lo usan el Nivel Tipo E
+        // (campo `aplicacion`) y la tabla A/C (Aplicaciones/Contrato).
+        if (moduleKey === "aplicaciones") {
+          const code = String(item.codigo || "").trim();
+          const nombre = String(item.nombre || "").trim();
+          return {
+            value: code || nombre,
+            label: nombre || code,
+          };
+        }
+
         // Preguntas 1.con / mail 2 puntos 15+17 — Maestros sin case
         // explícito caían al default (value=id, label=algo extraño)
         // y el listado mostraba UUIDs en las columnas relacionadas.

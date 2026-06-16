@@ -74,8 +74,14 @@ export type Nivel = {
   // Test 19 bis A/G — Servicio: solo en Niveles Modelo=Horas. Permite un
   // precio del exceso por servicio (Caso B desglosado).
   servicio?: string;
+  // Test 23 — Aplicación: solo en Niveles Tipo E (mantenimiento contra
+  // errores). El Valor es el coste anual/cuota por aplicación.
+  aplicacion?: string;
   descripcion?: string;
 };
+
+// Test 23 — Registro de la tabla A/C (Aplicaciones/Contrato).
+export type AplicacionContrato = { contrato?: string; aplicacion?: string; codigo?: string };
 
 // Test 19 bis G / Test 21 — Línea de desglose del Caso B. Test 21: el
 // reparto es POR PROYECTO; cada proyecto se factura al precio de su Servicio.
@@ -94,6 +100,8 @@ export type PrefacturaOpts = {
   fecha?: string; // "YYYY-MM"
   actividades?: Actividad[];
   proyectos?: ProyectoLite[];
+  // Test 23 — Aplicaciones/Contrato para la cuota trimestral de Mantº Errores.
+  aplicacionesContrato?: AplicacionContrato[];
 };
 
 export type LineaPrefactura = {
@@ -300,9 +308,39 @@ export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: Prefa
 }
 
 /**
+ * Test 23 — Mantenimiento contra errores: para un contrato, recorre sus
+ * Aplicaciones/Contrato (A/C) y por cada una busca el Nivel
+ * (Tipo E, subtipo del contrato, esa Aplicación). Genera una línea de
+ * cuota por aplicación con el Valor del Nivel E. Texto:
+ * "Cuota Mantº Errores <aplicación>".
+ */
+export function calcularMantErrores(contrato: Contrato, niveles: Nivel[], acApps: AplicacionContrato[]): LineaPrefactura[] {
+  const apps = acApps.filter((a) => String(a.contrato || "") === contrato.codigo);
+  const out: LineaPrefactura[] = [];
+  for (const ac of apps) {
+    const app = String(ac.aplicacion || "").trim();
+    if (!app) continue;
+    const nivel = niveles.find((n) =>
+      String(n.tipoNivel).toUpperCase() === "E" &&
+      String(n.subtipo) === String(contrato.subtipo) &&
+      String(n.aplicacion || "") === app);
+    if (!nivel) continue;
+    const importe = parseNum(nivel.precio);
+    out.push({
+      caso: "A", contrato: contrato.codigo, cliente: contrato.cliente,
+      tipoNivel: "E", subtipo: contrato.subtipo, periodo: contrato.periodo,
+      modelo: "cuota", bolsa: 1, precio: importe, consumo: 0, facturadas: 0,
+      horasAFacturar: 1, importe, notas: "Cuota Mantº Errores " + app,
+    });
+  }
+  return out;
+}
+
+/**
  * Pre-facturación combinada: aplica el caso A o B según el modelo
  * elegido, sobre los contratos que cumplen los filtros (periodo, y
- * para el caso B también Tipo Nivel = M).
+ * para el caso B también Tipo Nivel = M). Test 23: en cuota trimestral
+ * añade las líneas de Mantº Errores por aplicación.
  */
 export function prefacturar(
   contratos: Contrato[],
@@ -322,9 +360,17 @@ export function prefacturar(
     if (modelo === "horas" && String(c.tipoNivel).toUpperCase() !== "M") return false;
     return true;
   });
-  return elegibles
+  const lineas = elegibles
     .map((c) => (modelo === "cuota" ? calcularCasoA(c, niveles) : calcularCasoB(c, niveles, opts)))
     .filter((x): x is LineaPrefactura => x != null);
+  // Test 23 — Cuota trimestral: añadir las líneas de Mantº Errores (una por
+  // aplicación de cada contrato elegible).
+  if (modelo === "cuota" && periodo === "trimestral" && opts?.aplicacionesContrato) {
+    for (const c of elegibles) {
+      lineas.push(...calcularMantErrores(c, niveles, opts.aplicacionesContrato));
+    }
+  }
+  return lineas;
 }
 
 // === Compat con el PDF Detalle Servicios (sigue agrupando por tipoServicio) ===

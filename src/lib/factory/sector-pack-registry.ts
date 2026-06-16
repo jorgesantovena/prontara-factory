@@ -260,6 +260,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
   // a proveedores), gastos, desplazamientos, vencimientos-factura,
   // avisos-programados (recordatorios cliente), etc.
   disabledCoreModules: [
+    // Test 23 — Tarifas eliminadas (la facturación vive en Niveles+Contratos).
+    "tarifas-generales",
+    "tarifas-especiales",
     "productos",
     "reservas",
     "encuestas",
@@ -398,10 +401,9 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     // nivel B puntual, p.ej.). El Cliente solo conserva:
     //   - `tipoTarifa`: gancho para lookup de Tarifas Especiales por
     //     cliente (Tarifas Generales se buscan por Nivel del Contrato).
-    { moduleKey: "clientes", fieldKey: "tipoTarifa", label: "Tipo Tarifa", kind: "status", required: true, defaultValue: "normal", options: [
-      { value: "normal", label: "Normal" },
-      { value: "especial", label: "Especial" },
-    ] },
+    // Test 23 — Sustituido "Tipo Tarifa" (obsoleto: las tarifas se eliminan)
+    // por "Cuenta Bancaria" (relación a cuentas-bancarias).
+    { moduleKey: "clientes", fieldKey: "cuentaBancaria", label: "Cuenta Bancaria", kind: "relation", relationModuleKey: "cuentas-bancarias", placeholder: "Cuenta bancaria del cliente (domiciliaciones)" },
     { moduleKey: "clientes", fieldKey: "notas", label: "Notas internas", kind: "textarea", placeholder: "Observaciones útiles del cliente" },
 
     // CRM (oportunidades) — SF-21.
