@@ -1025,6 +1025,9 @@ function FieldGrid({ fields, values, setField, optionsMap, accent, lockedKeys, m
     // Test 22 bis — Niveles: ocultar el campo Servicio si el Tipo de Nivel
     // es B (Bono de horas): el Servicio solo aplica a M-Horas.
     if (moduleKey === "niveles" && f.key === "servicio" && String(values.tipoNivel || "").toUpperCase() === "B") return false;
+    // Test 23 — Niveles Tipo E: el Modelo es siempre Cuota → ocultar el
+    // campo Modelo (queda en su default "cuota").
+    if (moduleKey === "niveles" && f.key === "modelo" && String(values.tipoNivel || "").toUpperCase() === "E") return false;
     if (!f.visibleWhen) return true;
     const actual = String(values[f.visibleWhen.field] || "");
     const esperado = f.visibleWhen.equals;

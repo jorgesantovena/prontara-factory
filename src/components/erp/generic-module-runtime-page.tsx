@@ -2014,6 +2014,18 @@ export default function GenericModuleRuntimePage({
                             }
                           }
                           const valStr = val == null || val === "" ? "—" : String(val);
+                          // Test 23 — Niveles Tipo E: la columna Servicio muestra
+                          // "Mantº Errores <aplicación>" (el Servicio de un Nivel E
+                          // es una Aplicación, guardada en el campo `aplicacion`).
+                          if (moduleKey === "niveles" && col.fieldKey === "servicio" && String(item.tipoNivel || "").toUpperCase() === "E") {
+                            const appRaw = String(item.aplicacion || "").trim();
+                            const appLabel = appRaw ? labelForValue("aplicacion", appRaw) : "";
+                            return (
+                              <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569" }}>
+                                {appLabel ? "Mantº Errores " + appLabel : <span style={{ color: "#94a3b8" }}>—</span>}
+                              </td>
+                            );
+                          }
                           // Test 21 — Niveles: la columna Valor se muestra con su
                           // unidad contextual (€ / €/h / h) según Tipo+Modelo, no
                           // siempre € como haría el formato money por defecto.

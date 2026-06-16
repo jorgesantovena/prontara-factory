@@ -530,6 +530,10 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "M", label: "M (Mantenimiento)" },
     { value: "A", label: "A (Acuerdo específico)" },
     { value: "B", label: "B (Bono de horas)" },
+    // Test 23 — Tipo E: mantenimiento contra errores. Subtipos 1..4 (como M),
+    // Modelo siempre Cuota, y el "Servicio" es una Aplicación (ver campo
+    // `aplicacion` más abajo y la lógica de Pre-facturación).
+    { value: "E", label: "E (Mantenimiento contra errores)" },
   ] },
   { moduleKey: "niveles", fieldKey: "subtipo", label: "Subtipo", kind: "text", required: true, placeholder: "1, 2, 3, 4 para Tipo M. Libre para A y B (ej. 'BX-2026-01')" },
   { moduleKey: "niveles", fieldKey: "modelo", label: "Modelo", kind: "status", required: true, defaultValue: "cuota", placeholder: "Cuota (cuota fija) / Horas (€/h, exceso o consumo directo)", options: [
@@ -549,6 +553,10 @@ export const CORE_FIELDS: SectorPackField[] = [
   // Test 22 bis — Colocado entre Modelo y Valor (orden coherente con la
   // columna de la lista: Modelo · Servicio · Valor).
   { moduleKey: "niveles", fieldKey: "servicio", label: "Servicio", kind: "relation", relationModuleKey: "catalogo-servicios", visibleWhen: { field: "modelo", equals: "horas" }, placeholder: "Servicio al que aplica este precio/hora (solo Modelo Horas)" },
+  // Test 23 — Tipo E (mantenimiento contra errores): el "Servicio" es una
+  // Aplicación. Campo aparte (relation a `aplicaciones`), etiqueta "Aplicación",
+  // visible solo para Tipo E. En la lista se muestra como "Mantº Errores <app>".
+  { moduleKey: "niveles", fieldKey: "aplicacion", label: "Aplicación", kind: "relation", relationModuleKey: "aplicaciones", visibleWhen: { field: "tipoNivel", equals: "E" }, placeholder: "Aplicación cubierta por el mantenimiento contra errores" },
   { moduleKey: "niveles", fieldKey: "precio", label: "Valor", kind: "money", required: true, placeholder: "Importe de la cuota, precio/hora o nº de horas, según Tipo y Modelo." },
   { moduleKey: "niveles", fieldKey: "descripcion", label: "Descripción", kind: "textarea", placeholder: "Qué cubre este Nivel y cuándo aplica" },
 ];
