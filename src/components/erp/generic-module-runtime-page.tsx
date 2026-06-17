@@ -2014,15 +2014,23 @@ export default function GenericModuleRuntimePage({
                             }
                           }
                           const valStr = val == null || val === "" ? "—" : String(val);
-                          // Test 23 — Niveles Tipo E: la columna Servicio muestra
-                          // "Mantº Errores <aplicación>" (el Servicio de un Nivel E
-                          // es una Aplicación, guardada en el campo `aplicacion`).
+                          // Test 23 bis — Niveles Tipo E: la columna Servicio
+                          // muestra SOLO el texto fijo "Mantº Errores" (la
+                          // aplicación va en su propia columna Aplicación).
                           if (moduleKey === "niveles" && col.fieldKey === "servicio" && String(item.tipoNivel || "").toUpperCase() === "E") {
-                            const appRaw = String(item.aplicacion || "").trim();
-                            const appLabel = appRaw ? labelForValue("aplicacion", appRaw) : "";
                             return (
                               <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569" }}>
-                                {appLabel ? "Mantº Errores " + appLabel : <span style={{ color: "#94a3b8" }}>—</span>}
+                                Mantº Errores
+                              </td>
+                            );
+                          }
+                          // Test 23 bis — Niveles: la columna Aplicación muestra el
+                          // CÓDIGO de la aplicación (el valor crudo es ya el código;
+                          // no lo resolvemos a nombre, que es más largo).
+                          if (moduleKey === "niveles" && col.fieldKey === "aplicacion") {
+                            return (
+                              <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569" }}>
+                                {valStr === "—" ? <span style={{ color: "#94a3b8" }}>—</span> : valStr}
                               </td>
                             );
                           }
