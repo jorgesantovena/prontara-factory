@@ -599,6 +599,19 @@ export default function GenericModuleRuntimePage({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const columnKeys = (ui.tableColumns || []).map((c) => c.fieldKey);
+    // Test 24 — Campos extra que la búsqueda estándar cubre por módulo
+    // (además del campo primario y las columnas visibles). Resuelve que la
+    // búsqueda no localizaba Proveedor/Concepto (Compras), Empleado/Tipo
+    // (Gastos), Tipo+Subtipo+Servicio (Niveles), el agente (Zonas) ni el
+    // Tercero (Cuentas bancarias).
+    const EXTRA_SEARCH: Record<string, string[]> = {
+      compras: ["proveedor", "concepto"],
+      gastos: ["empleado", "tipo", "descripcion"],
+      niveles: ["tipoNivel", "subtipo", "servicio", "aplicacion"],
+      "zonas-comerciales": ["agenteResponsable", "codigo"],
+      "cuentas-bancarias": ["nombre", "idTercero", "tipoTercero", "iban"],
+    };
+    const extraSearchKeys = EXTRA_SEARCH[moduleKey] || [];
     return rows.filter((item) => {
       // TEST-8bis2 — Filtros multi-select: cada Set permite varios valores.
       // Set vacío = no filtra. Si tiene valores, el item pasa si su valor
@@ -610,7 +623,9 @@ export default function GenericModuleRuntimePage({
         if (!estadoFilter.has(estadoVal)) return false;
       }
       if (segmentoFilter.size > 0) {
-        const seg = String(item.segmento || item.tipo || "").toLowerCase();
+        // Test 24 — También Niveles por Tipo (tipoNivel) cuando no hay
+        // segmento/tipo (desarrolla el filtro de Niveles).
+        const seg = String(item.segmento || item.tipo || item.tipoNivel || "").toLowerCase();
         if (!segmentoFilter.has(seg)) return false;
       }
       if (responsableFilter.size > 0) {
@@ -650,6 +665,8 @@ export default function GenericModuleRuntimePage({
           if (k === "id" || k === "contactosJson") continue;
           parts.push(String(item[k] || ""));
         }
+        // Test 24 — Campos extra de búsqueda específicos del módulo.
+        for (const k of extraSearchKeys) parts.push(String(item[k] || ""));
         // Datos del contacto preferido (en clientes)
         if (moduleKey === "clientes" && item.contactosJson) {
           try {
@@ -1663,10 +1680,11 @@ export default function GenericModuleRuntimePage({
                   accent={accent}
                 />
                 <CheckboxFilterGroup
-                  label="Segmento"
+                  label={ui.fields.some((f) => f.key === "tipoNivel") && !ui.fields.some((f) => f.key === "segmento" || f.key === "tipo") ? "Tipo" : "Segmento"}
                   options={
                     ui.fields.some((f) => f.key === "segmento") ? fieldOptions("segmento")
                       : ui.fields.some((f) => f.key === "tipo") ? fieldOptions("tipo")
+                      : ui.fields.some((f) => f.key === "tipoNivel") ? fieldOptions("tipoNivel")
                       : []
                   }
                   selected={segmentoFilter}
@@ -1685,18 +1703,9 @@ export default function GenericModuleRuntimePage({
                 {/* TEST-11 — Filtros de búsqueda (Cliente / Proyecto) y de
                     rango de fechas (Fecha desde / Fecha hasta), solo si el
                     módulo tiene los campos correspondientes. */}
-                {ui.fields.some((f) => f.key === "cliente") ? (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={filterLabel}>Cliente</div>
-                    <input
-                      type="text"
-                      value={clienteQuery}
-                      onChange={(e) => { setClienteQuery(e.target.value); setPage(1); }}
-                      placeholder="Buscar por cliente…"
-                      style={{ width: "100%", padding: "6px 8px", border: "1px solid #e5e7eb", borderRadius: 6, fontSize: 13, boxSizing: "border-box" }}
-                    />
-                  </div>
-                ) : null}
+                {/* Test 24 — Filtro "Cliente" eliminado: la búsqueda estándar
+                    ya localiza por cliente (Propuestas, Contratos, Proyectos,
+                    Tareas, Avisos, Facturas), así que era redundante. */}
                 {ui.fields.some((f) => f.key === "proyecto") ? (
                   <div style={{ marginBottom: 10 }}>
                     <div style={filterLabel}>Proyecto</div>
