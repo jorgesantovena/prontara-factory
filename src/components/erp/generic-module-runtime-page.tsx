@@ -593,8 +593,20 @@ export default function GenericModuleRuntimePage({
   const estadoFieldKey = useMemo(() => {
     if (ui.fields.some((f) => f.key === "estado")) return "estado";
     if (ui.fields.some((f) => f.key === "fase")) return "fase";
-    return null;
+    // Test 24 — Si el módulo no tiene estado/fase, usamos su primer campo de
+    // tipo `status` como filtro principal. Así los maestros que no tenían
+    // filtro pasan a tenerlo: Empleados→esBaja, Tipos cliente→esFacturable,
+    // Niveles→tipoNivel.
+    const firstStatus = ui.fields.find((f) => f.kind === "status");
+    return firstStatus ? firstStatus.key : null;
   }, [ui.fields]);
+  // Test 24 — Etiqueta del filtro de estado: "Estado"/"Fase" o, si es un
+  // campo status de fallback, su propia etiqueta (¿Baja?, Facturable, Tipo…).
+  const estadoFilterLabel = estadoFieldKey === "fase"
+    ? "Fase"
+    : (estadoFieldKey && estadoFieldKey !== "estado"
+        ? (ui.fields.find((f) => f.key === estadoFieldKey)?.label || "Estado")
+        : "Estado");
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -623,9 +635,7 @@ export default function GenericModuleRuntimePage({
         if (!estadoFilter.has(estadoVal)) return false;
       }
       if (segmentoFilter.size > 0) {
-        // Test 24 — También Niveles por Tipo (tipoNivel) cuando no hay
-        // segmento/tipo (desarrolla el filtro de Niveles).
-        const seg = String(item.segmento || item.tipo || item.tipoNivel || "").toLowerCase();
+        const seg = String(item.segmento || item.tipo || "").toLowerCase();
         if (!segmentoFilter.has(seg)) return false;
       }
       if (responsableFilter.size > 0) {
@@ -1409,7 +1419,7 @@ export default function GenericModuleRuntimePage({
   if (estadoFilter.size > 0) activeChips.push({
     key: "estado",
     // TEST-17 bis 2 B — Etiqueta del chip = Fase si el módulo usa fase.
-    label: (estadoFieldKey === "fase" ? "Fase: " : "Estado: ") + Array.from(estadoFilter).join(", "),
+    label: estadoFilterLabel + ": " + Array.from(estadoFilter).join(", "),
     onClear: () => setEstadoFilter(new Set()),
   });
   if (segmentoFilter.size > 0) activeChips.push({
@@ -1673,18 +1683,17 @@ export default function GenericModuleRuntimePage({
                     `fase` (CRM) en vez de `estado`, el filtro pasa a
                     etiquetarse y a operar sobre `fase`. */}
                 <CheckboxFilterGroup
-                  label={estadoFieldKey === "fase" ? "Fase" : "Estado"}
+                  label={estadoFilterLabel}
                   options={estadoFieldKey ? fieldOptions(estadoFieldKey) : []}
                   selected={estadoFilter}
                   onChange={(next) => { setEstadoFilter(next); setPage(1); }}
                   accent={accent}
                 />
                 <CheckboxFilterGroup
-                  label={ui.fields.some((f) => f.key === "tipoNivel") && !ui.fields.some((f) => f.key === "segmento" || f.key === "tipo") ? "Tipo" : "Segmento"}
+                  label="Segmento"
                   options={
                     ui.fields.some((f) => f.key === "segmento") ? fieldOptions("segmento")
                       : ui.fields.some((f) => f.key === "tipo") ? fieldOptions("tipo")
-                      : ui.fields.some((f) => f.key === "tipoNivel") ? fieldOptions("tipoNivel")
                       : []
                   }
                   selected={segmentoFilter}
