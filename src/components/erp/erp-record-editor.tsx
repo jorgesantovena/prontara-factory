@@ -1082,7 +1082,11 @@ function FieldInput({ field, value, onChange, options, accent, forceReadOnly, la
   // en el alta de Proyecto desde un Contrato.
   const isReadOnly = !!field.readOnly || !!forceReadOnly;
   const labelEl = (
-    <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
+    // Test 25 bis — `translate="no"`: el traductor del navegador (Pedro lo
+    // tenía activo) traducía las etiquetas y las mostraba duplicadas
+    // ("Dieta (€/Km)" + "Dieta (€/km)", "Punto" + "Point"). Los nombres de
+    // campo del ERP no deben traducirse.
+    <label translate="no" style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#334155", marginBottom: 6 }}>
       {fieldLabel}
       {field.required ? <span style={{ color: "#dc2626", marginLeft: 4 }}>*</span> : null}
       {isReadOnly ? <span style={{ color: "#94a3b8", marginLeft: 6, fontWeight: 400 }} title="Campo de solo lectura (heredado, calculado o de proceso)">🔒</span> : null}

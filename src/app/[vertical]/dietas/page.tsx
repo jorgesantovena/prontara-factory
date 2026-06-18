@@ -19,6 +19,12 @@ function num(v: unknown): number {
 function fmt(n: number): string {
   return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+// Test 25 bis — Fecha en formato dd-mm-aaaa (la lista la mostraba invertida).
+function fmtFecha(ymd: string): string {
+  const s = String(ymd || "").slice(0, 10);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? m[3] + "-" + m[2] + "-" + m[1] : s;
+}
 
 export default function DietasPage() {
   const [empleados, setEmpleados] = useState<Array<{ value: string; label: string }>>([]);
@@ -76,7 +82,7 @@ export default function DietasPage() {
   function exportCSV() {
     const sep = ";";
     const header = ["Empleado", "Fecha", "Cliente", "Km", "Dieta", "Total"].join(sep);
-    const body = rows.map((x) => [x.empleado, x.fecha, x.cliente, fmt(x.km), fmt(x.dieta), fmt(x.total)].join(sep)).join("\n");
+    const body = rows.map((x) => [x.empleado, fmtFecha(x.fecha), x.cliente, fmt(x.km), fmt(x.dieta), fmt(x.total)].join(sep)).join("\n");
     const foot = ["", "", "", "", "Total Dietas", fmt(total)].join(sep);
     const csv = "﻿" + header + "\n" + body + "\n" + foot;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -139,7 +145,7 @@ export default function DietasPage() {
               {rows.map((x) => (
                 <tr key={x.id} style={{ borderTop: "1px solid #f1f5f9" }}>
                   <Td>{x.empleado}</Td>
-                  <Td>{x.fecha}</Td>
+                  <Td>{fmtFecha(x.fecha)}</Td>
                   <Td>{x.cliente}</Td>
                   <Td align="right">{fmt(x.km)}</Td>
                   <Td align="right">{fmt(x.dieta)}</Td>
