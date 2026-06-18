@@ -102,21 +102,33 @@ export type PrefacturaOpts = {
   proyectos?: ProyectoLite[];
   // Test 23 — Aplicaciones/Contrato para la cuota trimestral de Mantº Errores.
   aplicacionesContrato?: AplicacionContrato[];
+  // Test 25 — Desplazamientos para el modelo "desplazamiento".
+  desplazamientos?: DesplazamientoLite[];
+};
+
+// Test 25 — Desplazamiento (para la pre-facturación por kilómetros).
+export type DesplazamientoLite = {
+  fecha?: string; // YYYY-MM-DD
+  cliente?: string; // Punto = cliente
+  kilometros?: number;
+  importeTotal?: number; // Total Venta (Km × Precio Venta)
+  facturable?: string;
+  estado?: string;
 };
 
 export type LineaPrefactura = {
-  caso: "A" | "B";
+  caso: "A" | "B" | "D";
   contrato: string;
   cliente: string;
   tipoNivel: string;
   subtipo: string;
   periodo: string;
-  modelo: "cuota" | "horas";
+  modelo: "cuota" | "horas" | "desplazamiento";
   bolsa: number;
   precio: number;
   consumo: number;
   facturadas: number;
-  horasAFacturar: number; // para Caso A: bolsa. Para Caso B: max(0, consumo-bolsa-facturadas)
+  horasAFacturar: number; // Caso A: bolsa. Caso B: exceso. Desplazamiento: Total Km.
   importe: number;
   // Test 19 bis G — Desglose del exceso por servicio (Caso B), si hay
   // Niveles Horas por servicio y tareas del mes. Vacío en el caso plano.
@@ -337,18 +349,66 @@ export function calcularMantErrores(contrato: Contrato, niveles: Nivel[], acApps
 }
 
 /**
+ * Test 25 — Pre-facturación de Desplazamientos (modelo "desplazamiento").
+ * Selecciona los desplazamientos facturables en la ventana de meses del
+ * periodo (Mensual=1, Trimestral=3, Semestral=6, Anual=12, terminando en
+ * `fecha`), los agrupa por Cliente y genera una línea por cliente con el
+ * Total Km y el importe (suma de Total Venta de cada desplazamiento).
+ */
+export function prefacturarDesplazamientos(desplazamientos: DesplazamientoLite[], periodo: string, fecha?: string): LineaPrefactura[] {
+  const monthsBack: Record<string, number> = { mensual: 1, trimestral: 3, semestral: 6, anual: 12, discreto: 1 };
+  const n = monthsBack[String(periodo)] || 1;
+  const ymToNum = (ym: string) => { const [y, m] = ym.split("-").map(Number); return (y || 0) * 12 + ((m || 1) - 1); };
+  const end = fecha ? ymToNum(fecha) : null;
+  const start = end != null ? end - (n - 1) : null;
+  const porCliente = new Map<string, { km: number; importe: number }>();
+  for (const d of desplazamientos) {
+    if (String(d.facturable || "").toLowerCase() === "no") continue;
+    if (String(d.estado || "").toLowerCase() === "anulado") continue;
+    if (end != null && start != null) {
+      const ym = String(d.fecha || "").slice(0, 7);
+      if (!ym) continue;
+      const num = ymToNum(ym);
+      if (num < start || num > end) continue;
+    }
+    const cli = String(d.cliente || "(sin cliente)");
+    const acc = porCliente.get(cli) || { km: 0, importe: 0 };
+    acc.km += parseNum(d.kilometros);
+    acc.importe += parseNum(d.importeTotal);
+    porCliente.set(cli, acc);
+  }
+  const out: LineaPrefactura[] = [];
+  for (const [cli, acc] of porCliente.entries()) {
+    if (acc.km <= 0 && acc.importe <= 0) continue;
+    const km = Math.round(acc.km * 100) / 100;
+    out.push({
+      caso: "D", contrato: "", cliente: cli, tipoNivel: "", subtipo: "", periodo,
+      modelo: "desplazamiento", bolsa: 0, precio: 0, consumo: 0, facturadas: 0,
+      horasAFacturar: km, importe: Math.round(acc.importe * 100) / 100,
+      notas: "Desplazamientos " + periodo + ": " + km + " Km",
+    });
+  }
+  return out;
+}
+
+/**
  * Pre-facturación combinada: aplica el caso A o B según el modelo
  * elegido, sobre los contratos que cumplen los filtros (periodo, y
  * para el caso B también Tipo Nivel = M). Test 23: en cuota trimestral
- * añade las líneas de Mantº Errores por aplicación.
+ * añade las líneas de Mantº Errores por aplicación. Test 25: modelo
+ * "desplazamiento" procesa los desplazamientos por kilómetros.
  */
 export function prefacturar(
   contratos: Contrato[],
   niveles: Nivel[],
-  modelo: "cuota" | "horas",
+  modelo: "cuota" | "horas" | "desplazamiento",
   periodo: string,
   opts?: PrefacturaOpts,
 ): LineaPrefactura[] {
+  // Test 25 — Modelo Desplazamiento: proceso aparte (no por contratos).
+  if (modelo === "desplazamiento") {
+    return prefacturarDesplazamientos(opts?.desplazamientos || [], periodo, opts?.fecha);
+  }
   const elegibles = contratos.filter((c) => {
     const estado = String(c.estado || "").toLowerCase();
     if (estado === "cancelado") return false;

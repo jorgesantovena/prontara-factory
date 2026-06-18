@@ -31,7 +31,7 @@ type Linea = {
   notas: string;
 };
 
-type Modelo = "cuota" | "horas";
+type Modelo = "cuota" | "horas" | "desplazamiento";
 type Periodo = "mensual" | "trimestral" | "semestral" | "anual" | "discreto";
 
 const PERIODO_LABEL: Record<Periodo, string> = {
@@ -117,6 +117,7 @@ export default function PreFacturacionPage() {
           <select value={modelo} onChange={(e) => setModelo(e.target.value as Modelo)} style={ipt}>
             <option value="cuota">Cuota</option>
             <option value="horas">Horas (excesos)</option>
+            <option value="desplazamiento">Desplazamiento (Km)</option>
           </select>
           <label style={{ fontSize: 12, color: "#475569", fontWeight: 700, marginLeft: 12 }}>Periodo:</label>
           <select

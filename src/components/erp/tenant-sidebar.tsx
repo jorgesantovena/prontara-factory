@@ -86,6 +86,11 @@ const MODULE_ORDER = [
   "tareas",
   "tickets",
   "compras",
+  // Test 25 — Gastos, Desplazamientos y Dietas juntos en Administración
+  // (Dietas justo debajo de Desplazamientos, como pidió Pedro).
+  "gastos",
+  "desplazamientos",
+  "dietas",
   "productos",
   "reservas",
   "encuestas",
@@ -173,6 +178,7 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   documentos: "administracion",
   gastos: "administracion",
   desplazamientos: "administracion",
+  dietas: "administracion",
   inventario: "administracion",
   mantenimiento: "administracion",
   cau: "administracion",
@@ -270,7 +276,7 @@ const FALLBACK_LABELS: Record<string, string> = {
 
 // Módulos "virtuales" que no vienen del pack (no tienen entrada en
 // config.modules) pero sí tienen página propia. Los mostramos siempre.
-const VIRTUAL_MODULES = new Set(["produccion"]);
+const VIRTUAL_MODULES = new Set(["produccion", "dietas"]);
 
 // TEST-5.S — Módulos universales del runtime que están disponibles para
 // CUALQUIER vertical aunque el pack no los enumere (ej. Reportes,
@@ -449,10 +455,16 @@ export default function TenantSidebar() {
     // TEST-5.S — Saltar módulos sin ruta para evitar 404.
     if (MODULES_WITHOUT_ROUTE.has(key)) continue;
     if (VIRTUAL_MODULES.has(key)) {
-      // Solo mostramos producción si el vertical lo soporta. Lo deducimos:
-      // si "tareas" o "incidencias" están activas en el pack, hay
-      // producción. En caso contrario lo ocultamos.
-      if (config) {
+      if (key === "dietas") {
+        // Test 25 — Dietas solo si el vertical tiene Desplazamientos.
+        if (config) {
+          const desp = config.modules.find((mm) => mm.moduleKey === "desplazamientos");
+          if (!(desp && desp.enabled !== false)) continue;
+        }
+      } else if (config) {
+        // Solo mostramos producción si el vertical lo soporta. Lo deducimos:
+        // si "tareas" o "incidencias" están activas en el pack, hay
+        // producción. En caso contrario lo ocultamos.
         const tareas = config.modules.find((mm) => mm.moduleKey === "tareas");
         const incidencias = config.modules.find((mm) => mm.moduleKey === "incidencias");
         const enabled =

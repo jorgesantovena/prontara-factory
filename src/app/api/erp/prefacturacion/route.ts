@@ -9,6 +9,7 @@ import {
   type Actividad,
   type ProyectoLite,
   type AplicacionContrato,
+  type DesplazamientoLite,
 } from "@/lib/verticals/software-factory/prefacturacion-engine";
 import { captureError } from "@/lib/observability/error-capture";
 import { ensureTest19Seed } from "@/lib/verticals/software-factory/ensure-test19-seed";
@@ -40,7 +41,8 @@ export async function GET(request: NextRequest) {
     if (!session) return NextResponse.json({ ok: false, error: "Sesión inválida." }, { status: 401 });
 
     const modeloRaw = String(request.nextUrl.searchParams.get("modelo") || "cuota").toLowerCase();
-    const modelo: "cuota" | "horas" = modeloRaw === "horas" ? "horas" : "cuota";
+    const modelo: "cuota" | "horas" | "desplazamiento" =
+      modeloRaw === "horas" ? "horas" : modeloRaw === "desplazamiento" ? "desplazamiento" : "cuota";
 
     const periodoRaw = String(request.nextUrl.searchParams.get("periodo") || "mensual").toLowerCase();
     const PERIODOS = ["mensual", "trimestral", "semestral", "anual", "discreto"] as const;
@@ -142,11 +144,26 @@ export async function GET(request: NextRequest) {
       }));
     }
 
+    // Test 25 — Modelo Desplazamiento: cargamos los desplazamientos.
+    let desplazamientos: DesplazamientoLite[] = [];
+    if (modelo === "desplazamiento") {
+      const dRaw = await listModuleRecordsAsync("desplazamientos", session.clientId);
+      desplazamientos = (dRaw as Array<Record<string, string>>).map((d) => ({
+        fecha: String(d.fecha || ""),
+        cliente: String(d.puntoVenta || d.cliente || ""),
+        kilometros: parseNum(d.kilometros),
+        importeTotal: parseNum(d.importeTotal),
+        facturable: String(d.facturable || ""),
+        estado: String(d.estado || ""),
+      }));
+    }
+
     const lineas: LineaPrefactura[] = prefacturar(contratos, niveles, modelo, periodo, {
       fecha: fecha || undefined,
       actividades,
       proyectos,
       aplicacionesContrato,
+      desplazamientos,
     });
     const totalImporte = lineas.reduce((s, l) => s + l.importe, 0);
     const totalHoras = lineas.reduce((s, l) => s + l.horasAFacturar, 0);

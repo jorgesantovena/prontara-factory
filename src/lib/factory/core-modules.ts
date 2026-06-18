@@ -247,7 +247,9 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "no", label: "Activo" }, { value: "si", label: "Baja" },
   ] },
   { moduleKey: "empleados", fieldKey: "fechaBaja", label: "Fecha baja", kind: "date", visibleWhen: { field: "esBaja", equals: "si" } },
-  { moduleKey: "empleados", fieldKey: "tarifaHora", label: "Tarifa hora", kind: "money" },
+  // Test 25 — "Tarifa hora" sustituida por "Dieta (€/Km)": importe por km
+  // que se paga al empleado por sus desplazamientos.
+  { moduleKey: "empleados", fieldKey: "dieta", label: "Dieta (€/Km)", kind: "money" },
   { moduleKey: "empleados", fieldKey: "notas", label: "Notas", kind: "textarea" },
 
   // H7-C3 Actividades — TEST-11 (Pedro): rediseño Parte de horas.
@@ -469,9 +471,13 @@ export const CORE_FIELDS: SectorPackField[] = [
   // la herencia de la tarea origen. El editor lo rellena al elegir
   // tarea (que a su vez tiene cliente). Editable si procede.
   { moduleKey: "desplazamientos", fieldKey: "kilometros", label: "Km", kind: "number", required: true, inheritFrom: { from: "cliente", field: "kilometrosBase" }, placeholder: "Heredado del cliente al elegir tarea" },
-  { moduleKey: "desplazamientos", fieldKey: "precioFijo", label: "Precio fijo (€)", kind: "money" },
-  { moduleKey: "desplazamientos", fieldKey: "precioKm", label: "Precio €/km", kind: "money" },
-  { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total", kind: "money" },
+  // Test 25 — Desplazamientos rediseñados: fuera "Precio fijo"; Precio Venta
+  // (€/Km, heredado del Nivel Kilómetros del contrato), Total Venta
+  // (=Precio Venta × Km), Dieta (€/Km del empleado) y Total Dietas (=Dieta × Km).
+  { moduleKey: "desplazamientos", fieldKey: "precioKm", label: "Precio Venta (€/Km)", kind: "money", placeholder: "Heredado del Nivel Kilómetros del contrato" },
+  { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total Venta", kind: "money", readOnly: true, placeholder: "Precio Venta × Km" },
+  { moduleKey: "desplazamientos", fieldKey: "dieta", label: "Dieta (€/Km)", kind: "money", placeholder: "Heredado de la Dieta del empleado" },
+  { moduleKey: "desplazamientos", fieldKey: "totalDietas", label: "Total Dietas", kind: "money", readOnly: true, placeholder: "Dieta × Km" },
   // Test 18 bis 2 B — Facturable heredado de la Tarea (actividades.facturable).
   { moduleKey: "desplazamientos", fieldKey: "facturable", label: "Facturable", kind: "status", required: true, inheritFrom: { from: "tarea", field: "facturable" }, options: [{ value: "si", label: "Sí" }, { value: "no", label: "No" }] },
   // Test 18 bis 2 B — Estado por defecto = Borrador.
@@ -541,9 +547,12 @@ export const CORE_FIELDS: SectorPackField[] = [
     { value: "E", label: "E (Mantenimiento contra errores)" },
   ] },
   { moduleKey: "niveles", fieldKey: "subtipo", label: "Subtipo", kind: "text", required: true, placeholder: "1, 2, 3, 4 para Tipo M. Libre para A y B (ej. 'BX-2026-01')" },
-  { moduleKey: "niveles", fieldKey: "modelo", label: "Modelo", kind: "status", required: true, defaultValue: "cuota", placeholder: "Cuota (cuota fija) / Horas (€/h, exceso o consumo directo)", options: [
+  { moduleKey: "niveles", fieldKey: "modelo", label: "Modelo", kind: "status", required: true, defaultValue: "cuota", placeholder: "Cuota (cuota fija) / Horas (€/h) / Kilómetros (€/Km)", options: [
     { value: "cuota", label: "Cuota" },
     { value: "horas", label: "Horas" },
+    // Test 25 — Modelo Kilómetros: el Valor se mide en €/Km (precio de venta
+    // del desplazamiento por el Nivel del contrato).
+    { value: "kilometros", label: "Kilómetros" },
   ] },
   // Test 19 bis 2 — Bolsa ELIMINADA de Niveles: la bolsa de horas la aporta
   // ahora un Nivel Tipo B referenciado por el contrato (campo subtipoBono).
@@ -738,9 +747,11 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   // tarea, no se repite).
   { moduleKey: "desplazamientos", fieldKey: "fecha", label: "Fecha", isPrimary: true },
   { moduleKey: "desplazamientos", fieldKey: "empleado", label: "Empleado" },
-  { moduleKey: "desplazamientos", fieldKey: "tarea", label: "Tarea" },
   { moduleKey: "desplazamientos", fieldKey: "kilometros", label: "Km" },
-  { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total" },
+  { moduleKey: "desplazamientos", fieldKey: "precioKm", label: "Precio Venta" },
+  { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total Venta" },
+  { moduleKey: "desplazamientos", fieldKey: "dieta", label: "Dieta" },
+  { moduleKey: "desplazamientos", fieldKey: "totalDietas", label: "Total Dietas" },
   { moduleKey: "desplazamientos", fieldKey: "facturable", label: "Fact." },
   { moduleKey: "desplazamientos", fieldKey: "estado", label: "Estado" },
 
@@ -833,7 +844,7 @@ export const CORE_DEMO_DATA: Array<{ moduleKey: string; records: Array<Record<st
     { codigo: "N", nombre: "3-NORMAL", nivel: "3", recargoPct: "0", color: "#475569" },
   ]},
   { moduleKey: "empleados", records: [
-    { codigoCorto: "OP", nombre: "Operador principal", email: "operador@empresa.com", rol: "Administrador", esBaja: "no", tarifaHora: "55 EUR" },
+    { codigoCorto: "OP", nombre: "Operador principal", email: "operador@empresa.com", rol: "Administrador", esBaja: "no", dieta: "0,19" },
   ]},
   // H8.5 — Formas de pago típicas españolas
   { moduleKey: "formas-pago", records: [

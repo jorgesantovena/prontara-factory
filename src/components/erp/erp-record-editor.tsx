@@ -1013,6 +1013,7 @@ function nivelesValorLabel(tipoNivel?: string, modelo?: string): string {
   if (m === "cuota" && (t === "M" || t === "A")) return "Importe (€)";
   if (m === "horas" && t === "M") return "Precio (€/h)";
   if (m === "horas" && (t === "A" || t === "B")) return "Horas (h)";
+  if (m === "kilometros") return "Precio (€/Km)"; // Test 25
   return "Valor";
 }
 

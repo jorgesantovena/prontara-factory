@@ -202,6 +202,13 @@ export async function POST(request: NextRequest) {
         } catch (e) {
           captureError(e, { scope: "actividades → recalcularConsumoContrato" });
         }
+        // Test 25 — Si la Tarea es un Desplazamiento, generar el registro
+        // de Desplazamiento con los valores heredados.
+        try {
+          await crearDesplazamientoDesdeTarea(created as Record<string, string>, tenant);
+        } catch (e) {
+          captureError(e, { scope: "actividades → crearDesplazamiento" });
+        }
       }
       return NextResponse.json({ ok: true, row: created });
     }
@@ -500,4 +507,56 @@ async function recalcularFacturadoContrato(contratoRef: string, tenant: string):
   const next = totalHoras.toFixed(2).replace(".", ",");
   if (String(con.facturadas || "") === next) return;
   await updateModuleRecordAsync("contratos", String(con.id || ""), { ...con, facturadas: next }, tenant);
+}
+
+// Test 25 — Trigger: al dar de alta una Tarea con Lugar = Desplazamiento,
+// crea el registro de Desplazamiento heredando Tarea, Fecha, Empleado,
+// Punto (cliente), Km (del cliente), Facturable, Estado=Borrador, Precio
+// Venta (del Nivel Kilómetros del contrato del proyecto), Total Venta,
+// Dieta (del empleado) y Total Dietas.
+async function crearDesplazamientoDesdeTarea(tarea: Record<string, string>, tenant: string): Promise<void> {
+  if (String(tarea.lugar || "").toLowerCase() !== "desplazamiento") return;
+  const [clientes, empleados, proyectos, contratos, niveles] = await Promise.all([
+    listModuleRecordsAsync("clientes", tenant),
+    listModuleRecordsAsync("empleados", tenant),
+    listModuleRecordsAsync("proyectos", tenant),
+    listModuleRecordsAsync("contratos", tenant),
+    listModuleRecordsAsync("niveles", tenant),
+  ]);
+  const arr = (x: unknown) => (Array.isArray(x) ? x : []) as Array<Record<string, string>>;
+  const clienteName = String(tarea.cliente || "");
+  const cli = arr(clientes).find((c) => String(c.nombre || "") === clienteName);
+  const km = parseHorasNumber(cli?.kilometrosBase || "0");
+  const empName = String(tarea.empleado || "");
+  const emp = arr(empleados).find((e) => String(e.nombre || "") === empName);
+  const dieta = parseHorasNumber(emp?.dieta || "0");
+  // Nivel Kilómetros del Contrato del Proyecto de la Tarea.
+  let contratoRef = String(tarea.contrato || "").trim();
+  if (!contratoRef) {
+    const proy = arr(proyectos).find((p) => String(p.nombre || "") === String(tarea.proyecto || "") || String(p.id || "") === String(tarea.proyecto || ""));
+    contratoRef = String(proy?.contrato || "");
+  }
+  const con = arr(contratos).find((c) => String(c.codigo || "") === contratoRef || String(c.id || "") === contratoRef);
+  let precioKm = 0;
+  if (con) {
+    const niv = arr(niveles).find((n) =>
+      String(n.tipoNivel).toUpperCase() === String(con.tipoNivel).toUpperCase() &&
+      String(n.subtipo) === String(con.subtipo) &&
+      String(n.modelo).toLowerCase() === "kilometros");
+    precioKm = parseHorasNumber(niv?.precio || "0");
+  }
+  const num = (n: number) => (Math.round(n * 100) / 100).toString();
+  await createModuleRecordAsync("desplazamientos", {
+    tarea: String(tarea.id || ""),
+    fecha: String(tarea.fecha || ""),
+    empleado: empName,
+    puntoVenta: clienteName,
+    kilometros: num(km),
+    precioKm: num(precioKm),
+    importeTotal: num(km * precioKm),
+    dieta: num(dieta),
+    totalDietas: num(km * dieta),
+    facturable: String(tarea.facturable || ""),
+    estado: "borrador",
+  }, tenant);
 }
