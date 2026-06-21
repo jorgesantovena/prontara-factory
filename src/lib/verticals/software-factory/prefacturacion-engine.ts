@@ -14,12 +14,17 @@
  *                de la cuota del periodo — Test 19 bis G).
  *
  *   Caso B — Excesos sobre cuota de mantenimiento
- *     Parámetros: Modelo=Horas, Periodo=Mensual.
- *     Selección: contratos con periodo Mensual + Tipo Nivel = M.
- *     Cálculo:   recupera Consumo y Facturadas del contrato.
- *                Busca el Nivel (tipoNivel=M, mismo subtipo,
- *                modelo=Horas) → Bolsa, Precio.
- *                Importe = max(0, Consumo − Bolsa − Facturadas) × Precio.
+ *     Parámetros: Modelo=Horas, Periodo=cualquiera (Pedro 21-06).
+ *     Selección: contratos con el periodo indicado + Tipo Nivel = M.
+ *     Cálculo:   Consumo = contador EN VIVO del contrato, que un trigger
+ *                incrementa con las horas de CADA Tarea al darla de alta
+ *                (no se teclea, no se recalcula por ventana). Bolsa = horas
+ *                del Bono (independiente del periodo). Facturadas = contador
+ *                del contrato (sube cuando una factura de excesos pasa a
+ *                Definitiva). Importe = max(0, Consumo − Bolsa − Facturadas)
+ *                × Precio, repartido por proyecto del más caro al más barato.
+ *                Para el DETALLE, los proyectos/horas se toman de las Tareas
+ *                de la ventana del periodo (N meses; "discreto" sin acotar).
  *
  * La key de Nivel es (tipoNivel, subtipo, modelo). Hay típicamente
  * dos rows por subtipo M (una Cuota, una Horas).
@@ -98,6 +103,9 @@ export type DesgloseServicio = {
 export type ProyectoLite = { nombre?: string; id?: string; contrato?: string; codigoTipo?: string; facturable?: string };
 export type PrefacturaOpts = {
   fecha?: string; // "YYYY-MM"
+  // Pedro 21-06 — Periodo del proceso. Acota la ventana de Tareas del Caso B
+  // (N meses hacia atrás terminando en `fecha`). Lo inyecta `prefacturar`.
+  periodo?: string;
   actividades?: Actividad[];
   proyectos?: ProyectoLite[];
   // Test 23 — Aplicaciones/Contrato para la cuota trimestral de Mantº Errores.
@@ -148,6 +156,23 @@ function parseNum(v: unknown): number {
   }
   const n = parseFloat(s.replace(",", "."));
   return Number.isFinite(n) ? n : 0;
+}
+
+// Pedro 21-06 — Ventana de meses hacia atrás según el periodo. La selección de
+// Tareas (Caso B) y de Desplazamientos abarca `MESES_PERIODO` meses terminando
+// en `fecha` (YYYY-MM). "Discreto" no acota por tiempo (se factura por
+// agotamiento de bolsa o por acuerdo puntual, no por tramos de tiempo).
+const MESES_PERIODO: Record<string, number> = { mensual: 1, trimestral: 3, semestral: 6, anual: 12, discreto: 1 };
+function ymToNum(ym: string): number { const [y, m] = String(ym).split("-").map(Number); return (y || 0) * 12 + ((m || 1) - 1); }
+function enVentanaPeriodo(fechaRegistro: string, periodo: string, fecha?: string): boolean {
+  if (String(periodo) === "discreto") return true; // sin acotación temporal
+  if (!fecha) return true; // sin mes de referencia: no se filtra por ventana
+  const ym = String(fechaRegistro || "").slice(0, 7);
+  if (!ym) return false;
+  const end = ymToNum(fecha);
+  const start = end - ((MESES_PERIODO[String(periodo)] || 1) - 1);
+  const num = ymToNum(ym);
+  return num >= start && num <= end;
 }
 
 /**
@@ -238,42 +263,49 @@ export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: Prefa
     findNivel(niveles, "M", sub, "horas");
   if (!nivelBase) return null;
 
-  const consumo = parseNum(contrato.consumo);
   const facturadas = parseNum(contrato.facturadas);
   // Test 19 bis 2 — Bolsa = horas del Bono (Nivel Tipo B referenciado por el
   // contrato). Fallback legacy: la Bolsa del Nivel M Horas (datos anteriores
-  // a bis-2, donde la Bolsa vivía en el propio Nivel).
+  // a bis-2, donde la Bolsa vivía en el propio Nivel). Pedro 21-06 (C): la
+  // bolsa es INDEPENDIENTE del periodo (no se multiplica por los meses).
   const bolsaHoras = bonoHoras(contrato, niveles) ?? parseNum(nivelBase.bolsa);
-  const HF = consumo - bolsaHoras - facturadas; // Horas a Facturar (exceso)
-  if (HF <= 0) return null; // sin exceso → no se emite línea
 
-  // Test 19 bis G — Desglose por servicio. Requiere Niveles Horas con
-  // `servicio` para este subtipo Y las tareas/proyectos del contrato.
-  // INTERPRETACIÓN (pendiente de validar por Pedro con números reales):
-  // se reparte el exceso HF entre los servicios consumidos en el mes, en
-  // orden de código de servicio, facturando cada servicio a SU precio
-  // hasta agotar HF. El último servicio puede quedar parcialmente cubierto.
+  // Niveles Horas POR SERVICIO de este subtipo (si los hay): cada proyecto se
+  // factura al precio de su servicio. Si no hay, todos al precio base.
   const nivelesServicio = niveles.filter((n) =>
     String(n.tipoNivel).toUpperCase() === "M" && String(n.subtipo) === sub &&
     String(n.modelo).toLowerCase() === "horas" && String(n.servicio || "").trim());
 
-  // Test 21 — Reparto del exceso POR PROYECTO (antes por servicio): se
-  // totalizan las horas de cada Proyecto del contrato en el mes, y cada
-  // Proyecto se factura al precio de su Servicio (Nivel M-Horas-Servicio).
+  // Pedro 21-06 (b + apunte) — Consumo AUTOMÁTICO pero como CONTADOR EN VIVO:
+  // lo mantiene un trigger que suma las horas de CADA Tarea en el momento de
+  // darla de alta (acumulaPorTarea / api module route). El motor lo LEE del
+  // campo del contrato, no lo recalcula por ventana. El exceso (Consumo −
+  // Bolsa − Facturadas) es por tanto acumulativo, no periódico.
+  const consumo = parseNum(contrato.consumo);
+  const HF = consumo - bolsaHoras - facturadas; // Horas a Facturar (exceso)
+  if (HF <= 0) return null; // sin exceso → no se emite línea
+
+  // El reparto del exceso es POR PROYECTO (Test 21), del más caro al más
+  // barato. Para el DETALLE de la factura, los proyectos/horas se toman de
+  // las Tareas dentro de la VENTANA del periodo (Pedro #4: N meses hacia
+  // atrás; "discreto" no acota). El exceso a repartir sigue siendo HF.
+  const periodo = String(opts?.periodo || contrato.periodo || "mensual");
   let horasPorProyecto: Array<{ proyecto: string; servicio: string; horas: number; precio: number }> = [];
-  if (opts?.actividades && opts?.proyectos) {
-    const servPorProyecto = new Map<string, string>();
+  const servPorProyecto = new Map<string, string>();
+  if (opts?.proyectos) {
     for (const p of opts.proyectos) {
       if (String(p.contrato || "") !== contrato.codigo) continue;
       const serv = String(p.codigoTipo || "");
       if (p.nombre) servPorProyecto.set(String(p.nombre), serv);
       if (p.id) servPorProyecto.set(String(p.id), serv);
     }
+  }
+  if (opts?.actividades && servPorProyecto.size > 0) {
     const acc = new Map<string, number>();
     for (const t of opts.actividades) {
       const proy = String(t.proyecto || "");
       if (!servPorProyecto.has(proy)) continue; // la tarea no es de este contrato
-      if (opts.fecha && String(t.fecha || "").slice(0, 7) !== opts.fecha) continue;
+      if (!enVentanaPeriodo(String(t.fecha || ""), periodo, opts.fecha)) continue;
       acc.set(proy, (acc.get(proy) || 0) + parseNum(t.tiempoHoras));
     }
     horasPorProyecto = Array.from(acc.entries())
@@ -356,21 +388,12 @@ export function calcularMantErrores(contrato: Contrato, niveles: Nivel[], acApps
  * Total Km y el importe (suma de Total Venta de cada desplazamiento).
  */
 export function prefacturarDesplazamientos(desplazamientos: DesplazamientoLite[], periodo: string, fecha?: string): LineaPrefactura[] {
-  const monthsBack: Record<string, number> = { mensual: 1, trimestral: 3, semestral: 6, anual: 12, discreto: 1 };
-  const n = monthsBack[String(periodo)] || 1;
-  const ymToNum = (ym: string) => { const [y, m] = ym.split("-").map(Number); return (y || 0) * 12 + ((m || 1) - 1); };
-  const end = fecha ? ymToNum(fecha) : null;
-  const start = end != null ? end - (n - 1) : null;
   const porCliente = new Map<string, { km: number; importe: number }>();
   for (const d of desplazamientos) {
     if (String(d.facturable || "").toLowerCase() === "no") continue;
     if (String(d.estado || "").toLowerCase() === "anulado") continue;
-    if (end != null && start != null) {
-      const ym = String(d.fecha || "").slice(0, 7);
-      if (!ym) continue;
-      const num = ymToNum(ym);
-      if (num < start || num > end) continue;
-    }
+    // Pedro 21-06 — Misma ventana de meses por periodo que el Caso B.
+    if (fecha && !enVentanaPeriodo(String(d.fecha || ""), periodo, fecha)) continue;
     const cli = String(d.cliente || "(sin cliente)");
     const acc = porCliente.get(cli) || { km: 0, importe: 0 };
     acc.km += parseNum(d.kilometros);
@@ -421,7 +444,7 @@ export function prefacturar(
     return true;
   });
   const lineas = elegibles
-    .map((c) => (modelo === "cuota" ? calcularCasoA(c, niveles) : calcularCasoB(c, niveles, opts)))
+    .map((c) => (modelo === "cuota" ? calcularCasoA(c, niveles) : calcularCasoB(c, niveles, { ...opts, periodo })))
     .filter((x): x is LineaPrefactura => x != null);
   // Test 23 — Cuota trimestral: añadir las líneas de Mantº Errores (una por
   // aplicación de cada contrato elegible).

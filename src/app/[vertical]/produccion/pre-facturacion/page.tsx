@@ -87,11 +87,8 @@ export default function PreFacturacionPage() {
   // Auto-ejecutar al montar para que se vean líneas por defecto.
   useEffect(() => { ejecutar(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  // Caso B solo permite periodo Mensual — si el usuario está en Horas
-  // y cambia a otro periodo, forzamos a Mensual.
-  useEffect(() => {
-    if (modelo === "horas" && periodo !== "mensual") setPeriodo("mensual");
-  }, [modelo, periodo]);
+  // Pedro 21-06 — El Caso B (excesos) ya NO se limita a Mensual: el periodo
+  // elegido acota la ventana de Tareas (N meses hacia atrás). Sin forzado.
 
   const visibles = lineas
     .slice()
@@ -108,7 +105,7 @@ export default function PreFacturacionPage() {
         <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 16 }}>
           {modelo === "cuota"
             ? "Cuotas / Tarifa plana / Bonos. Una línea por contrato con periodo seleccionado. Importe = Bolsa × Precio del Nivel."
-            : "Excesos sobre cuota de mantenimiento. Solo Tipo M con periodo mensual. Importe = (Consumo − Bolsa − Facturadas) × Precio."}
+            : "Excesos sobre cuota de mantenimiento (Tipo M). El Consumo es un contador del contrato que se acumula solo con cada Tarea. Importe = (Consumo − Bolsa − Facturadas) × Precio. El periodo acota el detalle por proyecto."}
         </p>
 
         {/* Diálogo de parámetros (TEST 19 Pedro). */}
@@ -123,9 +120,8 @@ export default function PreFacturacionPage() {
           <select
             value={periodo}
             onChange={(e) => setPeriodo(e.target.value as Periodo)}
-            disabled={modelo === "horas"}
-            style={{ ...ipt, opacity: modelo === "horas" ? 0.5 : 1 }}
-            title={modelo === "horas" ? "El caso Horas (excesos) solo opera con periodo Mensual" : "Frecuencia del periodo"}
+            style={ipt}
+            title="Frecuencia del periodo. En Horas (excesos) acota el detalle por proyecto a N meses hacia atrás (Mensual=1, Trimestral=3, Semestral=6, Anual=12)."
           >
             <option value="mensual">Mensual</option>
             <option value="trimestral">Trimestral</option>
@@ -139,7 +135,7 @@ export default function PreFacturacionPage() {
             value={fecha}
             onChange={(e) => setFecha(e.target.value)}
             style={ipt}
-            title="Mes a facturar. Afecta al Caso B (Horas): desglosa el exceso por los servicios consumidos ese mes."
+            title="Mes de referencia (fin de la ventana). En Horas acota el detalle por proyecto a las Tareas de los N meses anteriores según el periodo (el Consumo total es el contador del contrato)."
           />
           <button type="button" onClick={ejecutar} style={btnPrimary} disabled={loading}>
             {loading ? "Calculando…" : "Ejecutar pre-facturación"}

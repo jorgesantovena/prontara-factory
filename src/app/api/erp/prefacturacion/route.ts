@@ -21,9 +21,10 @@ import { ensureTest19Seed } from "@/lib/verticals/software-factory/ensure-test19
  * Devuelve una línea por contrato que cumple los filtros:
  *   - Caso A (modelo=cuota): selecciona contratos con el periodo
  *     indicado. Importe = Bolsa × Precio del Nivel (Tipo+Subtipo+Cuota).
- *   - Caso B (modelo=horas): solo Tipo M, periodo Mensual.
- *     Importe = max(0, Consumo − Bolsa − Facturadas) × Precio del
- *     Nivel (M, Subtipo, Horas).
+ *   - Caso B (modelo=horas): Tipo M, periodo cualquiera (Pedro 21-06).
+ *     Consumo = Σ horas de las Tareas del contrato en la ventana del
+ *     periodo (N meses atrás). Importe = max(0, Consumo − Bolsa −
+ *     Facturadas) × Precio del Nivel (M, Subtipo, Horas).
  */
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

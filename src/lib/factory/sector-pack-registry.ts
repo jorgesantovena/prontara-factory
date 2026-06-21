@@ -624,8 +624,8 @@ const SOFTWARE_FACTORY_PACK: SectorPackDefinition = {
     { moduleKey: "contratos", fieldKey: "fechaInicio", label: "Inicio", kind: "date", placeholder: "Fecha de inicio de vigencia" },
     { moduleKey: "contratos", fieldKey: "fechaFin", label: "Fin", kind: "date", defaultValue: "9999-12-31", placeholder: "Fecha de fin (9999-12-31 = sin vencimiento)" },
     { moduleKey: "contratos", fieldKey: "referenciaPropuesta", label: "Referencia de propuesta", kind: "text", placeholder: "Código de la Propuesta de origen (opcional)" },
-    { moduleKey: "contratos", fieldKey: "consumo", label: "Consumo (h)", kind: "text", readOnly: true, placeholder: "Σ horas del año en curso de tareas facturables. Reset el 1 de enero." },
-    { moduleKey: "contratos", fieldKey: "facturadas", label: "Facturadas (h)", kind: "text", readOnly: true, placeholder: "Σ horas ya facturadas del año en curso. Reset el 1 de enero." },
+    { moduleKey: "contratos", fieldKey: "consumo", label: "Consumo (h)", kind: "text", readOnly: true, placeholder: "Automático: contador que un trigger sube con las horas de cada Tarea facturable al darla de alta (año en curso). No se teclea." },
+    { moduleKey: "contratos", fieldKey: "facturadas", label: "Facturadas (h)", kind: "text", readOnly: true, placeholder: "Automático: se acumulan cuando una factura de excesos pasa a Definitiva." },
     { moduleKey: "contratos", fieldKey: "notas", label: "Notas", kind: "textarea", placeholder: "Condiciones específicas del contrato" },
 
     // H7-S5 — CAU: tickets de soporte sobre una aplicación
