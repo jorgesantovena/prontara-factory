@@ -94,8 +94,15 @@ describe("sector-pack-integrity", () => {
         if (pack.key === "software-factory" && HUB_CHILDREN_OF_SF.has(mod)) continue;
         if (mod === "clientes" && PACKS_WITH_CUSTOM_CLIENTES.has(pack.key)) continue;
 
-        const fieldsCount = pack.fields.filter((f) => f.moduleKey === mod).length;
-        const colsCount = pack.tableColumns.filter((c) => c.moduleKey === mod).length;
+        // Un módulo puede traer su UI del pack O de CORE (módulos
+        // transversales como `niveles`, `contratos`, `desplazamientos`…),
+        // que applyCoreModulesToConfig inyecta en runtime. Contamos ambos.
+        const fieldsCount =
+          pack.fields.filter((f) => f.moduleKey === mod).length +
+          CORE_FIELDS.filter((f) => f.moduleKey === mod).length;
+        const colsCount =
+          pack.tableColumns.filter((c) => c.moduleKey === mod).length +
+          CORE_TABLE_COLUMNS.filter((c) => c.moduleKey === mod).length;
 
         expect(
           fieldsCount,
@@ -186,6 +193,10 @@ describe("core-modules-integrity", () => {
 
   it("cada core module tiene al menos 1 field y 1 tableColumn", () => {
     for (const m of CORE_MODULES) {
+      // Los módulos retirados (enabled:false, p.ej. `tipos-servicio` en
+      // TEST-12 #2) no exponen fields/columnas a propósito: no se inyectan
+      // en runtime, así que no deben exigirse aquí.
+      if (m.enabled === false) continue;
       const fields = CORE_FIELDS.filter((f) => f.moduleKey === m.moduleKey);
       const cols = CORE_TABLE_COLUMNS.filter((c) => c.moduleKey === m.moduleKey);
       expect(

@@ -463,6 +463,14 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "desplazamientos", fieldKey: "tarea", label: "Tarea vinculada", kind: "relation", relationModuleKey: "actividades", readOnly: true, placeholder: "Se rellena automáticamente desde la pestaña Desplazamientos de una Tarea" },
   { moduleKey: "desplazamientos", fieldKey: "fecha", label: "Fecha", kind: "date", required: true },
   { moduleKey: "desplazamientos", fieldKey: "empleado", label: "Empleado", kind: "relation", required: true, relationModuleKey: "empleados" },
+  // Test 26 — Cada desplazamiento por tarea genera SIEMPRE Ida y Vuelta.
+  // `sentido` los distingue; `hora` es la hora de comienzo del trayecto
+  // (Ida = Hora desde de la tarea; Vuelta = Hora hasta de la última tarea).
+  // El usuario puede anular manualmente cualquiera de los dos registros.
+  { moduleKey: "desplazamientos", fieldKey: "sentido", label: "Sentido", kind: "status", required: true, defaultValue: "ida", options: [
+    { value: "ida", label: "Ida" }, { value: "vuelta", label: "Vuelta" },
+  ] },
+  { moduleKey: "desplazamientos", fieldKey: "hora", label: "Hora", kind: "time", placeholder: "hh:mm" },
   // Test 18 bis 2 B — `cliente` eliminado (ya está en la tarea).
   // Punto: pendiente de decisión sobre el maestro `puntos-venta`. Lo
   // dejamos como estaba (relación opcional).
@@ -747,6 +755,9 @@ export const CORE_TABLE_COLUMNS: SectorPackTableColumn[] = [
   // tarea, no se repite).
   { moduleKey: "desplazamientos", fieldKey: "fecha", label: "Fecha", isPrimary: true },
   { moduleKey: "desplazamientos", fieldKey: "empleado", label: "Empleado" },
+  // Test 26 — Sentido (Ida/Vuelta) y Hora de comienzo del trayecto.
+  { moduleKey: "desplazamientos", fieldKey: "sentido", label: "Sentido" },
+  { moduleKey: "desplazamientos", fieldKey: "hora", label: "Hora" },
   { moduleKey: "desplazamientos", fieldKey: "kilometros", label: "Km" },
   { moduleKey: "desplazamientos", fieldKey: "precioKm", label: "Precio Venta" },
   { moduleKey: "desplazamientos", fieldKey: "importeTotal", label: "Total Venta" },

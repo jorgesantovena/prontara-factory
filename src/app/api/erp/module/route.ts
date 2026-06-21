@@ -546,7 +546,7 @@ async function crearDesplazamientoDesdeTarea(tarea: Record<string, string>, tena
     precioKm = parseHorasNumber(niv?.precio || "0");
   }
   const num = (n: number) => (Math.round(n * 100) / 100).toString();
-  await createModuleRecordAsync("desplazamientos", {
+  const base: Record<string, string> = {
     tarea: String(tarea.id || ""),
     fecha: String(tarea.fecha || ""),
     empleado: empName,
@@ -558,5 +558,16 @@ async function crearDesplazamientoDesdeTarea(tarea: Record<string, string>, tena
     totalDietas: num(km * dieta),
     facturable: String(tarea.facturable || ""),
     estado: "borrador",
+  };
+  // Test 26 — Cada Tarea con Lugar = Desplazamiento genera SIEMPRE dos
+  // registros: Ida y Vuelta (mismo Km, importes y dietas por trayecto). La
+  // Ida arranca a la Hora desde de la tarea; la Vuelta a la Hora hasta (fin
+  // de la última tarea introducida). El usuario puede anular manualmente
+  // cualquiera de los dos desde el listado de Desplazamientos.
+  await createModuleRecordAsync("desplazamientos", {
+    ...base, sentido: "ida", hora: String(tarea.horaDesde || ""),
+  }, tenant);
+  await createModuleRecordAsync("desplazamientos", {
+    ...base, sentido: "vuelta", hora: String(tarea.horaHasta || ""),
   }, tenant);
 }
