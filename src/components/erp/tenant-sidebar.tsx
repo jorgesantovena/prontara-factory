@@ -64,6 +64,9 @@ const MODULE_ORDER = [
   "transporte",
   "comedor",
   "biblioteca",
+  // Test 26 — "Trabajos" (alta diaria rápida) justo encima de "Tareas"
+  // (explotación). Ambos son el módulo `actividades`; Trabajos es virtual.
+  "trabajos",
   "actividades",
   "salidas",
   "becas",
@@ -133,6 +136,8 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   produccion: "operacion",
   tareas: "operacion",
   actividades: "operacion",
+  // Test 26 — Trabajos (alta diaria de partes de horas) en Operación.
+  trabajos: "operacion",
   reservas: "operacion",
   caja: "operacion",
   "puntos-venta": "operacion",
@@ -263,6 +268,8 @@ const FALLBACK_LABELS: Record<string, string> = {
   mantenimiento: "Mantenimiento",
   personal: "Personal",
   egresados: "Egresados",
+  // Test 26 — Trabajos: alta diaria del parte de horas (mismo dato que Tareas).
+  trabajos: "Trabajos",
   // CORE-03 — TEST-14 tareas → "Asignaciones".
   tareas: "Asignaciones",
   tickets: "Tickets",
@@ -276,7 +283,7 @@ const FALLBACK_LABELS: Record<string, string> = {
 
 // Módulos "virtuales" que no vienen del pack (no tienen entrada en
 // config.modules) pero sí tienen página propia. Los mostramos siempre.
-const VIRTUAL_MODULES = new Set(["produccion", "dietas"]);
+const VIRTUAL_MODULES = new Set(["produccion", "dietas", "trabajos"]);
 
 // TEST-5.S — Módulos universales del runtime que están disponibles para
 // CUALQUIER vertical aunque el pack no los enumere (ej. Reportes,
@@ -460,6 +467,15 @@ export default function TenantSidebar() {
         if (config) {
           const desp = config.modules.find((mm) => mm.moduleKey === "desplazamientos");
           if (!(desp && desp.enabled !== false)) continue;
+        }
+      } else if (key === "trabajos") {
+        // Test 26 — "Trabajos" solo donde `actividades` representa el parte de
+        // horas (su label es "Tareas", p.ej. Software Factory). En Colegio
+        // actividades = "Extracurriculares" → no aplica el alta diaria.
+        if (config) {
+          const act = config.modules.find((mm) => mm.moduleKey === "actividades");
+          if (!(act && act.enabled !== false)) continue;
+          if (labelFor("actividades").toLowerCase() !== "tareas") continue;
         }
       } else if (config) {
         // Solo mostramos producción si el vertical lo soporta. Lo deducimos:

@@ -16,6 +16,8 @@ export const MODULE_ICON: Record<string, string> = {
   proyectos: "🛠️",
   produccion: "🏭",
   actividades: "⏱️",
+  // Test 26 — Trabajos: alta diaria del parte de horas.
+  trabajos: "✍️",
   tareas: "✔️",
   reservas: "📅",
   caja: "💰",

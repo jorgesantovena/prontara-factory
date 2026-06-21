@@ -199,11 +199,19 @@ export default function GenericModuleRuntimePage({
   href,
   extraActions,
   extraRowActions,
+  labelOverride,
+  quickEntry,
 }: {
   moduleKey: string;
   href: string;
   extraActions?: React.ReactNode;
   extraRowActions?: (row: Record<string, string>) => React.ReactNode;
+  // Test 26 — "Trabajos": misma data que "Tareas" (actividades) pero como
+  // item de menú independiente orientado al alta diaria rápida.
+  // labelOverride cambia el título/botón; quickEntry abre el alta al entrar
+  // y ordena el listado por Fecha DESC + Hora desde (la jornada del día).
+  labelOverride?: string;
+  quickEntry?: boolean;
 }) {
   // TEST-1.4 — hook para construir URLs vertical-aware. Antes el dropdown
   // "Más acciones" enlazaba a /vista-kanban sin prefix de vertical →
@@ -513,6 +521,20 @@ export default function GenericModuleRuntimePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [moduleKey]);
 
+  // Test 26 — "Trabajos" (quickEntry): al entrar, abrir directamente el alta
+  // de Tarea para la captura diaria rápida. Una sola vez, si no hay ya un
+  // editor abierto. El listado de debajo sirve de confirmación de lo imputado.
+  const quickEntryOpenedRef = useRef(false);
+  useEffect(() => {
+    if (!quickEntry) return;
+    if (quickEntryOpenedRef.current) return;
+    if (modalMode !== null) return;
+    quickEntryOpenedRef.current = true;
+    setSelected(moduleKey === "actividades" ? tareaPrefill() : null);
+    setModalMode("create");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quickEntry]);
+
   // TEST-3.3 — Atajo de teclado: Supr/Delete elimina la selección actual o
   // el registro abierto en el drawer. Ignora si hay foco en input/textarea
   // o si está abierto el editor full-page (modalMode !== null).
@@ -770,13 +792,17 @@ export default function GenericModuleRuntimePage({
       });
     }
     if (moduleKey === "actividades") {
-      // Parte de horas (Tareas en SF): Fecha ASC, Empleado ABC, Cliente ABC.
+      // Test 26 — "Trabajos" (quickEntry): la captura diaria se lee mejor con
+      // lo más reciente arriba y la jornada en orden de hora: Fecha DESC,
+      // Empleado ABC, Hora desde ASC. "Tareas" (explotación) mantiene el
+      // orden histórico: Fecha ASC, Empleado ABC, Cliente ABC.
       return [...filtered].sort((a, b) => {
         const fa = String(a.fecha || "").slice(0, 10);
         const fb = String(b.fecha || "").slice(0, 10);
-        if (fa !== fb) return ABC(fa, fb);
+        if (fa !== fb) return quickEntry ? ABC(fb, fa) : ABC(fa, fb);
         const e = ABC(lower(a.empleado || a.persona), lower(b.empleado || b.persona));
         if (e !== 0) return e;
+        if (quickEntry) return ABC(String(a.horaDesde || ""), String(b.horaDesde || ""));
         return ABC(lower(a.cliente), lower(b.cliente));
       });
     }
@@ -906,7 +932,7 @@ export default function GenericModuleRuntimePage({
       if (!fa && fb) return 1;
       return rank(a.prioridad) - rank(b.prioridad);
     });
-  }, [filtered, ui.fields, moduleKey]);
+  }, [filtered, ui.fields, moduleKey, quickEntry]);
 
   // TEST-14 C — Los mini-KPIs (Total + breakdown por estado) ya no se
   // renderizan en la cabecera del listado (cabecera compactada). Se
@@ -1531,7 +1557,7 @@ export default function GenericModuleRuntimePage({
             abajo, lo que recupera ~140px verticales de espacio para la
             propia tabla, que es lo que el usuario viene a ver. */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
-          <h1 className="titulo-pagina" style={{ margin: 0, fontSize: 24 }}>{ui.label}</h1>
+          <h1 className="titulo-pagina" style={{ margin: 0, fontSize: 24 }}>{labelOverride || ui.label}</h1>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {extraActions}
             <button
@@ -1540,7 +1566,7 @@ export default function GenericModuleRuntimePage({
               className="boton boton-primario"
               style={primaryBtn(accent)}
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Alta de {singular(ui.label).toLowerCase()}
+              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Alta de {singular(labelOverride || ui.label).toLowerCase()}
             </button>
             <ImportWrapper><ModuleImportButton modulo={moduleKey} /></ImportWrapper>
             <ExportWrapper><ModuleExportButton modulo={moduleKey} /></ExportWrapper>
@@ -1573,7 +1599,7 @@ export default function GenericModuleRuntimePage({
             <input
               value={query}
               onChange={(e) => { setQuery(e.target.value); setPage(1); }}
-              placeholder={"Buscar en " + ui.label.toLowerCase() + "…"}
+              placeholder={"Buscar en " + (labelOverride || ui.label).toLowerCase() + "…"}
               style={{
                 width: "100%",
                 padding: "10px 14px 10px 36px",
