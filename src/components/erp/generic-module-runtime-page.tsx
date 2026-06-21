@@ -491,7 +491,9 @@ export default function GenericModuleRuntimePage({
     // (sin prefill). Lo emite EmptyState ("Imputar horas", "Crear cliente"...).
     const actionNew = params.get("action") === "new";
     if ((hasAny || actionNew) && modalMode === null) {
-      setSelected(hasAny ? prefill : null);
+      // Test 26 — Si es un alta de Tarea sin prefill explícito, asumimos
+      // Fecha = hoy y Empleado/Hora desde del último registro de la sesión.
+      setSelected(hasAny ? prefill : (moduleKey === "actividades" ? tareaPrefill() : null));
       setModalMode("create");
     }
     // Limpiamos los prefill_* / wf_next / action de la URL para no re-disparar al refrescar.
@@ -916,6 +918,22 @@ export default function GenericModuleRuntimePage({
   const pageStart = (page - 1) * pageSize;
   const pageRows = sorted.slice(pageStart, pageStart + pageSize);
 
+  // Test 26 — Prefill del alta de Tarea (Trabajos): Fecha = hoy, y Empleado
+  // + Hora desde recordados del último registro de la sesión, para minimizar
+  // el tecleo. Se usa al abrir "+ Alta" en el módulo actividades.
+  function tareaPrefill(): Record<string, string> {
+    const today = new Date().toISOString().slice(0, 10);
+    let last: { empleado?: string; fecha?: string; horaHasta?: string } = {};
+    if (typeof window !== "undefined") {
+      try { last = JSON.parse(window.sessionStorage.getItem("prontara-last-tarea") || "{}"); } catch { /* ignore */ }
+    }
+    return {
+      empleado: String(last.empleado || ""),
+      fecha: today,
+      horaDesde: String(last.horaHasta || ""),
+    };
+  }
+
   async function saveRecord(payload: Record<string, string>): Promise<Record<string, string> | null> {
     const tenant = readTenant();
     const sectorPack = readSectorPack();
@@ -1089,6 +1107,22 @@ export default function GenericModuleRuntimePage({
       if (seen.has(lk)) continue;
       seen.add(lk);
       out.push({ value: v, label: String(o.label || o.value) });
+    }
+    // Test 26 — Para campos `relation` (p.ej. Empleado en Tareas), incluir
+    // TODO el catálogo de la relación (no solo los valores presentes en las
+    // filas). Así el desplegable de filtro lista a todos los empleados,
+    // tengan o no tareas registradas.
+    if (f?.kind === "relation" && f.relationModuleKey) {
+      const map = columnRelationLabels[f.relationModuleKey];
+      if (map) {
+        for (const [v, label] of Object.entries(map)) {
+          const lk = String(v).toLowerCase();
+          if (v && !seen.has(lk)) {
+            seen.add(lk);
+            out.push({ value: String(v), label: String(label || v) });
+          }
+        }
+      }
     }
     for (const r of rows) {
       const v = String(r[fieldKey] ?? "").trim();
@@ -1394,9 +1428,30 @@ export default function GenericModuleRuntimePage({
               }
             }
 
+            // Test 26 — Tareas (Trabajos): minimizar el tecleo. Recordamos
+            // Empleado/Fecha/Hora-hasta del último registro de la sesión.
+            if (moduleKey === "actividades" && typeof window !== "undefined") {
+              try {
+                window.sessionStorage.setItem("prontara-last-tarea", JSON.stringify({
+                  empleado: String(payload.empleado || ""),
+                  fecha: String(payload.fecha || ""),
+                  horaHasta: String(payload.horaHasta || ""),
+                }));
+              } catch { /* sessionStorage no disponible */ }
+            }
             if (options?.andNew && modalMode === "create") {
-              // Quedarse en modo "create" con form limpio
-              setSelected(null);
+              // Test 26 — Al encadenar Tareas (Guardar y nuevo), el siguiente
+              // registro asume Empleado y Fecha, y la Hora desde = Hora hasta
+              // de la anterior (jornada sin huecos). Resto de módulos: limpio.
+              if (moduleKey === "actividades") {
+                setSelected({
+                  empleado: String(payload.empleado || ""),
+                  fecha: String(payload.fecha || ""),
+                  horaDesde: String(payload.horaHasta || ""),
+                });
+              } else {
+                setSelected(null);
+              }
               setModalMode("create");
             } else {
               setModalMode(null);
@@ -1481,7 +1536,7 @@ export default function GenericModuleRuntimePage({
             {extraActions}
             <button
               type="button"
-              onClick={() => { setSelected(null); setModalMode("create"); }}
+              onClick={() => { setSelected(moduleKey === "actividades" ? tareaPrefill() : null); setModalMode("create"); }}
               className="boton boton-primario"
               style={primaryBtn(accent)}
             >
