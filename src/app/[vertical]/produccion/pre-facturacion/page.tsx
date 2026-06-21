@@ -104,7 +104,7 @@ export default function PreFacturacionPage() {
         <h1 style={{ fontSize: 24, fontWeight: 800, color: "#0f172a", margin: "0 0 8px 0" }}>Pre-facturación</h1>
         <p style={{ color: "#6b7280", fontSize: 13, marginBottom: 16 }}>
           {modelo === "cuota"
-            ? "Cuotas / Tarifa plana / Mantenimiento contra errores. Una línea por contrato del periodo. El Valor del Nivel es ANUAL: Importe = Valor anual × fracción del periodo (trimestral ¼, semestral ½, anual 1)."
+            ? "Cuotas. Una línea por contrato del periodo. Mantenimiento (M y E): el Valor del Nivel es anual y se fracciona por el periodo (trimestral ¼, semestral ½, anual 1). Acuerdo específico (A): importe pactado, se factura entero."
             : "Excesos sobre cuota de mantenimiento (Tipo M). El Consumo es un contador del contrato que se acumula solo con cada Tarea. Importe = (Consumo − Bolsa − Facturadas) × Precio. El periodo acota el detalle por proyecto."}
         </p>
 

@@ -109,34 +109,55 @@ const acApps = [
 ];
 
 /**
- * Caso A (Cuota) — Pedro 21-06: el Valor del Nivel Cuota es ANUAL y se
- * periodifica por la fracción del periodo del contrato (generaliza el Tipo E).
+ * Caso A (Cuota) — Pedro 21-06:
+ *   - Tipo M (Mantenimiento): Valor ANUAL, periodificado por la fracción.
+ *   - Tipo A (Acuerdo específico): importe PACTADO, se factura ENTERO.
  */
-describe("prefacturacion Caso A (Cuota anual periodificada) — Pedro 21-06", () => {
-  const nivelesA: Nivel[] = [
-    { tipoNivel: "A", subtipo: "A1", modelo: "cuota", bolsa: 0, precio: 1200 }, // 1200 €/año
+describe("prefacturacion Caso A — Pedro 21-06", () => {
+  const nivelesM: Nivel[] = [
+    { tipoNivel: "M", subtipo: "1", modelo: "cuota", bolsa: 0, precio: 1200 }, // 1200 €/año
   ];
-  const base: Contrato = {
-    id: "a1", codigo: "A1", cliente: "ACME", periodo: "mensual",
-    tipoNivel: "A", subtipo: "A1", consumo: 0, facturadas: 0, estado: "activo",
+  const contratoM: Contrato = {
+    id: "m1", codigo: "M1", cliente: "ACME", periodo: "mensual",
+    tipoNivel: "M", subtipo: "1", consumo: 0, facturadas: 0, estado: "activo",
   };
 
-  it("mensual = Valor anual / 12", () => {
-    const lineas = prefacturar([base], nivelesA, "cuota", "mensual", {});
+  it("Tipo M mensual = Valor anual / 12", () => {
+    const lineas = prefacturar([contratoM], nivelesM, "cuota", "mensual", {});
     expect(lineas).toHaveLength(1);
     expect(lineas[0].importe).toBeCloseTo(100, 5); // 1200 / 12
   });
 
-  it("trimestral = Valor anual / 4", () => {
-    const c: Contrato = { ...base, periodo: "trimestral" };
-    const lineas = prefacturar([c], nivelesA, "cuota", "trimestral", {});
+  it("Tipo M trimestral = Valor anual / 4", () => {
+    const c: Contrato = { ...contratoM, periodo: "trimestral" };
+    const lineas = prefacturar([c], nivelesM, "cuota", "trimestral", {});
     expect(lineas[0].importe).toBeCloseTo(300, 5); // 1200 / 4
   });
 
-  it("anual = Valor íntegro", () => {
-    const c: Contrato = { ...base, periodo: "anual" };
-    const lineas = prefacturar([c], nivelesA, "cuota", "anual", {});
+  it("Tipo M anual = Valor íntegro", () => {
+    const c: Contrato = { ...contratoM, periodo: "anual" };
+    const lineas = prefacturar([c], nivelesM, "cuota", "anual", {});
     expect(lineas[0].importe).toBeCloseTo(1200, 5);
+  });
+
+  const nivelesA: Nivel[] = [
+    { tipoNivel: "A", subtipo: "A1", modelo: "cuota", bolsa: 0, precio: 500 }, // importe pactado
+  ];
+  const contratoA: Contrato = {
+    id: "a1", codigo: "A1", cliente: "ACME", periodo: "mensual",
+    tipoNivel: "A", subtipo: "A1", consumo: 0, facturadas: 0, estado: "activo",
+  };
+
+  it("Tipo A (Acuerdo específico) se factura ENTERO, sin fraccionar — mensual", () => {
+    const lineas = prefacturar([contratoA], nivelesA, "cuota", "mensual", {});
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0].importe).toBeCloseTo(500, 5); // entero, NO 500/12
+  });
+
+  it("Tipo A se factura ENTERO también en trimestral", () => {
+    const c: Contrato = { ...contratoA, periodo: "trimestral" };
+    const lineas = prefacturar([c], nivelesA, "cuota", "trimestral", {});
+    expect(lineas[0].importe).toBeCloseTo(500, 5); // entero, NO 500/4
   });
 });
 

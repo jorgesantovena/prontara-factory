@@ -226,10 +226,12 @@ function bonoHoras(contrato: Contrato, niveles: Nivel[]): number | null {
 }
 
 /**
- * Caso A — Cuota. Pedro 21-06: el Valor del Nivel Cuota es SIEMPRE un importe
- * ANUAL; el importe a facturar es ese Valor PERIODIFICADO por la fracción del
- * periodo del contrato (mensual=1/12, trimestral=1/4, semestral=1/2, anual=1,
- * discreto=íntegro). Generaliza el criterio del Tipo E a todas las cuotas.
+ * Caso A — Cuota. Pedro 21-06:
+ *   - Tipo M (Mantenimiento): el Valor del Nivel es ANUAL y se PERIODIFICA por
+ *     la fracción del periodo (mensual=1/12, trimestral=1/4, …, discreto=1).
+ *   - Tipo A (Acuerdo específico): el Valor es un importe PACTADO que se
+ *     factura ENTERO cada vez (ya contempla el periodo, no se fracciona).
+ *   - Tipo E se factura aparte en calcularMantErrores (también periodificado).
  */
 export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefactura | null {
   // Pedro 21-06 (P7) — Los contratos Tipo E (Mantº contra errores) NO generan
@@ -242,9 +244,12 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
     // Sin Nivel Cuota definido → no se emite cuota.
     return null;
   }
-  const valorAnual = parseNum(nivel.precio); // Valor del Nivel Cuota = importe ANUAL
-  const factor = factorPeriodo(contrato.periodo);
-  const importe = Math.round(valorAnual * factor * 100) / 100; // periodificado
+  const valor = parseNum(nivel.precio);
+  // Solo el Tipo M tiene Valor anual que se fracciona; el Tipo A (Acuerdo
+  // específico) se factura entero.
+  const esM = String(contrato.tipoNivel).toUpperCase() === "M";
+  const factor = esM ? factorPeriodo(contrato.periodo) : 1;
+  const importe = Math.round(valor * factor * 100) / 100;
   return {
     caso: "A",
     contrato: contrato.codigo,
@@ -259,7 +264,9 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
     facturadas: parseNum(contrato.facturadas),
     horasAFacturar: 1,
     importe,
-    notas: "Cuota " + contrato.periodo + " = " + valorAnual + "€/año × " + factor.toFixed(4).replace(/0+$/, "").replace(/\.$/, "") + " = " + importe + "€",
+    notas: esM
+      ? "Cuota " + contrato.periodo + " = " + valor + "€/año × " + factor.toFixed(4).replace(/0+$/, "").replace(/\.$/, "") + " = " + importe + "€"
+      : "Acuerdo " + contrato.periodo + " = " + importe + "€ (importe pactado, entero)",
   };
 }
 

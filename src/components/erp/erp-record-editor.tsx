@@ -1010,10 +1010,11 @@ export default function ErpRecordEditor({
 function nivelesValorLabel(tipoNivel?: string, modelo?: string): string {
   const t = String(tipoNivel || "").toUpperCase();
   const m = String(modelo || "").toLowerCase();
-  // Pedro 21-06 — TODA cuota (M/A/E) se guarda como importe ANUAL; al facturar
-  // se periodifica por la fracción del periodo (trimestral ×3/12, etc.). Se
-  // etiqueta "anual" para que el Valor se introduzca como importe anual.
-  if (m === "cuota") return "Importe anual (€)";
+  // Pedro 21-06 — Cuotas de Mantenimiento (M y E) se guardan como importe
+  // ANUAL y se periodifican al facturar → "Importe anual". El Acuerdo
+  // específico (A) es un importe pactado que se factura entero → "Importe".
+  if (m === "cuota" && (t === "M" || t === "E")) return "Importe anual (€)";
+  if (m === "cuota") return "Importe (€)";
   if (m === "horas" && t === "M") return "Precio (€/h)";
   if (m === "horas" && (t === "A" || t === "B")) return "Horas (h)";
   if (m === "kilometros") return "Precio (€/Km)"; // Test 25
