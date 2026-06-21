@@ -2454,7 +2454,7 @@ export default function GenericModuleRuntimePage({
 function nivelValorUnidad(tipoNivel: string, modelo: string): string {
   const t = String(tipoNivel || "").toUpperCase();
   const m = String(modelo || "").toLowerCase();
-  if (m === "cuota" && (t === "M" || t === "A")) return "€";
+  if (m === "cuota") return "€/año"; // Pedro 21-06 — toda cuota es importe anual (se periodifica al facturar)
   if (m === "horas" && t === "M") return "€/h";
   if (m === "horas" && (t === "A" || t === "B")) return "h";
   if (m === "kilometros") return "€/Km"; // Test 25

@@ -1010,7 +1010,10 @@ export default function ErpRecordEditor({
 function nivelesValorLabel(tipoNivel?: string, modelo?: string): string {
   const t = String(tipoNivel || "").toUpperCase();
   const m = String(modelo || "").toLowerCase();
-  if (m === "cuota" && (t === "M" || t === "A")) return "Importe (€)";
+  // Pedro 21-06 — TODA cuota (M/A/E) se guarda como importe ANUAL; al facturar
+  // se periodifica por la fracción del periodo (trimestral ×3/12, etc.). Se
+  // etiqueta "anual" para que el Valor se introduzca como importe anual.
+  if (m === "cuota") return "Importe anual (€)";
   if (m === "horas" && t === "M") return "Precio (€/h)";
   if (m === "horas" && (t === "A" || t === "B")) return "Horas (h)";
   if (m === "kilometros") return "Precio (€/Km)"; // Test 25
