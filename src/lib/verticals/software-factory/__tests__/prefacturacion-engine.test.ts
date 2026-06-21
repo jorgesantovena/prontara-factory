@@ -88,3 +88,78 @@ describe("prefacturacion Caso B — Pedro 21-06", () => {
     expect(lineas).toHaveLength(0);
   });
 });
+
+/**
+ * Mantenimiento contra errores (Tipo E) — Pedro 21-06 (P7): una cuota más POR
+ * APLICACIÓN, periodificada al facturar (Valor anual × fracción del periodo) y
+ * calculada en función del nº de aplicaciones. Un Tipo E NO genera cuota
+ * genérica (Caso A) — solo sus líneas por aplicación.
+ */
+const nivelesE: Nivel[] = [
+  { tipoNivel: "E", subtipo: "S", modelo: "cuota", bolsa: 0, precio: 1200, aplicacion: "APP1" }, // 1200 €/año
+  { tipoNivel: "E", subtipo: "S", modelo: "cuota", bolsa: 0, precio: 2400, aplicacion: "APP2" }, // 2400 €/año
+];
+const contratoE: Contrato = {
+  id: "e1", codigo: "E1", cliente: "ACME", periodo: "trimestral",
+  tipoNivel: "E", subtipo: "S", consumo: 0, facturadas: 0, estado: "activo",
+};
+const acApps = [
+  { contrato: "E1", aplicacion: "APP1" },
+  { contrato: "E1", aplicacion: "APP2" },
+];
+
+/**
+ * Caso A (Cuota) — Pedro 21-06: el Valor del Nivel Cuota es ANUAL y se
+ * periodifica por la fracción del periodo del contrato (generaliza el Tipo E).
+ */
+describe("prefacturacion Caso A (Cuota anual periodificada) — Pedro 21-06", () => {
+  const nivelesA: Nivel[] = [
+    { tipoNivel: "A", subtipo: "A1", modelo: "cuota", bolsa: 0, precio: 1200 }, // 1200 €/año
+  ];
+  const base: Contrato = {
+    id: "a1", codigo: "A1", cliente: "ACME", periodo: "mensual",
+    tipoNivel: "A", subtipo: "A1", consumo: 0, facturadas: 0, estado: "activo",
+  };
+
+  it("mensual = Valor anual / 12", () => {
+    const lineas = prefacturar([base], nivelesA, "cuota", "mensual", {});
+    expect(lineas).toHaveLength(1);
+    expect(lineas[0].importe).toBeCloseTo(100, 5); // 1200 / 12
+  });
+
+  it("trimestral = Valor anual / 4", () => {
+    const c: Contrato = { ...base, periodo: "trimestral" };
+    const lineas = prefacturar([c], nivelesA, "cuota", "trimestral", {});
+    expect(lineas[0].importe).toBeCloseTo(300, 5); // 1200 / 4
+  });
+
+  it("anual = Valor íntegro", () => {
+    const c: Contrato = { ...base, periodo: "anual" };
+    const lineas = prefacturar([c], nivelesA, "cuota", "anual", {});
+    expect(lineas[0].importe).toBeCloseTo(1200, 5);
+  });
+});
+
+describe("prefacturacion Mantº Errores (Tipo E) — Pedro 21-06 P7", () => {
+  it("trimestral: cuota por aplicación = Valor anual × 3/12, sin línea Caso A", () => {
+    const lineas = prefacturar([contratoE], nivelesE, "cuota", "trimestral", { aplicacionesContrato: acApps });
+    expect(lineas).toHaveLength(2); // solo Mantº Errores, NO una cuota genérica
+    const total = lineas.reduce((s, l) => s + l.importe, 0);
+    expect(total).toBeCloseTo(900, 5); // 1200×0.25 + 2400×0.25 = 300 + 600
+  });
+
+  it("mensual: misma cuota periodificada a 1/12", () => {
+    const cMen: Contrato = { ...contratoE, periodo: "mensual" };
+    const lineas = prefacturar([cMen], nivelesE, "cuota", "mensual", { aplicacionesContrato: acApps });
+    expect(lineas).toHaveLength(2);
+    const total = lineas.reduce((s, l) => s + l.importe, 0);
+    expect(total).toBeCloseTo(300, 5); // 1200/12 + 2400/12 = 100 + 200
+  });
+
+  it("anual: cuota íntegra (factor 1) y escala con el nº de aplicaciones", () => {
+    const cAnual: Contrato = { ...contratoE, periodo: "anual" };
+    const lineas = prefacturar([cAnual], nivelesE, "cuota", "anual", { aplicacionesContrato: acApps });
+    const total = lineas.reduce((s, l) => s + l.importe, 0);
+    expect(total).toBeCloseTo(3600, 5); // 1200 + 2400
+  });
+});

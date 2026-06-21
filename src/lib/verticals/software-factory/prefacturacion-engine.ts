@@ -174,6 +174,15 @@ function enVentanaPeriodo(fechaRegistro: string, periodo: string, fecha?: string
   const num = ymToNum(ym);
   return num >= start && num <= end;
 }
+// Pedro 21-06 (P7) — Fracción de un coste ANUAL que corresponde a un periodo.
+// El Mantº contra errores (Tipo E) tiene un Valor anual por aplicación que se
+// "periodifica al facturar": mensual=1/12, trimestral=3/12, semestral=6/12,
+// anual=1. "Discreto" no es periódico → se factura el coste íntegro acordado.
+function factorPeriodo(periodo: string): number {
+  if (String(periodo) === "discreto") return 1;
+  const m = MESES_PERIODO[String(periodo)];
+  return (m ? m : 12) / 12;
+}
 
 /**
  * Resuelve un Nivel por su clave compuesta (tipoNivel, subtipo, modelo).
@@ -217,20 +226,25 @@ function bonoHoras(contrato: Contrato, niveles: Nivel[]): number | null {
 }
 
 /**
- * Caso A — Importe = Valor del Nivel (tipo, subtipo, Cuota). Test 22 bis.
+ * Caso A — Cuota. Pedro 21-06: el Valor del Nivel Cuota es SIEMPRE un importe
+ * ANUAL; el importe a facturar es ese Valor PERIODIFICADO por la fracción del
+ * periodo del contrato (mensual=1/12, trimestral=1/4, semestral=1/2, anual=1,
+ * discreto=íntegro). Generaliza el criterio del Tipo E a todas las cuotas.
  */
 export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefactura | null {
+  // Pedro 21-06 (P7) — Los contratos Tipo E (Mantº contra errores) NO generan
+  // una cuota genérica: se facturan por aplicación en calcularMantErrores
+  // (periodificado). Si no se saltaran, findNivel(E, subtipo, cuota) cogería
+  // un Nivel E arbitrario y duplicaría el cobro.
+  if (String(contrato.tipoNivel).toUpperCase() === "E") return null;
   const nivel = findNivel(niveles, contrato.tipoNivel, contrato.subtipo, "cuota");
   if (!nivel) {
     // Sin Nivel Cuota definido → no se emite cuota.
     return null;
   }
-  const precio = parseNum(nivel.precio); // Valor del Nivel Cuota = importe de la cuota
-  // Test 22 bis (Ejercicio 1) — Caso A: Importe = Valor del Nivel Cuota.
-  // La cuota del periodo ES el Valor; el Bono NO la multiplica (eso fue una
-  // hipótesis de bis-2, corregida por el ejemplo numérico de Pedro:
-  // M1 Cuota Valor 807,77 → Importe 807,77).
-  const importe = precio;
+  const valorAnual = parseNum(nivel.precio); // Valor del Nivel Cuota = importe ANUAL
+  const factor = factorPeriodo(contrato.periodo);
+  const importe = Math.round(valorAnual * factor * 100) / 100; // periodificado
   return {
     caso: "A",
     contrato: contrato.codigo,
@@ -240,12 +254,12 @@ export function calcularCasoA(contrato: Contrato, niveles: Nivel[]): LineaPrefac
     periodo: contrato.periodo,
     modelo: "cuota",
     bolsa: 1,
-    precio,
+    precio: importe,
     consumo: parseNum(contrato.consumo),
     facturadas: parseNum(contrato.facturadas),
     horasAFacturar: 1,
     importe,
-    notas: "Cuota " + contrato.periodo + " = " + precio + "€",
+    notas: "Cuota " + contrato.periodo + " = " + valorAnual + "€/año × " + factor.toFixed(4).replace(/0+$/, "").replace(/\.$/, "") + " = " + importe + "€",
   };
 }
 
@@ -352,14 +366,16 @@ export function calcularCasoB(contrato: Contrato, niveles: Nivel[], opts?: Prefa
 }
 
 /**
- * Test 23 — Mantenimiento contra errores: para un contrato, recorre sus
- * Aplicaciones/Contrato (A/C) y por cada una busca el Nivel
- * (Tipo E, subtipo del contrato, esa Aplicación). Genera una línea de
- * cuota por aplicación con el Valor del Nivel E. Texto:
- * "Cuota Mantº Errores <aplicación>".
+ * Test 23 / Pedro 21-06 (P7) — Mantenimiento contra errores: una cuota MÁS,
+ * por aplicación, PERIODIFICADA al facturar y calculada en función del nº de
+ * aplicaciones del contrato. Para cada Aplicación/Contrato (A/C) busca el
+ * Nivel (Tipo E, subtipo del contrato, esa Aplicación), cuyo Valor es ANUAL,
+ * y cobra la fracción del periodo (mensual=1/12, trimestral=3/12, …). Texto:
+ * "Cuota Mantº Errores <aplicación> (<periodo>)".
  */
-export function calcularMantErrores(contrato: Contrato, niveles: Nivel[], acApps: AplicacionContrato[]): LineaPrefactura[] {
+export function calcularMantErrores(contrato: Contrato, niveles: Nivel[], acApps: AplicacionContrato[], periodo: string): LineaPrefactura[] {
   const apps = acApps.filter((a) => String(a.contrato || "") === contrato.codigo);
+  const factor = factorPeriodo(periodo);
   const out: LineaPrefactura[] = [];
   for (const ac of apps) {
     const app = String(ac.aplicacion || "").trim();
@@ -369,12 +385,13 @@ export function calcularMantErrores(contrato: Contrato, niveles: Nivel[], acApps
       String(n.subtipo) === String(contrato.subtipo) &&
       String(n.aplicacion || "") === app);
     if (!nivel) continue;
-    const importe = parseNum(nivel.precio);
+    // Valor anual del Nivel E × fracción del periodo, redondeado a céntimos.
+    const importe = Math.round(parseNum(nivel.precio) * factor * 100) / 100;
     out.push({
       caso: "A", contrato: contrato.codigo, cliente: contrato.cliente,
-      tipoNivel: "E", subtipo: contrato.subtipo, periodo: contrato.periodo,
+      tipoNivel: "E", subtipo: contrato.subtipo, periodo,
       modelo: "cuota", bolsa: 1, precio: importe, consumo: 0, facturadas: 0,
-      horasAFacturar: 1, importe, notas: "Cuota Mantº Errores " + app,
+      horasAFacturar: 1, importe, notas: "Cuota Mantº Errores " + app + " (" + periodo + ")",
     });
   }
   return out;
@@ -446,11 +463,12 @@ export function prefacturar(
   const lineas = elegibles
     .map((c) => (modelo === "cuota" ? calcularCasoA(c, niveles) : calcularCasoB(c, niveles, { ...opts, periodo })))
     .filter((x): x is LineaPrefactura => x != null);
-  // Test 23 — Cuota trimestral: añadir las líneas de Mantº Errores (una por
-  // aplicación de cada contrato elegible).
-  if (modelo === "cuota" && periodo === "trimestral" && opts?.aplicacionesContrato) {
+  // Test 23 / Pedro 21-06 (P7) — Mantº Errores: cuota por aplicación
+  // periodificada al periodo elegido (ya NO solo trimestral). Una línea por
+  // aplicación de cada contrato Tipo E elegible.
+  if (modelo === "cuota" && opts?.aplicacionesContrato) {
     for (const c of elegibles) {
-      lineas.push(...calcularMantErrores(c, niveles, opts.aplicacionesContrato));
+      lineas.push(...calcularMantErrores(c, niveles, opts.aplicacionesContrato, periodo));
     }
   }
   return lineas;
