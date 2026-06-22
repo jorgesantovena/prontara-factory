@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import TenantShell from "@/components/erp/tenant-shell";
+// Pedro 22-06 — Notación española centralizada (dd/mm/aaaa, X.XXX.XXX,XX).
+import { fechaES, numeroES } from "@/lib/ui/format-es";
 
 /**
  * Dietas — TEST 25 (Pedro).
@@ -17,13 +19,11 @@ function num(v: unknown): number {
   return parseFloat(String(v ?? "0").replace(/\./g, "").replace(",", ".")) || 0;
 }
 function fmt(n: number): string {
-  return n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return numeroES(n, 2); // X.XXX.XXX,XX
 }
-// Test 25 bis — Fecha en formato dd-mm-aaaa (la lista la mostraba invertida).
+// Pedro 22-06 — Fecha siempre dd/mm/aaaa.
 function fmtFecha(ymd: string): string {
-  const s = String(ymd || "").slice(0, 10);
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  return m ? m[3] + "-" + m[2] + "-" + m[1] : s;
+  return fechaES(ymd);
 }
 
 export default function DietasPage() {

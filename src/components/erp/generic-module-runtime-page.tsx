@@ -11,6 +11,8 @@ import { useCurrentVertical } from "@/lib/saas/use-current-vertical";
 import DangerConfirm from "@/components/erp/danger-confirm";
 // TEST-16 — singular() centralizado; ver src/lib/text/singular.ts.
 import { singular } from "@/lib/text/singular";
+// Pedro 22-06 — Notación española (dd/mm/aaaa, X.XXX.XXX,XX) centralizada.
+import { fechaES, monedaES, numeroES, parseNumero } from "@/lib/ui/format-es";
 
 /**
  * Página genérica de un módulo del runtime del tenant (H12-F — rediseño).
@@ -101,28 +103,18 @@ const KANBAN_MODULES = new Set([
   "incidencias", "presupuestos", "compras",
 ]);
 
+// Pedro 22-06 — Notación española centralizada en @/lib/ui/format-es.
 function fmtMoneda(v: unknown): { text: string; tone: "neutral" | "good" | "bad" } {
-  const n = parseFloat(String(v ?? "").replace(/[^\d,.-]/g, "").replace(",", "."));
-  if (!Number.isFinite(n)) return { text: String(v ?? "—"), tone: "neutral" };
-  const abs = Math.abs(n);
-  const text = (n < 0 ? "-" : "") + abs.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + " €";
-  return { text, tone: n < 0 ? "bad" : n > 0 ? "good" : "neutral" };
+  const n = parseNumero(v);
+  if (n == null) return { text: String(v ?? "—"), tone: "neutral" };
+  return { text: monedaES(n), tone: n < 0 ? "bad" : n > 0 ? "good" : "neutral" };
 }
 
 function fmtFecha(v: unknown): string {
   const s = String(v ?? "");
   if (!s) return "—";
-  // ISO date o date-time
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) {
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const dCopy = new Date(d); dCopy.setHours(0, 0, 0, 0);
-    const diffDays = Math.round((dCopy.getTime() - today.getTime()) / 86400000);
-    if (diffDays === 0) return "Hoy, " + d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-    if (diffDays === -1) return "Ayer, " + d.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
-    return d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
-  }
-  return s;
+  // Pedro 22-06 — Siempre dd/mm/aaaa (sin "Hoy/Ayer").
+  return fechaES(s) || s;
 }
 
 function isDateField(key: string): boolean {
@@ -2177,7 +2169,7 @@ export default function GenericModuleRuntimePage({
                           const display = labelForValue(col.fieldKey, valStr);
                           return (
                             <td key={col.fieldKey} style={{ ...tdStyle, color: idx === 0 ? "#0f172a" : "#475569", fontWeight: idx === 0 ? 600 : 400 }}>
-                              {renderCell(col.fieldKey, display, idx === 0 ? item : null, moduleKey, { showEmailSubtitle, showTelSubtitle })}
+                              {renderCell(col.fieldKey, display, idx === 0 ? item : null, moduleKey, { showEmailSubtitle, showTelSubtitle }, ui.fields.find((f) => f.key === col.fieldKey)?.kind)}
                             </td>
                           );
                         })}
@@ -2475,6 +2467,7 @@ function renderCell(
   primaryRow: Record<string, string> | null,
   moduleKey?: string,
   contactSub?: { showEmailSubtitle?: boolean; showTelSubtitle?: boolean },
+  fieldKind?: string,
 ) {
   // Estado / segmento → pill de color
   if (fieldKey === "estado" || fieldKey === "fase" || fieldKey === "tipo" || fieldKey === "segmento" || fieldKey === "modalidad" || fieldKey === "severidad" || fieldKey === "urgencia" || fieldKey === "prioridad") {
@@ -2482,13 +2475,17 @@ function renderCell(
     const t = estadoTone(val);
     return <span style={{ display: "inline-block", padding: "2px 10px", borderRadius: 999, background: t.bg, color: t.fg, fontSize: 11, fontWeight: 700 }}>{val}</span>;
   }
-  // Money
-  if (isMoneyField(fieldKey)) {
+  // Money (por kind del campo o por heurística de nombre)
+  if (fieldKind === "money" || (fieldKind !== "number" && isMoneyField(fieldKey))) {
     const m = fmtMoneda(val);
     return <span style={{ color: m.tone === "bad" ? "#dc2626" : m.tone === "good" ? "#15803d" : "#475569", fontWeight: 600 }}>{m.text}</span>;
   }
-  // Fecha
-  if (isDateField(fieldKey)) {
+  // Pedro 22-06 — Número (no money): notación española X.XXX.XXX,XX.
+  if (fieldKind === "number" && val !== "—" && parseNumero(val) != null) {
+    return <span style={{ fontVariantNumeric: "tabular-nums" }}>{numeroES(val)}</span>;
+  }
+  // Fecha (por kind o heurística de nombre)
+  if (fieldKind === "date" || isDateField(fieldKey)) {
     return <span>{fmtFecha(val)}</span>;
   }
   // Primer campo + email/teléfono → avatar

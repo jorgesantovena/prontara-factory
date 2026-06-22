@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import TenantShell from "@/components/erp/tenant-shell";
+// Pedro 22-06 — Notación española centralizada (X.XXX.XXX,XX).
+import { numeroES, monedaES } from "@/lib/ui/format-es";
 
 /**
  * Pre-facturación — TEST 19 (Pedro).
@@ -148,8 +150,8 @@ export default function PreFacturacionPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12, marginBottom: 16 }}>
             <Kpi label="Contratos a facturar" value={String(totales.contratos)} accent="#1d4ed8" />
             <Kpi label="Clientes" value={String(totales.clientes)} accent="#0891b2" />
-            <Kpi label="Horas a facturar" value={totales.horasAFacturar.toFixed(2)} accent="#a16207" />
-            <Kpi label="Importe total" value={totales.importe.toFixed(2) + " €"} accent="#16a34a" />
+            <Kpi label="Horas a facturar" value={numeroES(totales.horasAFacturar, 2)} accent="#a16207" />
+            <Kpi label="Importe total" value={monedaES(totales.importe)} accent="#16a34a" />
           </div>
         ) : null}
 
@@ -179,12 +181,12 @@ export default function PreFacturacionPage() {
                   <Td>{l.tipoNivel}</Td>
                   <Td>{l.subtipo}</Td>
                   <Td style={{ textTransform: "capitalize" }}>{PERIODO_LABEL[l.periodo as Periodo] || l.periodo}</Td>
-                  <Td align="right">{l.bolsa.toFixed(2)}</Td>
-                  <Td align="right">{l.precio.toFixed(2)}</Td>
-                  <Td align="right">{modelo === "horas" ? l.consumo.toFixed(2) : ""}</Td>
-                  <Td align="right">{modelo === "horas" ? l.facturadas.toFixed(2) : ""}</Td>
-                  <Td align="right" style={{ color: modelo === "horas" ? "#dc2626" : "#1d4ed8", fontWeight: 700 }}>{l.horasAFacturar.toFixed(2)}</Td>
-                  <Td align="right" style={{ fontWeight: 700, color: "#16a34a" }}>{l.importe.toFixed(2)} €</Td>
+                  <Td align="right">{numeroES(l.bolsa, 2)}</Td>
+                  <Td align="right">{numeroES(l.precio, 2)}</Td>
+                  <Td align="right">{modelo === "horas" ? numeroES(l.consumo, 2) : ""}</Td>
+                  <Td align="right">{modelo === "horas" ? numeroES(l.facturadas, 2) : ""}</Td>
+                  <Td align="right" style={{ color: modelo === "horas" ? "#dc2626" : "#1d4ed8", fontWeight: 700 }}>{numeroES(l.horasAFacturar, 2)}</Td>
+                  <Td align="right" style={{ fontWeight: 700, color: "#16a34a" }}>{monedaES(l.importe)}</Td>
                   <Td style={{ color: "#6b7280", fontSize: 11 }}>{l.notas}</Td>
                 </tr>
               ))}
