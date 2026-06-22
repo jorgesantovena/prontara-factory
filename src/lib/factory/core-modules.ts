@@ -265,6 +265,11 @@ export const CORE_FIELDS: SectorPackField[] = [
   { moduleKey: "actividades", fieldKey: "lugar", label: "Lugar", kind: "status", required: true, options: [
     { value: "oficina", label: "Oficina" }, { value: "teletrabajo", label: "Teletrabajo" }, { value: "casa_cliente", label: "Casa cliente" }, { value: "desplazamiento", label: "Desplazamiento" },
   ] },
+  // Test 26 bis — Sentido del trayecto (Ida la teclea el usuario; Vuelta se
+  // autocrea). Solo lectura y visible cuando Lugar = Desplazamiento.
+  { moduleKey: "actividades", fieldKey: "sentido", label: "Sentido", kind: "status", readOnly: true, visibleWhen: { field: "lugar", equals: "desplazamiento" }, options: [
+    { value: "ida", label: "Ida" }, { value: "vuelta", label: "Vuelta" },
+  ] },
   { moduleKey: "actividades", fieldKey: "proyecto", label: "Proyecto", kind: "relation", required: true, relationModuleKey: "proyectos", placeholder: "Selecciona el proyecto al que se imputa" },
   { moduleKey: "actividades", fieldKey: "cliente", label: "Cliente", kind: "relation", relationModuleKey: "clientes", readOnly: true, inheritFrom: { from: "proyecto", field: "cliente" }, placeholder: "Heredado del proyecto" },
   // Facturación.pptx (Pedro) — Contrato heredado del proyecto. Las

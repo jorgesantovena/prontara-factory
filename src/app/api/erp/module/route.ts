@@ -196,21 +196,23 @@ export async function POST(request: NextRequest) {
       // Facturación.pptx — Trigger post-create Tarea: recalcula
       // Consumo del Contrato heredado del proyecto. Tolerante a fallos
       // (proyecto/contrato no existentes → no-op).
+      let nextHoraDesdeHint = "";
       if (moduleKey === "actividades" && created?.id) {
         try {
           await recalcularConsumoContratoDesdeTarea(created as Record<string, string>, tenant);
         } catch (e) {
           captureError(e, { scope: "actividades → recalcularConsumoContrato" });
         }
-        // Test 25 — Si la Tarea es un Desplazamiento, generar el registro
-        // de Desplazamiento con los valores heredados.
+        // Test 26 bis — Lógica Ida/Visita/Vuelta: crea el Desplazamiento de la
+        // Ida + autocrea la Tarea de Vuelta, o recoloca la Vuelta abierta si es
+        // una Visita. Devuelve la Hora desde sugerida para la siguiente Tarea.
         try {
-          await crearDesplazamientoDesdeTarea(created as Record<string, string>, tenant);
+          nextHoraDesdeHint = await procesarTareaDesplazamiento(created as Record<string, string>, tenant);
         } catch (e) {
-          captureError(e, { scope: "actividades → crearDesplazamiento" });
+          captureError(e, { scope: "actividades → procesarTareaDesplazamiento" });
         }
       }
-      return NextResponse.json({ ok: true, row: created });
+      return NextResponse.json({ ok: true, row: created, nextHoraDesde: nextHoraDesdeHint });
     }
 
     if (mode === "edit") {
@@ -509,13 +511,123 @@ async function recalcularFacturadoContrato(contratoRef: string, tenant: string):
   await updateModuleRecordAsync("contratos", String(con.id || ""), { ...con, facturadas: next }, tenant);
 }
 
-// Test 25 — Trigger: al dar de alta una Tarea con Lugar = Desplazamiento,
-// crea el registro de Desplazamiento heredando Tarea, Fecha, Empleado,
-// Punto (cliente), Km (del cliente), Facturable, Estado=Borrador, Precio
-// Venta (del Nivel Kilómetros del contrato del proyecto), Total Venta,
-// Dieta (del empleado) y Total Dietas.
-async function crearDesplazamientoDesdeTarea(tarea: Record<string, string>, tenant: string): Promise<void> {
-  if (String(tarea.lugar || "").toLowerCase() !== "desplazamiento") return;
+// Test 26 bis (Pedro 22-06) — Lógica Ida / Visita(s) / Vuelta.
+// Un desplazamiento completo = 3 Tareas: Ida (la teclea el usuario, Lugar =
+// Desplazamiento) → Visita(s) (Lugar = Casa cliente) → Vuelta (se AUTOCREA).
+//   · Al alta de la Ida: se crea su Desplazamiento y se AUTOCREA la Tarea de
+//     Vuelta (duración = duración de la Ida), que a su vez genera su propio
+//     Desplazamiento. Así toda alta en Desplazamientos nace de un alta de
+//     Tarea (lógica única y genérica).
+//   · Cada Visita posterior empuja la Vuelta: Vuelta.Desde = Visita.Hasta,
+//     Vuelta.Hasta = Desde + duración de la Ida (y se actualiza su
+//     Desplazamiento).
+//   · Una Tarea cuya Hora desde > Hora hasta de la Vuelta = "ya se ha vuelto".
+// Devuelve la Hora desde sugerida para la SIGUIENTE Tarea (encadenado UI).
+function hhmmToMin(s: string): number | null {
+  const m = String(s || "").match(/^(\d{1,2}):(\d{2})/);
+  return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : null;
+}
+function minToHhmm(min: number): string {
+  const v = ((Math.round(min) % 1440) + 1440) % 1440;
+  return String(Math.floor(v / 60)).padStart(2, "0") + ":" + String(v % 60).padStart(2, "0");
+}
+function horasDecimalDesdeMin(min: number): string {
+  return (min / 60).toFixed(2).replace(".", ",");
+}
+
+async function procesarTareaDesplazamiento(tarea: Record<string, string>, tenant: string): Promise<string> {
+  const lugar = String(tarea.lugar || "").toLowerCase();
+  const sentido = String(tarea.sentido || "").toLowerCase();
+
+  // IDA: Tarea Lugar = Desplazamiento que NO es la Vuelta.
+  if (lugar === "desplazamiento" && sentido !== "vuelta") {
+    await crearDesplazamientoLeg(tarea, "ida", String(tarea.horaDesde || ""), tenant);
+    const d = hhmmToMin(tarea.horaDesde);
+    const h = hhmmToMin(tarea.horaHasta);
+    const idaDur = d != null && h != null && h >= d ? h - d : 0;
+    const vueltaDesde = String(tarea.horaHasta || "");
+    const vdMin = hhmmToMin(vueltaDesde);
+    const vueltaHasta = vdMin != null ? minToHhmm(vdMin + idaDur) : vueltaDesde;
+    // Autocrear la Tarea de Vuelta (misma herencia que la Ida).
+    const vuelta = await createModuleRecordAsync("actividades", {
+      empleado: String(tarea.empleado || ""),
+      fecha: String(tarea.fecha || ""),
+      horaDesde: vueltaDesde,
+      horaHasta: vueltaHasta,
+      tiempoHoras: horasDecimalDesdeMin(idaDur),
+      lugar: "desplazamiento",
+      sentido: "vuelta",
+      proyecto: String(tarea.proyecto || ""),
+      cliente: String(tarea.cliente || ""),
+      contrato: String(tarea.contrato || ""),
+      facturable: String(tarea.facturable || ""),
+    }, tenant) as Record<string, string> | null;
+    if (vuelta && vuelta.id) {
+      await crearDesplazamientoLeg(vuelta, "vuelta", vueltaDesde, tenant);
+    }
+    // Marcar la Ida como sentido = ida (para distinguirla en el listado).
+    if (!sentido) {
+      try {
+        await updateModuleRecordAsync("actividades", String(tarea.id || ""), { ...tarea, sentido: "ida" }, tenant);
+      } catch { /* no crítico */ }
+    }
+    // Tras la Ida, la siguiente Tarea (Visita) arranca a la Hora hasta de la Ida.
+    return String(tarea.horaHasta || "");
+  }
+
+  // VISITA: Lugar = Casa cliente. Empuja la Vuelta abierta del empleado+fecha.
+  if (lugar === "casa_cliente") {
+    const visitaDesde = hhmmToMin(tarea.horaDesde);
+    const visitaHasta = hhmmToMin(tarea.horaHasta);
+    if (visitaDesde == null || visitaHasta == null) return "";
+    const acts = await listModuleRecordsAsync("actividades", tenant);
+    // Vuelta "abierta": la de mayor Hora desde, del mismo empleado y fecha,
+    // cuya Hora hasta >= Hora desde de la Visita (aún no se ha vuelto).
+    let target: Record<string, string> | null = null;
+    let targetDesde = -1;
+    for (const a of (Array.isArray(acts) ? acts : []) as Array<Record<string, string>>) {
+      if (String(a.sentido || "").toLowerCase() !== "vuelta") continue;
+      if (String(a.empleado || "") !== String(tarea.empleado || "")) continue;
+      if (String(a.fecha || "") !== String(tarea.fecha || "")) continue;
+      const vh = hhmmToMin(a.horaHasta);
+      const vd = hhmmToMin(a.horaDesde);
+      if (vh == null || vd == null) continue;
+      if (visitaDesde <= vh && vd > targetDesde) { target = a; targetDesde = vd; }
+    }
+    if (target) {
+      const vh = hhmmToMin(target.horaHasta);
+      const vd = hhmmToMin(target.horaDesde);
+      const idaDur = vh != null && vd != null && vh >= vd ? vh - vd : 0;
+      const newDesde = minToHhmm(visitaHasta);
+      const newHasta = minToHhmm(visitaHasta + idaDur);
+      await updateModuleRecordAsync("actividades", String(target.id || ""), {
+        ...target, horaDesde: newDesde, horaHasta: newHasta, tiempoHoras: horasDecimalDesdeMin(idaDur),
+      }, tenant);
+      await actualizarHoraDesplazamientoDeTarea(String(target.id || ""), newDesde, tenant);
+      // La siguiente Tarea arranca TRAS la Vuelta.
+      return newHasta;
+    }
+    return "";
+  }
+  return "";
+}
+
+// Actualiza la Hora del Desplazamiento vinculado a una Tarea (la Vuelta, al
+// recolocarse por una Visita posterior).
+async function actualizarHoraDesplazamientoDeTarea(tareaId: string, hora: string, tenant: string): Promise<void> {
+  if (!tareaId) return;
+  const desps = await listModuleRecordsAsync("desplazamientos", tenant);
+  const d = (Array.isArray(desps) ? desps : []).find(
+    (x) => String((x as Record<string, string>).tarea || "") === tareaId,
+  ) as Record<string, string> | undefined;
+  if (d && d.id) await updateModuleRecordAsync("desplazamientos", String(d.id), { ...d, hora }, tenant);
+}
+
+// Crea UN registro de Desplazamiento (Ida o Vuelta) desde una Tarea, heredando
+// Punto (cliente), Km (del cliente), Dieta (del empleado), Precio Venta (del
+// Nivel Kilómetros del contrato del proyecto) y totales. `hora` = comienzo del
+// trayecto. Estado = Borrador.
+async function crearDesplazamientoLeg(tarea: Record<string, string>, sentidoLeg: "ida" | "vuelta", hora: string, tenant: string): Promise<void> {
   const [clientes, empleados, proyectos, contratos, niveles] = await Promise.all([
     listModuleRecordsAsync("clientes", tenant),
     listModuleRecordsAsync("empleados", tenant),
@@ -559,15 +671,7 @@ async function crearDesplazamientoDesdeTarea(tarea: Record<string, string>, tena
     facturable: String(tarea.facturable || ""),
     estado: "borrador",
   };
-  // Test 26 — Cada Tarea con Lugar = Desplazamiento genera SIEMPRE dos
-  // registros: Ida y Vuelta (mismo Km, importes y dietas por trayecto). La
-  // Ida arranca a la Hora desde de la tarea; la Vuelta a la Hora hasta (fin
-  // de la última tarea introducida). El usuario puede anular manualmente
-  // cualquiera de los dos desde el listado de Desplazamientos.
   await createModuleRecordAsync("desplazamientos", {
-    ...base, sentido: "ida", hora: String(tarea.horaDesde || ""),
-  }, tenant);
-  await createModuleRecordAsync("desplazamientos", {
-    ...base, sentido: "vuelta", hora: String(tarea.horaHasta || ""),
+    ...base, sentido: sentidoLeg, hora,
   }, tenant);
 }

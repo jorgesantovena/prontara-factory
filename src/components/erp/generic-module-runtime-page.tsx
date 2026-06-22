@@ -978,6 +978,9 @@ export default function GenericModuleRuntimePage({
       const data = await response.json();
       if (!response.ok || !data.ok) throw new Error(data.error || "No se pudo guardar.");
       savedRow = (data.row || null) as Record<string, string> | null;
+      // Test 26 bis — El servidor sugiere la Hora desde de la siguiente Tarea
+      // (tras la Vuelta autocreada/recolocada). La adjuntamos para el encadenado.
+      if (savedRow && data.nextHoraDesde) savedRow.__nextHoraDesde = String(data.nextHoraDesde);
     }
     if (modalMode === "edit" && selected?.id) {
       const response = await fetch("/api/erp/module", {
@@ -1456,24 +1459,28 @@ export default function GenericModuleRuntimePage({
 
             // Test 26 — Tareas (Trabajos): minimizar el tecleo. Recordamos
             // Empleado/Fecha/Hora-hasta del último registro de la sesión.
+            // Test 26 bis — La Hora desde sugerida para la siguiente Tarea la
+            // marca el servidor (tras la Vuelta autocreada/recolocada): si una
+            // Visita ha empujado la Vuelta, arrancamos TRAS la Vuelta. Si no,
+            // cae a la Hora hasta de la tarea guardada (jornada sin huecos).
+            const nextDesde = String(savedRow?.__nextHoraDesde || payload.horaHasta || "");
             if (moduleKey === "actividades" && typeof window !== "undefined") {
               try {
                 window.sessionStorage.setItem("prontara-last-tarea", JSON.stringify({
                   empleado: String(payload.empleado || ""),
                   fecha: String(payload.fecha || ""),
-                  horaHasta: String(payload.horaHasta || ""),
+                  horaHasta: nextDesde,
                 }));
               } catch { /* sessionStorage no disponible */ }
             }
             if (options?.andNew && modalMode === "create") {
               // Test 26 — Al encadenar Tareas (Guardar y nuevo), el siguiente
-              // registro asume Empleado y Fecha, y la Hora desde = Hora hasta
-              // de la anterior (jornada sin huecos). Resto de módulos: limpio.
+              // registro asume Empleado y Fecha, y la Hora desde sugerida.
               if (moduleKey === "actividades") {
                 setSelected({
                   empleado: String(payload.empleado || ""),
                   fecha: String(payload.fecha || ""),
-                  horaDesde: String(payload.horaHasta || ""),
+                  horaDesde: nextDesde,
                 });
               } else {
                 setSelected(null);
