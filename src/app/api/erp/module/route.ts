@@ -244,6 +244,14 @@ export async function POST(request: NextRequest) {
         } catch (e) {
           captureError(e, { scope: "actividades edit → recalcularConsumoContrato" });
         }
+        // Test 26 bis — Acoplamiento: si la Tarea es un Desplazamiento, su
+        // Desplazamiento sigue el cambio (horas/cliente/empleado → Hora,
+        // Km, Dieta, totales). No recuadra la terna (eso lo hace el usuario).
+        try {
+          await sincronizarDesplazamientoDeTarea(updated as Record<string, string>, tenant);
+        } catch (e) {
+          captureError(e, { scope: "actividades edit → sincronizarDesplazamiento" });
+        }
       }
       // Facturación.pptx — Trigger post-edit Proyecto: si cambia el
       // flag facturable o el contrato del proyecto, los consumos del
@@ -301,6 +309,9 @@ export async function POST(request: NextRequest) {
         try {
           if (moduleKey === "actividades") {
             await recalcularConsumoContratoDesdeTarea(deletedRow, tenant);
+            // Test 26 bis — Acoplamiento: borrar la Tarea borra SU
+            // Desplazamiento (baja individual, sin cascada a la terna).
+            await eliminarDesplazamientoDeTarea(recordId, tenant);
           } else if (moduleKey === "facturacion") {
             await recalcularFacturadoContrato(String(deletedRow.contrato || ""), tenant);
           } else if (moduleKey === "proyectos") {
@@ -623,11 +634,11 @@ async function actualizarHoraDesplazamientoDeTarea(tareaId: string, hora: string
   if (d && d.id) await updateModuleRecordAsync("desplazamientos", String(d.id), { ...d, hora }, tenant);
 }
 
-// Crea UN registro de Desplazamiento (Ida o Vuelta) desde una Tarea, heredando
-// Punto (cliente), Km (del cliente), Dieta (del empleado), Precio Venta (del
-// Nivel Kilómetros del contrato del proyecto) y totales. `hora` = comienzo del
-// trayecto. Estado = Borrador.
-async function crearDesplazamientoLeg(tarea: Record<string, string>, sentidoLeg: "ida" | "vuelta", hora: string, tenant: string): Promise<void> {
+// Calcula los datos heredados de un Desplazamiento desde su Tarea: Punto
+// (cliente), Km (del cliente), Dieta (del empleado), Precio Venta (del Nivel
+// Kilómetros del contrato del proyecto) y totales. SIN estado (lo fija el
+// caller: borrador al crear; se preserva al sincronizar).
+async function calcularDatosDesplazamiento(tarea: Record<string, string>, tenant: string): Promise<Record<string, string>> {
   const [clientes, empleados, proyectos, contratos, niveles] = await Promise.all([
     listModuleRecordsAsync("clientes", tenant),
     listModuleRecordsAsync("empleados", tenant),
@@ -658,7 +669,7 @@ async function crearDesplazamientoLeg(tarea: Record<string, string>, sentidoLeg:
     precioKm = parseHorasNumber(niv?.precio || "0");
   }
   const num = (n: number) => (Math.round(n * 100) / 100).toString();
-  const base: Record<string, string> = {
+  return {
     tarea: String(tarea.id || ""),
     fecha: String(tarea.fecha || ""),
     empleado: empName,
@@ -669,9 +680,41 @@ async function crearDesplazamientoLeg(tarea: Record<string, string>, sentidoLeg:
     dieta: num(dieta),
     totalDietas: num(km * dieta),
     facturable: String(tarea.facturable || ""),
-    estado: "borrador",
   };
-  await createModuleRecordAsync("desplazamientos", {
-    ...base, sentido: sentidoLeg, hora,
+}
+
+// Crea UN registro de Desplazamiento (Ida o Vuelta) desde una Tarea.
+// `hora` = comienzo del trayecto. Estado = Borrador.
+async function crearDesplazamientoLeg(tarea: Record<string, string>, sentidoLeg: "ida" | "vuelta", hora: string, tenant: string): Promise<void> {
+  const base = await calcularDatosDesplazamiento(tarea, tenant);
+  await createModuleRecordAsync("desplazamientos", { ...base, sentido: sentidoLeg, hora, estado: "borrador" }, tenant);
+}
+
+// Test 26 bis — Acoplamiento Tarea→Desplazamiento al EDITAR: cualquier cambio
+// en una Tarea de desplazamiento se refleja en SU Desplazamiento (Km/Dieta/
+// Precio/totales recalculados, Hora = Hora desde de la Tarea). NO toca las
+// demás Tareas de la terna (eso lo cuadra el usuario). Preserva el estado.
+async function sincronizarDesplazamientoDeTarea(tarea: Record<string, string>, tenant: string): Promise<void> {
+  if (String(tarea.lugar || "").toLowerCase() !== "desplazamiento") return;
+  const desps = await listModuleRecordsAsync("desplazamientos", tenant);
+  const d = (Array.isArray(desps) ? desps : []).find(
+    (x) => String((x as Record<string, string>).tarea || "") === String(tarea.id || ""),
+  ) as Record<string, string> | undefined;
+  if (!d || !d.id) return; // sin Desplazamiento vinculado: nada que sincronizar
+  const base = await calcularDatosDesplazamiento(tarea, tenant);
+  await updateModuleRecordAsync("desplazamientos", String(d.id), {
+    ...d, ...base, hora: String(tarea.horaDesde || ""), sentido: String(tarea.sentido || "") || String(d.sentido || ""),
   }, tenant);
+}
+
+// Test 26 bis — Acoplamiento Tarea→Desplazamiento al BORRAR: borrar una Tarea
+// de desplazamiento borra SU Desplazamiento. NO borra las demás Tareas de la
+// terna (baja individual: el usuario decide si borra la Ida/Visita/Vuelta).
+async function eliminarDesplazamientoDeTarea(tareaId: string, tenant: string): Promise<void> {
+  if (!tareaId) return;
+  const desps = await listModuleRecordsAsync("desplazamientos", tenant);
+  const d = (Array.isArray(desps) ? desps : []).find(
+    (x) => String((x as Record<string, string>).tarea || "") === tareaId,
+  ) as Record<string, string> | undefined;
+  if (d && d.id) await deleteModuleRecordAsync("desplazamientos", String(d.id), tenant);
 }
