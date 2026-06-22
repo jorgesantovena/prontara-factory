@@ -418,10 +418,12 @@ export default function ErpRecordModal({
                         ? "time"
                         : field.kind === "tel"
                           ? "tel"
-                          : field.kind === "number"
-                            ? "number"
-                            : "text"
+                          // Pedro 22-06 — number como texto para admitir COMA
+                          // decimal (type=number la rechazaría). Miles solo en
+                          // listas; aquí valor crudo, seguro para el motor.
+                          : "text"
                 }
+                inputMode={field.kind === "number" || field.kind === "money" ? "decimal" : undefined}
                 value={values[field.key] || ""}
                 onChange={(event) => updateField(field.key, event.target.value)}
                 placeholder={field.placeholder || ""}

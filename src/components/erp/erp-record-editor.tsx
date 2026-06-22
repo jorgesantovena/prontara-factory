@@ -1214,7 +1214,11 @@ function FieldInput({ field, value, onChange, options, accent, forceReadOnly, la
   } else if (field.kind === "email") {
     inputEl = <input type="email" value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} placeholder={field.placeholder} style={baseStyle} />;
   } else if (field.kind === "number") {
-    inputEl = <input type="number" value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} placeholder={field.placeholder} style={baseStyle} />;
+    // Pedro 22-06 — En edición se teclea con COMA decimal y SIN puntos de
+    // miles (los miles solo en las listas). type=text+inputMode decimal
+    // permite la coma (type=number la rechazaría) y deja el valor crudo,
+    // seguro para el motor de cálculo. Sin formateo al salir del campo.
+    inputEl = <input type="text" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} placeholder={field.placeholder || "0"} style={baseStyle} />;
   } else {
     inputEl = <input type="text" value={value} onChange={(e) => onChange(e.target.value)} readOnly={isReadOnly} disabled={isReadOnly} placeholder={field.placeholder} style={baseStyle} />;
   }
