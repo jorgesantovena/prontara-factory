@@ -47,6 +47,7 @@ export const MODULE_ICON: Record<string, string> = {
   // Administración — finanzas y stock
   presupuestos: "📄",
   "pre-facturacion": "🧾",
+  "parte-servicios": "📄",
   facturacion: "💶",
   albaranes: "📦",
   "vencimientos-factura": "⏰",

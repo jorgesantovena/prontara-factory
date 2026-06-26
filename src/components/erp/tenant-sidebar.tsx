@@ -44,6 +44,9 @@ const MODULE_ORDER = [
   "proyectos",
   "produccion",
   "pre-facturacion",
+  // Pedro 22-06 — Parte de Servicios (estado de cuenta al cliente), junto a
+  // Pre-facturación en el flujo de facturación.
+  "parte-servicios",
   "facturacion",
   "documentos",
   // TEST-5.S — Reportes en el sidebar (grupo Analítica).
@@ -173,6 +176,7 @@ const MODULE_CATEGORY: Record<string, SidebarCategory> = {
   // cierre administrativo.
   presupuestos: "operacion",
   "pre-facturacion": "administracion",
+  "parte-servicios": "administracion",
   facturacion: "administracion",
   albaranes: "administracion",
   "vencimientos-factura": "administracion",
@@ -238,6 +242,7 @@ const FALLBACK_LABELS: Record<string, string> = {
   produccion: "Producción",
   presupuestos: "Propuestas",
   "pre-facturacion": "Pre-facturación",
+  "parte-servicios": "Parte de servicios",
   facturacion: "Facturas",
   documentos: "Documentos",
   reportes: "Reportes",
@@ -283,7 +288,7 @@ const FALLBACK_LABELS: Record<string, string> = {
 
 // Módulos "virtuales" que no vienen del pack (no tienen entrada en
 // config.modules) pero sí tienen página propia. Los mostramos siempre.
-const VIRTUAL_MODULES = new Set(["produccion", "dietas", "trabajos"]);
+const VIRTUAL_MODULES = new Set(["produccion", "dietas", "trabajos", "parte-servicios"]);
 
 // TEST-5.S — Módulos universales del runtime que están disponibles para
 // CUALQUIER vertical aunque el pack no los enumere (ej. Reportes,
@@ -468,10 +473,10 @@ export default function TenantSidebar() {
           const desp = config.modules.find((mm) => mm.moduleKey === "desplazamientos");
           if (!(desp && desp.enabled !== false)) continue;
         }
-      } else if (key === "trabajos") {
-        // Test 26 — "Trabajos" solo donde `actividades` representa el parte de
-        // horas (su label es "Tareas", p.ej. Software Factory). En Colegio
-        // actividades = "Extracurriculares" → no aplica el alta diaria.
+      } else if (key === "trabajos" || key === "parte-servicios") {
+        // Test 26 / Parte 22-06 — Solo donde `actividades` representa el parte
+        // de horas (su label es "Tareas", p.ej. Software Factory). En Colegio
+        // actividades = "Extracurriculares" → no aplica.
         if (config) {
           const act = config.modules.find((mm) => mm.moduleKey === "actividades");
           if (!(act && act.enabled !== false)) continue;
